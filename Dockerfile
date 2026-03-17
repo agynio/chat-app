@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM node:20-slim AS base
+FROM --platform=$BUILDPLATFORM node:20-slim AS base
 
 ENV PNPM_HOME=/pnpm \
     PNPM_STORE_PATH=/pnpm-store \
@@ -28,8 +28,8 @@ RUN pnpm build
 
 FROM nginx:1.27-alpine AS runtime
 
-COPY docker/default.conf /etc/nginx/conf.d/default.conf
+COPY docker/default.conf.template /etc/nginx/templates/default.conf.template
 
 COPY --from=build /app/dist /usr/share/nginx/html
 
-EXPOSE 80
+EXPOSE 3000

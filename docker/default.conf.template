@@ -1,5 +1,5 @@
 server {
-    listen 80;
+    listen 3000;
     server_name _;
 
     root /usr/share/nginx/html;
@@ -20,12 +20,16 @@ server {
         image/svg+xml
         font/woff2;
 
-    # SPA routing
+    location /healthz {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok";
+    }
+
     location / {
         try_files $uri $uri/ /index.html;
     }
 
-    # Static asset caching
     location ~* \.(?:js|css|png|jpg|jpeg|gif|svg|ico|webp|woff2?)$ {
         expires 30d;
         access_log off;
