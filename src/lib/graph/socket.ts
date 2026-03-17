@@ -2,7 +2,6 @@
 import { io, type ManagerOptions, type Socket, type SocketOptions } from 'socket.io-client';
 import { getSocketBaseUrl } from '@/config';
 import type { NodeStatusEvent, ReminderCountEvent } from './types';
-import type { RunTimelineEvent, RunTimelineEventsCursor, ToolOutputChunk, ToolOutputTerminal } from '@/api/types/agents';
 
 // Strictly typed server-to-client socket events (listener signatures)
 type NodeStateEvent = { nodeId: string; state: Record<string, unknown>; updatedAt: string };
@@ -15,7 +14,6 @@ type RunSummary = {
   createdAt: string;
   updatedAt: string;
 };
-type RunEventSocketPayload = { runId: string; mutation: 'append' | 'update'; event: RunTimelineEvent };
 interface ServerToClientEvents {
   node_status: (payload: NodeStatusEvent) => void;
   node_state: (payload: NodeStateEvent) => void;
@@ -26,10 +24,6 @@ interface ServerToClientEvents {
   thread_reminders_count: (payload: { threadId: string; remindersCount: number }) => void;
   message_created: (payload: { threadId: string; message: MessageSummary }) => void;
   run_status_changed: (payload: RunStatusChangedPayload) => void;
-  run_event_appended: (payload: RunEventSocketPayload) => void;
-  run_event_updated: (payload: RunEventSocketPayload) => void;
-  tool_output_chunk: (payload: ToolOutputChunk) => void;
-  tool_output_terminal: (payload: ToolOutputTerminal) => void;
 }
 // Client-to-server emits: subscribe to rooms
 type SubscribePayload = { room?: string; rooms?: string[] };
@@ -44,9 +38,6 @@ type ThreadActivityPayload = { threadId: string; activity: 'working' | 'waiting'
 type ThreadRemindersPayload = { threadId: string; remindersCount: number };
 type MessageCreatedPayload = { message: MessageSummary; threadId: string };
 type RunStatusChangedPayload = { threadId: string; run: RunSummary };
-type RunEventListenerPayload = RunEventSocketPayload;
-type ToolChunkListener = (payload: ToolOutputChunk) => void;
-type ToolTerminalListener = (payload: ToolOutputTerminal) => void;
 
 class GraphSocket {
   // Typed socket instance; null until connected
@@ -60,39 +51,12 @@ class GraphSocket {
   private threadRemindersListeners = new Set<(payload: ThreadRemindersPayload) => void>();
   private messageCreatedListeners = new Set<(payload: MessageCreatedPayload) => void>();
   private runStatusListeners = new Set<(payload: RunStatusChangedPayload) => void>();
-  private runEventListeners = new Set<(payload: RunEventListenerPayload) => void>();
-  private toolChunkListeners = new Set<ToolChunkListener>();
-  private toolTerminalListeners = new Set<ToolTerminalListener>();
   private subscribedRooms = new Set<string>();
   private connectCallbacks = new Set<() => void>();
   private reconnectCallbacks = new Set<() => void>();
   private disconnectCallbacks = new Set<() => void>();
-  private runCursors = new Map<string, RunTimelineEventsCursor>();
   private socketCleanup: Array<() => void> = [];
   private managerCleanup: Array<() => void> = [];
-
-  private compareCursors(a: RunTimelineEventsCursor, b: RunTimelineEventsCursor): number {
-    const parsedA = Date.parse(a.ts);
-    const parsedB = Date.parse(b.ts);
-    const timeA = Number.isNaN(parsedA) ? 0 : parsedA;
-    const timeB = Number.isNaN(parsedB) ? 0 : parsedB;
-    if (timeA !== timeB) return timeA - timeB;
-    const lexical = a.ts.localeCompare(b.ts);
-    if (lexical !== 0) return lexical;
-    return a.id.localeCompare(b.id);
-  }
-
-  private bumpRunCursor(runId: string, candidate: RunTimelineEventsCursor | null, opts?: { force?: boolean }) {
-    if (!runId) return;
-    if (!candidate) {
-      this.runCursors.delete(runId);
-      return;
-    }
-    const current = this.runCursors.get(runId);
-    if (!current || opts?.force || this.compareCursors(candidate, current) > 0) {
-      this.runCursors.set(runId, candidate);
-    }
-  }
 
   private emitSubscriptions(rooms: string[]) {
     if (!rooms.length) return;
@@ -208,32 +172,6 @@ class GraphSocket {
     };
     socket.on('run_status_changed', handleRunStatusChanged);
     this.socketCleanup.push(() => socket.off('run_status_changed', handleRunStatusChanged));
-    const handleRunEvent = (eventName: 'run_event_appended' | 'run_event_updated', payload: RunEventSocketPayload) => {
-      const cursor = { ts: payload.event.ts, id: payload.event.id } as RunTimelineEventsCursor;
-      const force = eventName === 'run_event_updated';
-      this.bumpRunCursor(payload.runId, cursor, force ? { force: true } : undefined);
-      for (const fn of this.runEventListeners) fn(payload);
-    };
-    const handleRunEventAppended: ServerToClientEvents['run_event_appended'] = (payload) =>
-      handleRunEvent('run_event_appended', payload);
-    socket.on('run_event_appended', handleRunEventAppended);
-    this.socketCleanup.push(() => socket.off('run_event_appended', handleRunEventAppended));
-
-    const handleRunEventUpdated: ServerToClientEvents['run_event_updated'] = (payload) =>
-      handleRunEvent('run_event_updated', payload);
-    socket.on('run_event_updated', handleRunEventUpdated);
-    this.socketCleanup.push(() => socket.off('run_event_updated', handleRunEventUpdated));
-    const handleToolOutputChunk: ServerToClientEvents['tool_output_chunk'] = (payload) => {
-      for (const fn of this.toolChunkListeners) fn(payload);
-    };
-    socket.on('tool_output_chunk', handleToolOutputChunk);
-    this.socketCleanup.push(() => socket.off('tool_output_chunk', handleToolOutputChunk));
-
-    const handleToolOutputTerminal: ServerToClientEvents['tool_output_terminal'] = (payload) => {
-      for (const fn of this.toolTerminalListeners) fn(payload);
-    };
-    socket.on('tool_output_terminal', handleToolOutputTerminal);
-    this.socketCleanup.push(() => socket.off('tool_output_terminal', handleToolOutputTerminal));
 
     return socket;
   }
@@ -293,10 +231,6 @@ class GraphSocket {
   unsubscribe(rooms: string[]) {
     for (const room of rooms) {
       this.subscribedRooms.delete(room);
-      if (room.startsWith('run:')) {
-        const runId = room.slice(4);
-        this.runCursors.delete(runId);
-      }
     }
   }
 
@@ -316,7 +250,6 @@ class GraphSocket {
 
     this.socket = null;
     this.subscribedRooms.clear();
-    this.runCursors.clear();
     this.listeners.clear();
     this.stateListeners.clear();
     this.reminderListeners.clear();
@@ -326,7 +259,6 @@ class GraphSocket {
     this.threadRemindersListeners.clear();
     this.messageCreatedListeners.clear();
     this.runStatusListeners.clear();
-    this.runEventListeners.clear();
     this.connectCallbacks.clear();
     this.reconnectCallbacks.clear();
     this.disconnectCallbacks.clear();
@@ -363,30 +295,10 @@ class GraphSocket {
       this.messageCreatedListeners.delete(cb);
     };
   }
-  onRunEvent(cb: (payload: RunEventListenerPayload) => void) {
-    this.runEventListeners.add(cb);
-    return () => {
-      this.runEventListeners.delete(cb);
-    };
-  }
   onRunStatusChanged(cb: (payload: RunStatusChangedPayload) => void) {
     this.runStatusListeners.add(cb);
     return () => {
       this.runStatusListeners.delete(cb);
-    };
-  }
-
-  onToolOutputChunk(cb: ToolChunkListener) {
-    this.toolChunkListeners.add(cb);
-    return () => {
-      this.toolChunkListeners.delete(cb);
-    };
-  }
-
-  onToolOutputTerminal(cb: ToolTerminalListener) {
-    this.toolTerminalListeners.add(cb);
-    return () => {
-      this.toolTerminalListeners.delete(cb);
     };
   }
 
@@ -413,15 +325,6 @@ class GraphSocket {
 
   isConnected() {
     return this.socket?.connected ?? false;
-  }
-
-  setRunCursor(runId: string, cursor: RunTimelineEventsCursor | null, opts?: { force?: boolean }) {
-    if (!runId) return;
-    this.bumpRunCursor(runId, cursor, opts);
-  }
-
-  getRunCursor(runId: string): RunTimelineEventsCursor | null {
-    return this.runCursors.get(runId) ?? null;
   }
 }
 

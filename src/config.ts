@@ -3,22 +3,11 @@
 
 type ViteEnv = {
   VITE_API_BASE_URL?: string;
-  STORYBOOK?: string;
 };
-
-function resolveStorybookFallback(name: keyof ViteEnv): string | null {
-  if (name !== 'VITE_API_BASE_URL') return null;
-  const isStorybook = import.meta.env?.STORYBOOK === 'true';
-  if (!isStorybook) return null;
-  return 'http://localhost:4173/api';
-}
 
 function requireEnv(name: keyof ViteEnv): string {
   const val = import.meta.env?.[name];
   if (typeof val === 'string' && val.trim()) return val;
-
-  const fallback = resolveStorybookFallback(name);
-  if (fallback) return fallback;
 
   throw new Error(`chat-app config: required env ${String(name)} is missing`);
 }
@@ -58,9 +47,6 @@ export const config = {
   socketBaseUrl,
 };
 
-let cachedSocketBaseUrl: string | null = null;
-
 export function getSocketBaseUrl(): string {
-  if (!cachedSocketBaseUrl) cachedSocketBaseUrl = socketBaseUrl;
-  return cachedSocketBaseUrl;
+  return socketBaseUrl;
 }

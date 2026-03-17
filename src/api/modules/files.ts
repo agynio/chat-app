@@ -1,5 +1,5 @@
 import type { AxiosProgressEvent } from 'axios';
-import { http, asData } from '@/api/http';
+import { http } from '@/api/http';
 import type { FileRecord } from '@/api/types/files';
 
 export type UploadProgressHandler = (event: AxiosProgressEvent) => void;
@@ -12,11 +12,9 @@ export function uploadFile(
   const formData = new FormData();
   formData.append('file', file);
 
-  return asData<FileRecord>(
-    http.post<FileRecord>('/apiv2/files/v1/files', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      onUploadProgress,
-      signal,
-    }),
-  );
+  return http.post<FileRecord>('/apiv2/files/v1/files', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress,
+    signal,
+  });
 }

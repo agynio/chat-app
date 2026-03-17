@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "postinstall": "pnpm rebuild esbuild --pending",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

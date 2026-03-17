@@ -1,4 +1,4 @@
-import { http, asData } from '@/api/http';
+import { http } from '@/api/http';
 
 export type ContainerItem = {
   containerId: string;
@@ -16,39 +16,8 @@ export type ContainerItem = {
   mounts?: Array<{ source: string; destination: string }>;
 };
 
-export type ContainerEventItem = {
-  id: string;
-  containerId: string;
-  eventType: string;
-  exitCode: number | null;
-  signal: string | null;
-  health: string | null;
-  reason: string | null;
-  message: string | null;
-  createdAt: string;
-};
-
-export type ContainerEventsResponse = {
-  items: ContainerEventItem[];
-  page: {
-    limit: number;
-    order: 'asc' | 'desc';
-    nextBefore: string | null;
-    nextAfter: string | null;
-  };
-};
-
 export function listContainers(params: { status?: string; sortBy?: string; sortDir?: string; threadId?: string }) {
-  return asData<{ items: ContainerItem[] }>(http.get<{ items: ContainerItem[] }>(`/api/containers`, { params }));
-}
-
-export function listContainerEvents(
-  containerId: string,
-  params: { limit?: number; order?: 'asc' | 'desc'; since?: string; cursor?: string } = {},
-) {
-  return asData<ContainerEventsResponse>(
-    http.get<ContainerEventsResponse>(`/api/containers/${containerId}/events`, { params }),
-  );
+  return http.get<{ items: ContainerItem[] }>(`/api/containers`, { params });
 }
 
 export type ContainerTerminalSessionResponse = {
@@ -66,12 +35,5 @@ export type CreateTerminalSessionInput = {
 };
 
 export function createContainerTerminalSession(containerId: string, body: CreateTerminalSessionInput = {}) {
-  return asData<ContainerTerminalSessionResponse>(
-    http.post<ContainerTerminalSessionResponse>(`/api/containers/${containerId}/terminal/sessions`, body),
-  );
-}
-
-export function deleteContainer(containerId: string) {
-  if (!containerId) throw new Error('containerId is required');
-  return asData<void>(http.delete(`/api/containers/${encodeURIComponent(containerId)}`));
+  return http.post<ContainerTerminalSessionResponse>(`/api/containers/${containerId}/terminal/sessions`, body);
 }

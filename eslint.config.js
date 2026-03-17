@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', 'stories', 'storybook-static']),
+  globalIgnores(['dist']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
@@ -53,7 +53,7 @@ export default defineConfig([
   },
   // Utility/context override for templates provider
   {
-    files: ['src/lib/graph/templates.provider.tsx', 'src/builder/TemplatesContext.tsx'],
+    files: ['src/lib/graph/templates.provider.tsx'],
     rules: {
       'react-refresh/only-export-components': 'off',
     },
