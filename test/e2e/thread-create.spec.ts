@@ -10,7 +10,7 @@ test('creates a new thread', async ({ page }) => {
   await expect(agentInput).toBeVisible();
   await agentInput.click();
 
-  const option = page.locator('button[data-highlighted]').first();
+  const option = page.locator('button[data-highlighted="true"]').first();
   await option.waitFor();
 
   if (isMocked) {

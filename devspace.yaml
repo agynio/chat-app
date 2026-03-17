@@ -2,7 +2,7 @@ version: v2beta1
 
 vars:
   APP_NAMESPACE: platform
-  E2E_IMAGE: mcr.microsoft.com/playwright:v1.52.0-noble
+  E2E_IMAGE: mcr.microsoft.com/playwright:v1.58.2-noble
 
 functions:
   disable_argocd_sync: |-
