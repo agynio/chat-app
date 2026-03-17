@@ -144,7 +144,7 @@ ingress:
   ingressClassName: ""
   annotations: {}
   hosts:
-    - host: platform-ui.example.com
+    - host: chat-app.example.com
       paths:
         - path: /
           pathType: Prefix
