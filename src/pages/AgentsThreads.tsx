@@ -29,6 +29,7 @@ import { useFileAttachments } from '@/hooks/useFileAttachments';
 import { useUser } from '@/user/user.runtime';
 import { cancelReminder as cancelReminderApi } from '@/features/reminders/api';
 import { formatDate, formatReminderDate, formatReminderScheduledTime, sanitizeSummary } from './agentsThreads/formatters';
+import { compareRunMeta } from './agentsThreads/comparators';
 import { isDraftThreadId } from './agentsThreads/draftUtils';
 import { useThreadChildrenState, cloneThreadNode } from './agentsThreads/useThreadChildrenState';
 import { useThreadDrafts } from './agentsThreads/useThreadDrafts';
@@ -219,12 +220,6 @@ function findThreadNode(nodes: ThreadNode[], children: ThreadChildrenState, targ
     }
   }
   return undefined;
-}
-
-function compareRunMeta(a: RunMeta, b: RunMeta): number {
-  const diff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-  if (diff !== 0) return diff;
-  return a.id.localeCompare(b.id);
 }
 
 function mapRunStatus(status: RunMeta['status']): ConversationRun['status'] {
@@ -448,6 +443,7 @@ export function AgentsThreads() {
   const {
     runMessages,
     queuedMessages,
+    setQueuedMessages,
     prefetchedRuns,
     messagesError,
     detailPreloaderVisible,

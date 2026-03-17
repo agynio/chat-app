@@ -7,6 +7,7 @@ import { runs as runsApi } from '@/api/modules/runs';
 import { threads } from '@/api/modules/threads';
 import type { RunMessageItem, RunMeta } from '@/api/types/agents';
 import { formatDate } from './formatters';
+import { compareRunMeta } from './comparators';
 import type { ConversationMessageWithMeta, ScrollState, ThreadViewCacheEntry } from './types';
 
 type SocketMessage = {
@@ -42,12 +43,6 @@ const THREAD_CACHE_CAPACITY = 10;
 
 function compareMessages(a: ConversationMessageWithMeta, b: ConversationMessageWithMeta): number {
   const diff = new Date(a.createdAtRaw).getTime() - new Date(b.createdAtRaw).getTime();
-  if (diff !== 0) return diff;
-  return a.id.localeCompare(b.id);
-}
-
-function compareRunMeta(a: RunMeta, b: RunMeta): number {
-  const diff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
   if (diff !== 0) return diff;
   return a.id.localeCompare(b.id);
 }
@@ -498,6 +493,7 @@ export function useThreadConversationMessages({
   return {
     runMessages,
     queuedMessages,
+    setQueuedMessages,
     prefetchedRuns,
     messagesError,
     detailPreloaderVisible,
