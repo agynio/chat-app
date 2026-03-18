@@ -94,30 +94,18 @@ pipelines:
       kubectl exec "$POD_NAME" -n ${APP_NAMESPACE} -- \
         bash -c "echo '$GATEWAY_IP chat.agyn.dev' >> /etc/hosts"
 
-      echo "Preparing workspace..."
-      kubectl exec "$POD_NAME" -n ${APP_NAMESPACE} -- \
-        bash -c "rm -rf /opt/app/data && mkdir -p /opt/app/data"
-
-      echo "Resetting agent data..."
-      kubectl exec -n ${APP_NAMESPACE} platform-db-0 -- sh -c \
-        "PGPASSWORD=agents psql -U agents -d agents -c 'TRUNCATE \"RunMessage\", \"Run\", \"Message\", \"Thread\", \"Reminder\", \"Container\", \"ContainerEvent\", \"ConversationState\", context_items, event_attachments, event_messages, injections, llm_call_context_items, llm_calls, run_events, summarizations, tool_calls, tool_executions, tool_output_chunks, tool_output_terminals RESTART IDENTITY CASCADE;'"
-
-      echo "Seeding test thread..."
-      kubectl exec "$POD_NAME" -n ${APP_NAMESPACE} -- \
-        bash -c "curl -s -H 'Content-Type: application/json' -d '{\"agentNodeId\":\"703f1549-906e-472f-adeb-7fdbb88349cd\",\"text\":\"Seed thread for tests\"}' http://platform-server.platform.svc.cluster.local:3010/api/agents/threads >/dev/null"
-
       echo "Copying test files to pod..."
-      kubectl cp . "${APP_NAMESPACE}/${POD_NAME}:/opt/app/data" \
+      kubectl cp . "${APP_NAMESPACE}/${POD_NAME}:/opt/app" \
         --no-preserve=true
 
       echo "Running e2e tests..."
       kubectl exec "$POD_NAME" -n ${APP_NAMESPACE} -- bash -c \
-        'cd /opt/app/data && corepack enable && CI=true pnpm install --frozen-lockfile && pnpm test:e2e'
+        'cd /opt/app && corepack enable && pnpm install --frozen-lockfile && pnpm test:e2e'
       EXIT_CODE=$?
 
       echo "Copying test results back..."
-      kubectl cp "${APP_NAMESPACE}/${POD_NAME}:/opt/app/data/playwright-report" ./playwright-report 2>/dev/null || true
-      kubectl cp "${APP_NAMESPACE}/${POD_NAME}:/opt/app/data/test-results" ./test-results 2>/dev/null || true
+      kubectl cp "${APP_NAMESPACE}/${POD_NAME}:/opt/app/playwright-report" ./playwright-report 2>/dev/null || true
+      kubectl cp "${APP_NAMESPACE}/${POD_NAME}:/opt/app/test-results" ./test-results 2>/dev/null || true
 
       purge_deployments e2e-runner
       exit $EXIT_CODE
