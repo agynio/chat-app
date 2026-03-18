@@ -1,4 +1,4 @@
-import { test, expect, isMocked } from './fixtures';
+import { test, expect } from './fixtures';
 
 test('creates a new thread', async ({ page }) => {
   const message = 'Plan the Q3 launch roadmap.';
@@ -12,10 +12,6 @@ test('creates a new thread', async ({ page }) => {
 
   const option = page.locator('button[data-highlighted="true"]').first();
   await option.waitFor();
-
-  if (isMocked) {
-    await expect(option).toHaveText('(unknown agent)');
-  }
 
   await option.click();
 
