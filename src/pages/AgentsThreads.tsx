@@ -55,6 +55,36 @@ type ToggleThreadStatusContext = {
 const DRAFT_SUMMARY_LABEL = '(new conversation)';
 const DRAFT_RECIPIENT_PLACEHOLDER = '(no recipient)';
 const UNKNOWN_AGENT_LABEL = '(unknown agent)';
+function buildAgentOptions(graphData: PersistedGraph | undefined, templates: TemplateSchema[] | undefined): AgentOption[] {
+  if (!graphData) return [];
+  const templateByName = new Map<string, TemplateSchema>();
+  for (const template of templates ?? []) {
+    if (!template?.name) continue;
+    templateByName.set(template.name, template);
+  }
+
+  const result: AgentOption[] = [];
+  const seen = new Set<string>();
+  for (const node of (graphData.nodes ?? []) as PersistedGraphNode[]) {
+    if (!node?.id || seen.has(node.id)) continue;
+    const template = templateByName.get(node.template);
+    if (template?.kind !== 'agent') continue;
+    const config = node.config && typeof node.config === 'object' ? (node.config as Record<string, unknown>) : undefined;
+    const rawName = typeof config?.name === 'string' ? config.name.trim() : '';
+    const configTitleCandidate = typeof config?.title === 'string' ? config.title.trim() : '';
+    const templateTitle = typeof template?.title === 'string' ? template.title.trim() : '';
+    const name = rawName.length > 0 ? rawName : UNKNOWN_AGENT_LABEL;
+    seen.add(node.id);
+    result.push({
+      id: node.id,
+      name,
+      graphTitle: configTitleCandidate || templateTitle || undefined,
+    });
+  }
+
+  result.sort((a, b) => a.name.localeCompare(b.name));
+  return result;
+}
 
 function mapDraftToThread(draft: ThreadDraft): Thread {
   return {
@@ -351,38 +381,10 @@ export function AgentsThreads() {
     staleTime: 60000,
   });
 
-  const agentOptions = useMemo<AgentOption[]>(() => {
-    const graphData = fullGraphQuery.data;
-    if (!graphData) return [];
-    const templates = graphTemplatesQuery.data ?? [];
-    const templateByName = new Map<string, TemplateSchema>();
-    for (const template of templates) {
-      if (!template?.name) continue;
-      templateByName.set(template.name, template);
-    }
-
-    const result: AgentOption[] = [];
-    const seen = new Set<string>();
-    for (const node of (graphData.nodes ?? []) as PersistedGraphNode[]) {
-      if (!node?.id || seen.has(node.id)) continue;
-      const template = templateByName.get(node.template);
-      if (template?.kind !== 'agent') continue;
-      const config = node.config && typeof node.config === 'object' ? (node.config as Record<string, unknown>) : undefined;
-      const rawName = typeof config?.name === 'string' ? config.name.trim() : '';
-      const configTitleCandidate = typeof config?.title === 'string' ? config.title.trim() : '';
-      const templateTitle = typeof template?.title === 'string' ? template.title.trim() : '';
-      const name = rawName.length > 0 ? rawName : UNKNOWN_AGENT_LABEL;
-      seen.add(node.id);
-      result.push({
-        id: node.id,
-        name,
-        graphTitle: configTitleCandidate || templateTitle || undefined,
-      });
-    }
-
-    result.sort((a, b) => a.name.localeCompare(b.name));
-    return result;
-  }, [fullGraphQuery.data, graphTemplatesQuery.data]);
+  const agentOptions = useMemo<AgentOption[]>(
+    () => buildAgentOptions(fullGraphQuery.data, graphTemplatesQuery.data),
+    [fullGraphQuery.data, graphTemplatesQuery.data],
+  );
 
   useEffect(() => {
     agentOptionsRef.current = agentOptions;
@@ -391,11 +393,22 @@ export function AgentsThreads() {
   const draftFetchOptions = useCallback(
     async (query: string): Promise<AutocompleteOption[]> => {
       const normalized = query.trim().toLowerCase();
-      return agentOptions
+      const graphData = fullGraphQuery.data ??
+        (await queryClient.ensureQueryData({
+          queryKey: ['agents', 'graph', 'full'],
+          queryFn: () => graphApi.getFullGraph(),
+        }));
+      const templates = graphTemplatesQuery.data ??
+        (await queryClient.ensureQueryData({
+          queryKey: ['agents', 'graph', 'templates'],
+          queryFn: () => graphApi.getTemplates(),
+        }));
+      const options = buildAgentOptions(graphData, templates);
+      return options
         .filter((option) => normalized.length === 0 || option.name.toLowerCase().includes(normalized))
         .map((option) => ({ value: option.id, label: option.name }));
     },
-    [agentOptions],
+    [fullGraphQuery.data, graphTemplatesQuery.data, queryClient],
   );
 
   const limitKey = useMemo(() => ({ limit: threadLimit }), [threadLimit]);

@@ -16,6 +16,28 @@ export type ContainerItem = {
   mounts?: Array<{ source: string; destination: string }>;
 };
 
+export type ContainerEventItem = {
+  id: string;
+  containerId: string;
+  eventType: string;
+  exitCode: number | null;
+  signal: string | null;
+  health: string | null;
+  reason: string | null;
+  message: string | null;
+  createdAt: string;
+};
+
+export type ContainerEventsResponse = {
+  items: ContainerEventItem[];
+  page: {
+    limit: number;
+    order: 'asc' | 'desc';
+    nextBefore: string | null;
+    nextAfter: string | null;
+  };
+};
+
 const cloneContainer = (container: ContainerItem): ContainerItem => ({
   ...container,
   sidecars: container.sidecars ? container.sidecars.map((sidecar) => ({ ...sidecar })) : undefined,
@@ -28,7 +50,7 @@ export function listContainers(params: { status?: string; sortBy?: string; sortD
   if (threadId) {
     items = items.filter((container) => container.threadId === threadId);
   }
-  if (status) {
+  if (status && status !== 'all') {
     items = items.filter((container) => container.status === status);
   }
   if (sortBy) {
@@ -46,6 +68,31 @@ export function listContainers(params: { status?: string; sortBy?: string; sortD
     items = sorted;
   }
   return Promise.resolve({ items: items.map(cloneContainer) });
+}
+
+export function listContainerEvents(
+  containerId: string,
+  params: { limit?: number; order?: 'asc' | 'desc'; since?: string; cursor?: string } = {},
+) {
+  if (!containerId) {
+    return Promise.reject(new Error('containerId is required'));
+  }
+  const exists = containers.some((container) => container.containerId === containerId);
+  if (!exists) {
+    return Promise.reject(new Error('Container not found'));
+  }
+  const limit = typeof params.limit === 'number' ? params.limit : 50;
+  const order: 'asc' | 'desc' = params.order ?? 'desc';
+  const response: ContainerEventsResponse = {
+    items: [],
+    page: {
+      limit,
+      order,
+      nextBefore: null,
+      nextAfter: null,
+    },
+  };
+  return Promise.resolve(response);
 }
 
 export type ContainerTerminalSessionResponse = {
@@ -77,4 +124,16 @@ export function createContainerTerminalSession(containerId: string, body: Create
     negotiated: { shell, cols, rows },
   };
   return Promise.resolve(session);
+}
+
+export function deleteContainer(containerId: string) {
+  if (!containerId) {
+    return Promise.reject(new Error('containerId is required'));
+  }
+  const index = containers.findIndex((container) => container.containerId === containerId);
+  if (index === -1) {
+    return Promise.reject(new Error('Container not found'));
+  }
+  containers.splice(index, 1);
+  return Promise.resolve();
 }
