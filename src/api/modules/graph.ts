@@ -11,14 +11,12 @@ export const graph = {
     })),
   getFullGraph: async (): Promise<PersistedGraph> => ({
     ...mockGraph,
-    nodes: mockGraph.nodes
-      ? mockGraph.nodes.map((node) => ({
-          ...node,
-          position: { ...node.position },
-          config: node.config && typeof node.config === 'object' ? { ...node.config } : node.config,
-        }))
-      : [],
-    edges: mockGraph.edges ? mockGraph.edges.map((edge) => ({ ...edge })) : [],
+    nodes: mockGraph.nodes.map((node) => ({
+      ...node,
+      position: node.position ? { ...node.position } : undefined,
+      config: node.config ? { ...node.config } : undefined,
+    })),
+    edges: mockGraph.edges.map((edge) => ({ ...edge })),
     variables: mockGraph.variables ? mockGraph.variables.map((variable) => ({ ...variable })) : [],
   }),
 };

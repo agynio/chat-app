@@ -1,5 +1,6 @@
 import type { ThreadMetrics, ThreadNode } from '@/api/types/agents';
 import { queuedMessagesByThread } from '@/api/mock-data/messages';
+import { createId } from '@/api/mock-data/id';
 import { reminders } from '@/api/mock-data/reminders';
 import { runsByThread } from '@/api/mock-data/runs';
 import { childrenByThread, defaultMetrics, threadStore } from '@/api/mock-data/threads';
@@ -67,13 +68,6 @@ const summarize = (text: string | undefined | null): string => {
   const trimmed = text.trim();
   if (!trimmed) return 'New thread';
   return trimmed.length > 120 ? `${trimmed.slice(0, 117)}...` : trimmed;
-};
-
-const createId = (): string => {
-  if (!globalThis.crypto?.randomUUID) {
-    throw new Error('Missing crypto.randomUUID');
-  }
-  return globalThis.crypto.randomUUID();
 };
 
 const sortByCreatedAtDesc = (items: ThreadNode[]) =>

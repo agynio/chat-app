@@ -22,7 +22,7 @@ import type { ApiError } from '@/api/http';
 import { ContainerTerminalDialog } from '@/components/monitoring/ContainerTerminalDialog';
 import { graph as graphApi } from '@/api/modules/graph';
 import type { TemplateSchema } from '@/api/types/graph';
-import type { PersistedGraph, PersistedGraphNode } from '@/types/graph';
+import type { PersistedGraph } from '@/types/graph';
 import { normalizeAgentName, normalizeAgentRole } from '@/utils/agentDisplay';
 import { clearDraft, THREAD_MESSAGE_MAX_LENGTH } from '@/utils/draftStorage';
 import { useFileAttachments } from '@/hooks/useFileAttachments';
@@ -65,7 +65,7 @@ function buildAgentOptions(graphData: PersistedGraph | undefined, templates: Tem
 
   const result: AgentOption[] = [];
   const seen = new Set<string>();
-  for (const node of (graphData.nodes ?? []) as PersistedGraphNode[]) {
+  for (const node of graphData.nodes) {
     if (!node?.id || seen.has(node.id)) continue;
     const template = templateByName.get(node.template);
     if (template?.kind !== 'agent') continue;

@@ -6,7 +6,7 @@ const cloneRun = (run: RunMeta): RunMeta => ({ ...run });
 
 const cloneMessage = (message: RunMessageItem): RunMessageItem => ({
   ...message,
-  source: message.source ? { ...message.source } : undefined,
+  source: structuredClone(message.source),
 });
 
 export const runs = {

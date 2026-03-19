@@ -1,4 +1,5 @@
 import { containers } from '@/api/mock-data/containers';
+import { createId } from '@/api/mock-data/id';
 
 export type ContainerItem = {
   containerId: string;
@@ -110,15 +111,12 @@ export type CreateTerminalSessionInput = {
 };
 
 export function createContainerTerminalSession(containerId: string, body: CreateTerminalSessionInput = {}) {
-  if (!globalThis.crypto?.randomUUID) {
-    throw new Error('Missing crypto.randomUUID');
-  }
-  const cols = typeof body.cols === 'number' ? body.cols : 80;
-  const rows = typeof body.rows === 'number' ? body.rows : 24;
-  const shell = typeof body.shell === 'string' && body.shell.trim() ? body.shell.trim() : '/bin/bash';
+  const cols = body.cols ?? 80;
+  const rows = body.rows ?? 24;
+  const shell = body.shell?.trim() || '/bin/bash';
   const session: ContainerTerminalSessionResponse = {
-    sessionId: globalThis.crypto.randomUUID(),
-    token: globalThis.crypto.randomUUID(),
+    sessionId: createId(),
+    token: createId(),
     wsUrl: `/api/containers/${encodeURIComponent(containerId)}/terminal/ws`,
     expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
     negotiated: { shell, cols, rows },

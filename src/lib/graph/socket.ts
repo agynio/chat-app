@@ -39,6 +39,7 @@ type ThreadRemindersPayload = { threadId: string; remindersCount: number };
 type MessageCreatedPayload = { message: MessageSummary; threadId: string };
 type RunStatusChangedPayload = { threadId: string; run: RunSummary };
 
+// TODO: restore production socket connections when backend is available.
 const socketsEnabled = !import.meta.env.PROD;
 
 class GraphSocket {
