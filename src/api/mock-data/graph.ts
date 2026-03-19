@@ -10,7 +10,7 @@ export const graph: PersistedGraph = {
       id: 'node-agent-1',
       template: 'chat-agent',
       position: { x: 120, y: 80 },
-      config: { title: 'Chat Agent', model: 'gpt-4.1-mini' },
+      config: { name: 'Chat Agent', title: 'Chat Agent', model: 'gpt-4.1-mini' },
     },
     {
       id: 'node-reminder-1',
