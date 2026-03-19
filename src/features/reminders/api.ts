@@ -1,4 +1,4 @@
-import { http } from '@/api/http';
+import { reminders } from '@/api/mock-data/reminders';
 
 export interface CancelReminderResponse {
   ok: true;
@@ -6,8 +6,11 @@ export interface CancelReminderResponse {
 }
 
 export function cancelReminder(reminderId: string): Promise<CancelReminderResponse> {
-  return http.post<CancelReminderResponse>(
-    `/api/agents/reminders/${encodeURIComponent(reminderId)}/cancel`,
-    {},
-  );
+  const reminder = reminders.find((item) => item.id === reminderId);
+  if (!reminder) {
+    return Promise.reject(new Error('Reminder not found'));
+  }
+  reminder.cancelledAt = new Date().toISOString();
+  reminder.status = 'cancelled';
+  return Promise.resolve({ ok: true, threadId: reminder.threadId });
 }

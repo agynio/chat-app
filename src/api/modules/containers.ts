@@ -1,4 +1,4 @@
-import { http } from '@/api/http';
+import { containers } from '@/api/mock-data/containers';
 
 export type ContainerItem = {
   containerId: string;
@@ -16,8 +16,36 @@ export type ContainerItem = {
   mounts?: Array<{ source: string; destination: string }>;
 };
 
+const cloneContainer = (container: ContainerItem): ContainerItem => ({
+  ...container,
+  sidecars: container.sidecars ? container.sidecars.map((sidecar) => ({ ...sidecar })) : undefined,
+  mounts: container.mounts ? container.mounts.map((mount) => ({ ...mount })) : undefined,
+});
+
 export function listContainers(params: { status?: string; sortBy?: string; sortDir?: string; threadId?: string }) {
-  return http.get<{ items: ContainerItem[] }>(`/api/containers`, { params });
+  const { status, sortBy, sortDir, threadId } = params;
+  let items = containers;
+  if (threadId) {
+    items = items.filter((container) => container.threadId === threadId);
+  }
+  if (status) {
+    items = items.filter((container) => container.status === status);
+  }
+  if (sortBy) {
+    const direction = sortDir === 'asc' ? 1 : -1;
+    const sorted = [...items];
+    sorted.sort((a, b) => {
+      if (sortBy === 'lastUsedAt') {
+        return (Date.parse(a.lastUsedAt) - Date.parse(b.lastUsedAt)) * direction;
+      }
+      if (sortBy === 'startedAt') {
+        return (Date.parse(a.startedAt) - Date.parse(b.startedAt)) * direction;
+      }
+      return 0;
+    });
+    items = sorted;
+  }
+  return Promise.resolve({ items: items.map(cloneContainer) });
 }
 
 export type ContainerTerminalSessionResponse = {
@@ -35,5 +63,18 @@ export type CreateTerminalSessionInput = {
 };
 
 export function createContainerTerminalSession(containerId: string, body: CreateTerminalSessionInput = {}) {
-  return http.post<ContainerTerminalSessionResponse>(`/api/containers/${containerId}/terminal/sessions`, body);
+  if (!globalThis.crypto?.randomUUID) {
+    throw new Error('Missing crypto.randomUUID');
+  }
+  const cols = typeof body.cols === 'number' ? body.cols : 80;
+  const rows = typeof body.rows === 'number' ? body.rows : 24;
+  const shell = typeof body.shell === 'string' && body.shell.trim() ? body.shell.trim() : '/bin/bash';
+  const session: ContainerTerminalSessionResponse = {
+    sessionId: globalThis.crypto.randomUUID(),
+    token: globalThis.crypto.randomUUID(),
+    wsUrl: `/api/containers/${encodeURIComponent(containerId)}/terminal/ws`,
+    expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+    negotiated: { shell, cols, rows },
+  };
+  return Promise.resolve(session);
 }

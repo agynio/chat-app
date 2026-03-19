@@ -39,6 +39,8 @@ type ThreadRemindersPayload = { threadId: string; remindersCount: number };
 type MessageCreatedPayload = { message: MessageSummary; threadId: string };
 type RunStatusChangedPayload = { threadId: string; run: RunSummary };
 
+const socketsEnabled = !import.meta.env.PROD;
+
 class GraphSocket {
   // Typed socket instance; null until connected
   private socket: Socket<ServerToClientEvents, ClientToServerEvents> | null = null;
@@ -61,7 +63,7 @@ class GraphSocket {
   private emitSubscriptions(rooms: string[]) {
     if (!rooms.length) return;
     const sock = this.socket;
-    if (!sock) return;
+    if (!sock || !sock.connected) return;
     sock.emit('subscribe', { rooms });
   }
 
@@ -79,10 +81,10 @@ class GraphSocket {
       path: '/socket.io',
       transports,
       forceNew: false,
-      autoConnect: true,
-      timeout: 10000,
-      reconnection: true,
-      reconnectionAttempts: Infinity,
+      autoConnect: socketsEnabled,
+      timeout: socketsEnabled ? 10000 : 1,
+      reconnection: socketsEnabled,
+      reconnectionAttempts: socketsEnabled ? Infinity : 0,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       withCredentials: false,
