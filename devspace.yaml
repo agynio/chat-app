@@ -38,7 +38,7 @@ deployments:
           - image: ${E2E_IMAGE}
             env:
               - name: E2E_BASE_URL
-                value: "http://chat-app:3000"
+                value: "https://chat.agyn.dev"
         labels:
           app.kubernetes.io/name: chat-app-e2e
 
