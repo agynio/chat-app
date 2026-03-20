@@ -1,15 +1,39 @@
 // Centralized environment configuration for the chat app.
-// Provides two env-resolved values and throws if missing.
+// Reads runtime-injected config first, then Vite env for local development.
+
+type RuntimeConfig = {
+  API_BASE_URL?: string;
+  OIDC_AUTHORITY?: string;
+  OIDC_CLIENT_ID?: string;
+  OIDC_REDIRECT_URI?: string;
+  OIDC_POST_LOGOUT_REDIRECT_URI?: string;
+  OIDC_SCOPE?: string;
+};
 
 type ViteEnv = {
   VITE_API_BASE_URL?: string;
+  VITE_OIDC_AUTHORITY?: string;
+  VITE_OIDC_CLIENT_ID?: string;
+  VITE_OIDC_REDIRECT_URI?: string;
+  VITE_OIDC_POST_LOGOUT_REDIRECT_URI?: string;
+  VITE_OIDC_SCOPE?: string;
 };
 
-function requireEnv(name: keyof ViteEnv): string {
-  const val = import.meta.env?.[name];
-  if (typeof val === 'string' && val.trim()) return val;
+const runtimeConfig: RuntimeConfig = typeof window !== 'undefined' ? (window.__APP_CONFIG ?? {}) : {};
 
-  throw new Error(`chat-app config: required env ${String(name)} is missing`);
+function readConfigValue(runtimeKey: keyof RuntimeConfig, envKey: keyof ViteEnv): string | null {
+  const runtimeValue = runtimeConfig[runtimeKey];
+  if (typeof runtimeValue === 'string' && runtimeValue.trim()) return runtimeValue.trim();
+
+  const envValue = import.meta.env?.[envKey];
+  if (typeof envValue === 'string' && envValue.trim()) return envValue.trim();
+
+  return null;
+}
+
+function requireConfig(name: string, value: string | null): string {
+  if (typeof value === 'string' && value.trim()) return value;
+  throw new Error(`chat-app config: required ${name} is missing`);
 }
 
 function stripTrailingSlash(pathname: string): string {
@@ -26,7 +50,6 @@ function resolveUrl(raw: string): URL {
   try {
     return new URL(trimmed, typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
   } catch (_err) {
-    // Attempt to coerce into absolute URL by prefixing with http://
     return new URL(trimmed, 'http://localhost');
   }
 }
@@ -38,10 +61,31 @@ function deriveBase(raw: string, options: { stripApi: boolean }): string {
   return cleanedPath ? `${parsed.origin}${cleanedPath}` : parsed.origin;
 }
 
-const rawApiBase = requireEnv('VITE_API_BASE_URL');
-
+const rawApiBase = requireConfig('API_BASE_URL', readConfigValue('API_BASE_URL', 'VITE_API_BASE_URL'));
 const apiBaseUrl = deriveBase(rawApiBase, { stripApi: true });
 const socketBaseUrl = deriveBase(rawApiBase, { stripApi: true });
+
+const rawOidcAuthority = readConfigValue('OIDC_AUTHORITY', 'VITE_OIDC_AUTHORITY');
+const oidcEnabled = Boolean(rawOidcAuthority);
+
+export const oidcConfig = {
+  enabled: oidcEnabled,
+  authority: oidcEnabled ? requireConfig('OIDC_AUTHORITY', rawOidcAuthority) : '',
+  clientId: oidcEnabled
+    ? requireConfig('OIDC_CLIENT_ID', readConfigValue('OIDC_CLIENT_ID', 'VITE_OIDC_CLIENT_ID'))
+    : '',
+  redirectUri: oidcEnabled
+    ? requireConfig('OIDC_REDIRECT_URI', readConfigValue('OIDC_REDIRECT_URI', 'VITE_OIDC_REDIRECT_URI'))
+    : '',
+  postLogoutRedirectUri: oidcEnabled
+    ? requireConfig(
+        'OIDC_POST_LOGOUT_REDIRECT_URI',
+        readConfigValue('OIDC_POST_LOGOUT_REDIRECT_URI', 'VITE_OIDC_POST_LOGOUT_REDIRECT_URI'),
+      )
+    : '',
+  scope: oidcEnabled ? requireConfig('OIDC_SCOPE', readConfigValue('OIDC_SCOPE', 'VITE_OIDC_SCOPE')) : '',
+};
+
 export const config = {
   apiBaseUrl,
   socketBaseUrl,

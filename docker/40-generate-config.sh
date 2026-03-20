@@ -1,0 +1,26 @@
+#!/usr/bin/env sh
+set -eu
+
+CONFIG_PATH="/usr/share/nginx/html/__config.js"
+
+escape_js() {
+  printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'
+}
+
+api_base_url=$(escape_js "${API_BASE_URL:-}")
+oidc_authority=$(escape_js "${OIDC_AUTHORITY:-}")
+oidc_client_id=$(escape_js "${OIDC_CLIENT_ID:-}")
+oidc_redirect_uri=$(escape_js "${OIDC_REDIRECT_URI:-}")
+oidc_post_logout_redirect_uri=$(escape_js "${OIDC_POST_LOGOUT_REDIRECT_URI:-}")
+oidc_scope=$(escape_js "${OIDC_SCOPE:-}")
+
+cat > "$CONFIG_PATH" <<EOF
+window.__APP_CONFIG = {
+  API_BASE_URL: "${api_base_url}",
+  OIDC_AUTHORITY: "${oidc_authority}",
+  OIDC_CLIENT_ID: "${oidc_client_id}",
+  OIDC_REDIRECT_URI: "${oidc_redirect_uri}",
+  OIDC_POST_LOGOUT_REDIRECT_URI: "${oidc_post_logout_redirect_uri}",
+  OIDC_SCOPE: "${oidc_scope}",
+};
+EOF

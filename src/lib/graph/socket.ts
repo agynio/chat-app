@@ -1,5 +1,6 @@
 // CI trigger: no-op comment to touch UI file
 import { io, type ManagerOptions, type Socket, type SocketOptions } from 'socket.io-client';
+import { getAccessToken, userManager } from '@/auth';
 import { getSocketBaseUrl } from '@/config';
 import type { NodeStatusEvent, ReminderCountEvent } from './types';
 
@@ -78,6 +79,13 @@ class GraphSocket {
     const host = getSocketBaseUrl();
     // Cast to typed Socket to enable event payload typing
     const transports: ManagerOptions['transports'] = ['websocket'];
+    const auth: SocketOptions['auth'] | undefined = userManager
+      ? (callback) => {
+          void getAccessToken().then((token) => {
+            callback(token ? { token } : {});
+          });
+        }
+      : undefined;
     const options: Partial<ManagerOptions & SocketOptions> = {
       path: '/socket.io',
       transports,
@@ -90,6 +98,7 @@ class GraphSocket {
       reconnectionDelayMax: 5000,
       withCredentials: false,
     };
+    if (auth) options.auth = auth;
     this.socketCleanup = [];
     this.managerCleanup = [];
 

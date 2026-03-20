@@ -45,9 +45,11 @@
     "hast-util-sanitize": "^5.0.2",
     "lexical": "^0.38.2",
     "lucide-react": "^0.451.0",
+    "oidc-client-ts": "^3.5.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-markdown": "^9.0.0",
+    "react-oidc-context": "^3.3.1",
     "react-resizable-panels": "^2.0.22",
     "react-router-dom": "^6.27.0",
     "react-virtuoso": "^4.14.1",
@@ -81,6 +83,8 @@
     "vitest": "3.2.4"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild"]
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }

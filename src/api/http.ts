@@ -1,8 +1,28 @@
 import axios from 'axios';
 import type { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
+import { authRequestInterceptor, userManager } from '@/auth';
 import { config } from '@/config';
 
 export type ApiError = AxiosError<{ error?: string; message?: string } | unknown>;
+
+type RetryableRequestConfig = AxiosRequestConfig & { _retry?: boolean };
+
+async function trySilentRenew(err: unknown, inst: AxiosInstance): Promise<unknown | null> {
+  if (!userManager || !axios.isAxiosError(err)) return null;
+  if (err.response?.status !== 401) return null;
+
+  const config = err.config as RetryableRequestConfig | undefined;
+  if (!config || config._retry) return null;
+
+  config._retry = true;
+  try {
+    await userManager.signinSilent();
+  } catch (_error) {
+    return null;
+  }
+
+  return inst.request(config);
+}
 
 function createHttp(baseURL: string): AxiosInstance {
   const inst = axios.create({
@@ -11,10 +31,14 @@ function createHttp(baseURL: string): AxiosInstance {
     withCredentials: false,
   });
 
+  inst.interceptors.request.use(authRequestInterceptor);
+
   // Response: unwrap data; error: normalize to AxiosError with server message if present
   inst.interceptors.response.use(
     (res) => res.data,
-    (err) => {
+    async (err) => {
+      const retry = await trySilentRenew(err, inst);
+      if (retry !== null) return retry;
       // Pass through AxiosError; ensure message surfaces server error string when available
       if (axios.isAxiosError(err)) {
         const data = err.response?.data as { error?: string; message?: string } | undefined;
