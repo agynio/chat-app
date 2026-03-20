@@ -18,7 +18,6 @@ async function loginWithMockAuth(page: Page) {
       `[request-failed] ${request.url()} — ${request.failure()?.errorText}`,
     );
   });
-
   try {
     await page.goto('/', { waitUntil: 'commit' });
   } catch (error) {
