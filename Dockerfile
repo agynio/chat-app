@@ -17,8 +17,7 @@ RUN pnpm fetch
 
 FROM base AS build
 
-ARG VITE_API_BASE_URL=/api
-ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ENV VITE_API_BASE_URL=/api
 
 COPY . .
 
@@ -29,6 +28,7 @@ RUN pnpm build
 FROM nginx:1.27-alpine AS runtime
 
 COPY docker/default.conf.template /etc/nginx/templates/default.conf.template
+COPY --chmod=755 docker/40-generate-config.sh /docker-entrypoint.d/40-generate-config.sh
 
 COPY --from=build /app/dist /usr/share/nginx/html
 

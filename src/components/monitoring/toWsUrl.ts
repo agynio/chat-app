@@ -1,19 +1,12 @@
 import { getSocketBaseUrl } from '@/config';
 
 function resolveSocketBase(): URL {
-  const fallbackBase = getSocketBaseUrl();
-  const raw = import.meta.env?.VITE_API_BASE_URL;
-
-  if (typeof raw === 'string' && raw.trim()) {
-    try {
-      const resolved = new URL(raw.trim(), typeof window !== 'undefined' ? window.location.origin : fallbackBase);
-      return resolved;
-    } catch {
-      throw new Error('terminal: invalid VITE_API_BASE_URL value');
-    }
+  const raw = getSocketBaseUrl();
+  try {
+    return new URL(raw, typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
+  } catch {
+    throw new Error('terminal: invalid socket base URL');
   }
-
-  return new URL(fallbackBase);
 }
 
 export function toWsUrl(path: string): string {

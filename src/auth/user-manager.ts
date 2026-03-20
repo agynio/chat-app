@@ -1,0 +1,21 @@
+import { UserManager, WebStorageStateStore } from 'oidc-client-ts';
+import { oidcConfig } from '@/config';
+
+export const userManager = oidcConfig.enabled
+  ? new UserManager({
+      authority: oidcConfig.authority,
+      client_id: oidcConfig.clientId,
+      redirect_uri: oidcConfig.redirectUri,
+      post_logout_redirect_uri: oidcConfig.postLogoutRedirectUri,
+      scope: oidcConfig.scope,
+      response_type: 'code',
+      userStore: new WebStorageStateStore({ store: window.sessionStorage }),
+      automaticSilentRenew: true,
+    })
+  : null;
+
+export async function getAccessToken(): Promise<string | null> {
+  if (!userManager) return null;
+  const user = await userManager.getUser();
+  return user?.access_token ?? null;
+}
