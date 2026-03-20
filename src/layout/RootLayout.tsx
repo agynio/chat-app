@@ -5,6 +5,7 @@ import { MainLayout } from '@/components/layouts/MainLayout';
 import type { MenuItem } from '@/components/Sidebar';
 
 const MENU_ITEM_ROUTES: Record<string, string> = {
+  agentsChat: '/agents/chat',
   agentsThreads: '/agents/threads',
 };
 
@@ -14,6 +15,7 @@ const MENU_ITEMS: MenuItem[] = [
     label: 'Chat',
     icon: <MessageSquare className="w-5 h-5" />,
     items: [
+      { id: 'agentsChat', label: 'Chat', icon: <MessageSquare className="w-4 h-4" /> },
       { id: 'agentsThreads', label: 'Threads', icon: <MessageSquare className="w-4 h-4" /> },
     ],
   },
