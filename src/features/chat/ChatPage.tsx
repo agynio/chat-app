@@ -4,18 +4,9 @@ import { useChats } from '@/api/hooks/chat';
 import type { Chat } from '@/api/types/chat';
 import { ChatList } from './ChatList';
 import { ChatConversation } from './ChatConversation';
+import { sortByTimestamp } from './sortByTimestamp';
 
 const CHAT_PAGE_SIZE = 20;
-
-function sortChats(chats: Chat[]) {
-  return [...chats].sort((a, b) => {
-    const aTime = Date.parse(a.updatedAt);
-    const bTime = Date.parse(b.updatedAt);
-    const aValue = Number.isFinite(aTime) ? aTime : 0;
-    const bValue = Number.isFinite(bTime) ? bTime : 0;
-    return bValue - aValue;
-  });
-}
 
 export function ChatPage() {
   const { chatId } = useParams();
@@ -30,7 +21,7 @@ export function ChatPage() {
         deduped.set(chat.id, chat);
       });
     });
-    return sortChats(Array.from(deduped.values()));
+    return sortByTimestamp(Array.from(deduped.values()), (chat) => chat.updatedAt, 'desc');
   }, [chatsQuery.data]);
 
   const selectedChat = chats.find((chat) => chat.id === chatId) ?? null;

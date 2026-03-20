@@ -12,7 +12,7 @@ import type {
 } from '@/api/types/chat';
 
 type MessagesQueryData = InfiniteData<GetMessagesResponse, string | undefined>;
-type SendMessageInput = SendMessageRequest & { optimisticSenderId?: string };
+type SendMessageInput = SendMessageRequest & { optimisticSenderId: string };
 
 export function useChats(pageSize = 20) {
   return useInfiniteQuery({
@@ -45,7 +45,7 @@ export function useSendMessage() {
         const optimisticMessage: ChatMessage = {
           id: optimisticId,
           chatId: variables.chatId,
-          senderId: variables.optimisticSenderId ?? 'self',
+          senderId: variables.optimisticSenderId,
           body: variables.body ?? '',
           fileIds: variables.fileIds ?? [],
           createdAt: new Date().toISOString(),

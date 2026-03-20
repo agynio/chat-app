@@ -4,6 +4,7 @@ import { useChatMessages, useMarkAsRead, useSendMessage } from '@/api/hooks/chat
 import { ChatInput } from './ChatInput';
 import { ChatMessageItem } from './ChatMessageItem';
 import { useUser } from '@/user/user.runtime';
+import { sortByTimestamp } from './sortByTimestamp';
 
 interface ChatConversationProps {
   chatId?: string;
@@ -11,22 +12,12 @@ interface ChatConversationProps {
   className?: string;
 }
 
-function sortMessages(messages: ChatMessage[]) {
-  return [...messages].sort((a, b) => {
-    const aTime = Date.parse(a.createdAt);
-    const bTime = Date.parse(b.createdAt);
-    const aValue = Number.isFinite(aTime) ? aTime : 0;
-    const bValue = Number.isFinite(bTime) ? bTime : 0;
-    return aValue - bValue;
-  });
-}
-
 export function ChatConversation({ chatId, chat, className = '' }: ChatConversationProps) {
   const { user } = useUser();
   const currentUserId = user?.email ?? undefined;
   const messagesQuery = useChatMessages(chatId);
   const sendMessage = useSendMessage();
-  const markAsRead = useMarkAsRead();
+  const { mutate: markAsRead } = useMarkAsRead();
   const scrollRef = useRef<HTMLDivElement>(null);
   const loadLockRef = useRef(false);
   const previousScrollHeightRef = useRef<number | null>(null);
@@ -41,7 +32,7 @@ export function ChatConversation({ chatId, chat, className = '' }: ChatConversat
         deduped.set(message.id, message);
       });
     });
-    return sortMessages(Array.from(deduped.values()));
+    return sortByTimestamp(Array.from(deduped.values()), (message) => message.createdAt, 'asc');
   }, [messagesQuery.data]);
 
   const unreadCount = messagesQuery.data?.pages?.[0]?.unreadCount ?? 0;
@@ -57,7 +48,7 @@ export function ChatConversation({ chatId, chat, className = '' }: ChatConversat
     const previousSignature = lastMarkedRef.current.get(chatId);
     if (previousSignature === signature) return;
     lastMarkedRef.current.set(chatId, signature);
-    markAsRead.mutate({ chatId, messageIds: unreadMessageIds });
+    markAsRead({ chatId, messageIds: unreadMessageIds });
   }, [chatId, markAsRead, unreadMessageIds]);
 
   useEffect(() => {
@@ -101,7 +92,7 @@ export function ChatConversation({ chatId, chat, className = '' }: ChatConversat
   };
 
   const handleSend = (body: string) => {
-    if (!chatId) return;
+    if (!chatId || !currentUserId) return;
     sendMessage.mutate({ chatId, body, optimisticSenderId: currentUserId });
   };
 
@@ -166,7 +157,7 @@ export function ChatConversation({ chatId, chat, className = '' }: ChatConversat
       <div className="border-t border-[var(--agyn-border-subtle)] bg-white px-6 py-4">
         <ChatInput
           onSend={handleSend}
-          disabled={!chatId}
+          disabled={!chatId || !currentUserId}
           isSending={sendMessage.isPending}
         />
       </div>

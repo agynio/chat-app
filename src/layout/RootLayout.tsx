@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, MessagesSquare } from 'lucide-react';
 import { MainLayout } from '@/components/layouts/MainLayout';
 import type { MenuItem } from '@/components/Sidebar';
 
@@ -13,9 +13,9 @@ const MENU_ITEMS: MenuItem[] = [
   {
     id: 'agents',
     label: 'Chat',
-    icon: <MessageSquare className="w-5 h-5" />,
+    icon: <MessagesSquare className="w-5 h-5" />,
     items: [
-      { id: 'agentsChat', label: 'Chat', icon: <MessageSquare className="w-4 h-4" /> },
+      { id: 'agentsChat', label: 'Chat', icon: <MessagesSquare className="w-4 h-4" /> },
       { id: 'agentsThreads', label: 'Threads', icon: <MessageSquare className="w-4 h-4" /> },
     ],
   },
