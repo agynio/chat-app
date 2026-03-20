@@ -38,7 +38,7 @@ deployments:
           - image: ${E2E_IMAGE}
             env:
               - name: E2E_BASE_URL
-                value: "http://localhost:3000"
+                value: "https://chat.agyn.dev:2496"
         labels:
           app.kubernetes.io/name: chat-app-e2e
 
@@ -73,36 +73,18 @@ pipelines:
         -- bash -c '
           echo "Waiting for file sync..."
           for i in $(seq 1 60); do
-            [ -f /opt/app/data/package.json ] && [ -f /opt/app/data/pnpm-lock.yaml ] && [ -f /opt/app/data/test/e2e/fixtures.ts ] && [ -f /opt/app/data/vite-plugin-mock-api.ts ] && [ -f /opt/app/data/src/App.tsx ] && break
+            [ -f /opt/app/data/package.json ] && [ -f /opt/app/data/pnpm-lock.yaml ] && [ -f /opt/app/data/test/e2e/fixtures.ts ] && [ -f /opt/app/data/test/e2e/auth.spec.ts ] && break
             sleep 2
           done
-          if [ ! -f /opt/app/data/package.json ] || [ ! -f /opt/app/data/pnpm-lock.yaml ] || [ ! -f /opt/app/data/test/e2e/fixtures.ts ] || [ ! -f /opt/app/data/vite-plugin-mock-api.ts ] || [ ! -f /opt/app/data/src/App.tsx ]; then
-            echo "ERROR: File sync timed out (package.json, pnpm-lock.yaml, test/e2e/fixtures.ts, vite-plugin-mock-api.ts, or src/App.tsx not found after 120s)"
+          if [ ! -f /opt/app/data/package.json ] || [ ! -f /opt/app/data/pnpm-lock.yaml ] || [ ! -f /opt/app/data/test/e2e/fixtures.ts ] || [ ! -f /opt/app/data/test/e2e/auth.spec.ts ]; then
+            echo "ERROR: File sync timed out (package.json, pnpm-lock.yaml, or test/e2e files not found after 120s)"
             exit 1
           fi
           sleep 5
           cd /opt/app/data
           corepack enable
           pnpm install --frozen-lockfile
-          VITE_API_BASE_URL=/api pnpm build
-          pnpm preview --host 0.0.0.0 --port 3000 > /tmp/preview.log 2>&1 &
-          PREVIEW_PID=$!
-          echo "Waiting for preview server..."
-          READY=0
-          for i in $(seq 1 60); do
-            curl -sf http://localhost:3000 > /dev/null 2>&1 && READY=1 && break
-            sleep 2
-          done
-          if [ "$READY" -ne 1 ]; then
-            echo "ERROR: preview server failed to start"
-            cat /tmp/preview.log || true
-            kill $PREVIEW_PID || true
-            exit 1
-          fi
-          E2E_BASE_URL=http://localhost:3000 pnpm test:e2e
-          EXIT_CODE=$?
-          kill $PREVIEW_PID || true
-          exit $EXIT_CODE
+          E2E_BASE_URL=https://chat.agyn.dev:2496 pnpm test:e2e
         '
       EXIT_CODE=$?
       stop_dev e2e-runner
