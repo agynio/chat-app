@@ -43,6 +43,6 @@ server {
 
     location = /__config.js {
         add_header Cache-Control "no-cache" always;
-        try_files $uri =404;
+        alias /tmp/__config.js;
     }
 }

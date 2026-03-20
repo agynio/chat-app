@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 
-CONFIG_PATH="/usr/share/nginx/html/__config.js"
+CONFIG_PATH="/tmp/__config.js"
 
 escape_js() {
   printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'
