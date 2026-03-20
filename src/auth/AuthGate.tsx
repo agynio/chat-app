@@ -8,7 +8,6 @@ type AuthGateProps = {
 };
 
 function handleSigninCallback() {
-  if (typeof window === 'undefined') return;
   const url = new URL(window.location.href);
   url.searchParams.delete('code');
   url.searchParams.delete('state');

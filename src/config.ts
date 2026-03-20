@@ -19,6 +19,21 @@ type ViteEnv = {
   VITE_OIDC_SCOPE?: string;
 };
 
+type OidcConfigEnabled = {
+  enabled: true;
+  authority: string;
+  clientId: string;
+  redirectUri: string;
+  postLogoutRedirectUri: string;
+  scope: string;
+};
+
+type OidcConfigDisabled = {
+  enabled: false;
+};
+
+type OidcConfig = OidcConfigEnabled | OidcConfigDisabled;
+
 const runtimeConfig: RuntimeConfig = typeof window !== 'undefined' ? (window.__APP_CONFIG ?? {}) : {};
 
 function readConfigValue(runtimeKey: keyof RuntimeConfig, envKey: keyof ViteEnv): string | null {
@@ -32,7 +47,7 @@ function readConfigValue(runtimeKey: keyof RuntimeConfig, envKey: keyof ViteEnv)
 }
 
 function requireConfig(name: string, value: string | null): string {
-  if (typeof value === 'string' && value.trim()) return value;
+  if (value !== null) return value;
   throw new Error(`chat-app config: required ${name} is missing`);
 }
 
@@ -68,23 +83,19 @@ const socketBaseUrl = deriveBase(rawApiBase, { stripApi: true });
 const rawOidcAuthority = readConfigValue('OIDC_AUTHORITY', 'VITE_OIDC_AUTHORITY');
 const oidcEnabled = Boolean(rawOidcAuthority);
 
-export const oidcConfig = {
-  enabled: oidcEnabled,
-  authority: oidcEnabled ? requireConfig('OIDC_AUTHORITY', rawOidcAuthority) : '',
-  clientId: oidcEnabled
-    ? requireConfig('OIDC_CLIENT_ID', readConfigValue('OIDC_CLIENT_ID', 'VITE_OIDC_CLIENT_ID'))
-    : '',
-  redirectUri: oidcEnabled
-    ? requireConfig('OIDC_REDIRECT_URI', readConfigValue('OIDC_REDIRECT_URI', 'VITE_OIDC_REDIRECT_URI'))
-    : '',
-  postLogoutRedirectUri: oidcEnabled
-    ? requireConfig(
+export const oidcConfig: OidcConfig = oidcEnabled
+  ? {
+      enabled: true,
+      authority: requireConfig('OIDC_AUTHORITY', rawOidcAuthority),
+      clientId: requireConfig('OIDC_CLIENT_ID', readConfigValue('OIDC_CLIENT_ID', 'VITE_OIDC_CLIENT_ID')),
+      redirectUri: requireConfig('OIDC_REDIRECT_URI', readConfigValue('OIDC_REDIRECT_URI', 'VITE_OIDC_REDIRECT_URI')),
+      postLogoutRedirectUri: requireConfig(
         'OIDC_POST_LOGOUT_REDIRECT_URI',
         readConfigValue('OIDC_POST_LOGOUT_REDIRECT_URI', 'VITE_OIDC_POST_LOGOUT_REDIRECT_URI'),
-      )
-    : '',
-  scope: oidcEnabled ? requireConfig('OIDC_SCOPE', readConfigValue('OIDC_SCOPE', 'VITE_OIDC_SCOPE')) : '',
-};
+      ),
+      scope: requireConfig('OIDC_SCOPE', readConfigValue('OIDC_SCOPE', 'VITE_OIDC_SCOPE')),
+    }
+  : { enabled: false };
 
 export const config = {
   apiBaseUrl,

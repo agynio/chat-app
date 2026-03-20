@@ -6,22 +6,25 @@ import { config } from '@/config';
 export type ApiError = AxiosError<{ error?: string; message?: string } | unknown>;
 
 type RetryableRequestConfig = AxiosRequestConfig & { _retry?: boolean };
+type SilentRenewResult = { retried: true; response: unknown } | null;
 
-async function trySilentRenew(err: unknown, inst: AxiosInstance): Promise<unknown | null> {
+async function trySilentRenew(err: unknown, inst: AxiosInstance): Promise<SilentRenewResult> {
   if (!userManager || !axios.isAxiosError(err)) return null;
   if (err.response?.status !== 401) return null;
 
-  const config = err.config as RetryableRequestConfig | undefined;
-  if (!config || config._retry) return null;
+  const requestConfig = err.config as RetryableRequestConfig | undefined;
+  if (!requestConfig || requestConfig._retry) return null;
 
-  config._retry = true;
+  requestConfig._retry = true;
   try {
     await userManager.signinSilent();
-  } catch (_error) {
+  } catch (renewError) {
+    console.warn('[auth] silent renewal failed', renewError);
     return null;
   }
 
-  return inst.request(config);
+  const response = await inst.request(requestConfig);
+  return { retried: true, response };
 }
 
 function createHttp(baseURL: string): AxiosInstance {
@@ -38,7 +41,7 @@ function createHttp(baseURL: string): AxiosInstance {
     (res) => res.data,
     async (err) => {
       const retry = await trySilentRenew(err, inst);
-      if (retry !== null) return retry;
+      if (retry) return retry.response;
       // Pass through AxiosError; ensure message surfaces server error string when available
       if (axios.isAxiosError(err)) {
         const data = err.response?.data as { error?: string; message?: string } | undefined;
