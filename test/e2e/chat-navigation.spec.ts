@@ -2,8 +2,7 @@ import type { Page } from '@playwright/test';
 import { test, expect } from './fixtures';
 
 function chatNavButton(page: Page) {
-  const navigation = page.getByRole('navigation');
-  return navigation.getByRole('button', { name: 'Chat' }).nth(1);
+  return page.getByTestId('sidebar-nav-chat');
 }
 
 test('navigates to chat via sidebar', async ({ page }) => {
@@ -27,5 +26,5 @@ test('sidebar shows Chat as active', async ({ page }) => {
 
   const chatButton = chatNavButton(page);
   await expect(chatButton).toBeVisible();
-  await expect(chatButton).toHaveClass(/bg-\[var\(--agyn-bg-accent\)\]/);
+  await expect(chatButton).toHaveAttribute('aria-current', 'page');
 });

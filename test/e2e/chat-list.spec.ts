@@ -49,7 +49,8 @@ test('highlights selected chat', async ({ page }) => {
   await expect(firstItem).toBeVisible();
   await firstItem.click();
 
-  const indicator = firstItem.locator('..').locator(':scope > div');
+  const itemWrapper = firstItem.locator('..');
+  const indicator = itemWrapper.getByTestId('chat-list-item-selected-indicator');
   await expect(indicator).toBeVisible();
 });
 
@@ -61,6 +62,7 @@ test('shows empty state when no chats', async ({ page }) => {
   await Promise.race([chatItems.first().waitFor(), emptyState.waitFor()]);
   const count = await chatItems.count();
 
+  // Intentionally conditional: backend data determines which state renders.
   if (count === 0) {
     await expect(emptyState).toBeVisible();
   } else {

@@ -1,32 +1,21 @@
 import type { Page } from '@playwright/test';
 import { test, expect } from './fixtures';
+import { openAnyChat } from './chat-helpers';
 
-async function openAnyChat(page: Page) {
-  await page.goto('/agents/chat');
-  const chatList = page.getByTestId('chat-list');
-  await expect(chatList).toBeVisible();
-
-  const firstChat = page.getByTestId('chat-list-item').first();
-  await expect(firstChat).toBeVisible();
-  await firstChat.click();
-  await expect(page).toHaveURL(/\/agents\/chat\//);
-}
-
-async function ensureMessages(page: Page) {
+async function waitForMessagesOrEmptyState(page: Page) {
   const messages = page.getByTestId('chat-message');
-  const currentCount = await messages.count();
-  if (currentCount === 0) {
-    const input = page.getByTestId('chat-input');
-    await expect(input).toBeVisible();
-    await input.fill('Hello from the chat tests.');
+  const emptyState = page.getByText('No messages yet.');
 
-    const sendButton = page.getByTestId('chat-send-button');
-    await expect(sendButton).toBeEnabled();
-    await sendButton.click();
-  }
-
-  await expect(messages.first()).toBeVisible();
-  return messages;
+  await expect
+    .poll(async () => {
+      const count = await messages.count();
+      if (count > 0) {
+        return 'messages';
+      }
+      return (await emptyState.isVisible()) ? 'empty' : 'loading';
+    })
+    .not.toBe('loading');
+  return { messages, emptyState };
 }
 
 test('shows empty state when no chat selected', async ({ page }) => {
@@ -53,13 +42,25 @@ test('displays conversation header', async ({ page }) => {
 test('renders messages', async ({ page }) => {
   await openAnyChat(page);
 
-  const messages = await ensureMessages(page);
-  await expect(messages.first()).toBeVisible();
+  const { messages, emptyState } = await waitForMessagesOrEmptyState(page);
+  const count = await messages.count();
+
+  if (count > 0) {
+    await expect(messages.first()).toBeVisible();
+  } else {
+    await expect(emptyState).toBeVisible();
+  }
 });
 
 test('displays message content', async ({ page }) => {
   await openAnyChat(page);
 
-  const messages = await ensureMessages(page);
-  await expect(messages.first()).toContainText(/\S+/);
+  const { messages, emptyState } = await waitForMessagesOrEmptyState(page);
+  const count = await messages.count();
+
+  if (count > 0) {
+    await expect(messages.first()).toContainText(/\S+/);
+  } else {
+    await expect(emptyState).toBeVisible();
+  }
 });

@@ -111,7 +111,10 @@ export function ChatList({
           return (
             <div key={chat.id} className="relative">
               {isSelected ? (
-                <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-[var(--agyn-blue)]" />
+                <div
+                  className="absolute left-0 top-0 bottom-0 w-[2px] bg-[var(--agyn-blue)]"
+                  data-testid="chat-list-item-selected-indicator"
+                />
               ) : null}
               <button
                 type="button"
