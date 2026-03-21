@@ -1,39 +1,34 @@
 import { test, expect } from './chat-fixtures';
-import { waitForChatListState } from './chat-helpers';
+import { getChatTitle, getParticipantLabel, openChatFromList, waitForChatListState } from './chat-helpers';
 
 test.setTimeout(45000);
 
-test.beforeEach(async ({ page }) => {
+test('shows empty state when no chat selected', async ({ page }) => {
   await page.goto('/agents/chat');
   await waitForChatListState(page);
-});
 
-test('shows empty state when no chat selected', async ({ page }) => {
   const emptyState = page.getByTestId('chat-conversation-empty');
   await expect(emptyState).toBeVisible();
   await expect(emptyState).toContainText(/Select a chat/i);
 });
 
-test('shows conversation shell when no chats', async ({ page }) => {
-  await expect(page.getByTestId('chat-conversation')).toBeVisible();
-  await expect(page.getByTestId('chat-conversation-empty')).toBeVisible();
-});
+test('renders conversation header for selected chat', async ({ page, chatSeed }) => {
+  const chat = chatSeed.chats[0];
+  await openChatFromList(page, chat, chatSeed.currentUserId);
 
-test('displays conversation header placeholder', async ({ page }) => {
   const header = page.getByTestId('chat-conversation-header');
   await expect(header).toBeVisible();
-  await expect(header).toContainText('Select a chat');
-  await expect(header).toContainText('Choose a chat to view messages');
+  await expect(header).toContainText(getChatTitle(chat, chatSeed.currentUserId));
+  await expect(header).toContainText(getParticipantLabel(chat));
 });
 
-test('does not render messages without a chat', async ({ page }) => {
-  const messages = page.getByTestId('chat-message');
+test('renders messages for selected chat', async ({ page, chatSeed }) => {
+  const chat = chatSeed.chats[0];
+  const messages = chatSeed.messagesByChatId[chat.id] ?? [];
+  await openChatFromList(page, chat, chatSeed.currentUserId);
 
-  await expect(messages).toHaveCount(0);
-});
-
-test('does not show message content without a chat', async ({ page }) => {
-  await expect(page.getByText('No messages yet.')).toHaveCount(0);
-  await expect(page.getByTestId('chat-message')).toHaveCount(0);
-  await expect(page.getByTestId('chat-conversation-empty')).toBeVisible();
+  await expect(page.getByTestId('chat-message')).toHaveCount(messages.length);
+  for (const message of messages) {
+    await expect(page.getByText(message.body)).toBeVisible();
+  }
 });

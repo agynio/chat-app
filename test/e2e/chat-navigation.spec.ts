@@ -5,7 +5,7 @@ import { waitForChatListState } from './chat-helpers';
 test.setTimeout(45000);
 
 function chatNavButton(page: Page) {
-  return page.getByTestId('sidebar-nav-chat');
+  return page.getByTestId('sidebar-nav-agentsChat');
 }
 
 test('navigates to chat via sidebar', async ({ page }) => {
@@ -18,13 +18,12 @@ test('navigates to chat via sidebar', async ({ page }) => {
   await expect(page).toHaveURL(/\/agents\/chat$/);
 });
 
-test('navigates to chat via direct URL', async ({ page }) => {
+test('navigates to chat via direct URL', async ({ page, chatSeed }) => {
   await page.goto('/agents/chat');
 
-  const { emptyState, count } = await waitForChatListState(page);
-  expect(count).toBe(0);
-  await expect(emptyState).toBeVisible();
-  await expect(emptyState).toContainText(/No chats found/i);
+  const { list, count } = await waitForChatListState(page);
+  await expect(list).toBeVisible();
+  expect(count).toBe(chatSeed.chats.length);
 });
 
 test('sidebar shows Chat as active', async ({ page }) => {

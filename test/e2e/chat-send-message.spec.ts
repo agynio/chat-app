@@ -1,42 +1,42 @@
 import { test, expect } from './chat-fixtures';
-import { waitForChatListState } from './chat-helpers';
+import { openChatFromList } from './chat-helpers';
 
 test.setTimeout(45000);
 
-test.beforeEach(async ({ page }) => {
-  await page.goto('/agents/chat');
-  await waitForChatListState(page);
-});
+test('enables input for selected chat', async ({ page, chatSeed }) => {
+  const chat = chatSeed.chats[0];
+  await openChatFromList(page, chat, chatSeed.currentUserId);
 
-test('shows input and send button', async ({ page }) => {
   const input = page.getByTestId('chat-input');
   const sendButton = page.getByTestId('chat-send-button');
 
-  await expect(input).toBeVisible();
-  await expect(sendButton).toBeVisible();
-  await expect(input).toBeDisabled();
+  await expect(input).toBeEnabled();
   await expect(sendButton).toBeDisabled();
 });
 
-test('send button disabled when input empty', async ({ page }) => {
+test('allows typing and enables send', async ({ page, chatSeed }) => {
+  const chat = chatSeed.chats[0];
+  await openChatFromList(page, chat, chatSeed.currentUserId);
+
   const input = page.getByTestId('chat-input');
   const sendButton = page.getByTestId('chat-send-button');
-  await expect(input).toBeDisabled();
-  await expect(sendButton).toBeDisabled();
+  await input.fill('Following up on the demo notes.');
+
+  await expect(sendButton).toBeEnabled();
 });
 
-test('input remains disabled when no chat selected', async ({ page }) => {
+test('sends message and renders it', async ({ page, chatSeed }) => {
+  const chat = chatSeed.chats[0];
+  await openChatFromList(page, chat, chatSeed.currentUserId);
+
   const input = page.getByTestId('chat-input');
-  await expect(input).toBeDisabled();
+  const sendButton = page.getByTestId('chat-send-button');
+  const messageText = 'Playwright: sending a follow-up message.';
+
+  await input.fill(messageText);
+  await expect(sendButton).toBeEnabled();
+  await sendButton.click();
+
   await expect(input).toHaveValue('');
-});
-
-test('send button remains disabled without a chat', async ({ page }) => {
-  const input = page.getByTestId('chat-input');
-  const sendButton = page.getByTestId('chat-send-button');
-  const messages = page.getByTestId('chat-message');
-
-  await expect(input).toBeDisabled();
-  await expect(sendButton).toBeDisabled();
-  await expect(messages).toHaveCount(0);
+  await expect(page.getByText(messageText)).toBeVisible();
 });

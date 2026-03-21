@@ -135,7 +135,6 @@ export default function Sidebar({
                   <div className="ml-6 mt-1 space-y-1 animate-in slide-in-from-top-2 fade-in duration-200">
                     {item.items.map((subItem) => {
                       const isActive = selectedMenuItem === subItem.id;
-                      const testId = subItem.id === 'agentsChat' ? 'sidebar-nav-chat' : undefined;
 
                       return (
                         <button
@@ -146,7 +145,7 @@ export default function Sidebar({
                               ? 'bg-[var(--agyn-bg-accent)] text-[var(--agyn-blue)]'
                               : 'text-[var(--agyn-gray)] hover:bg-[var(--agyn-bg-light)] hover:text-[var(--agyn-dark)]'
                           }`}
-                          data-testid={testId}
+                          data-testid={`sidebar-nav-${subItem.id}`}
                           aria-current={isActive ? 'page' : undefined}
                         >
                           <span className={isActive ? 'text-[var(--agyn-blue)]' : 'text-[var(--agyn-gray)]'}>
