@@ -25,21 +25,16 @@ functions:
     else
       echo "WARNING: ArgoCD Application 'chat-app' not found in argocd namespace."
     fi
-  hot_deploy_app: |-
-    echo "Hot-deploying app to cluster..."
-    POD=$(kubectl get pod -n ${APP_NAMESPACE} \
-      -l app.kubernetes.io/name=chat-app,app.kubernetes.io/instance=chat-app \
-      -o jsonpath='{.items[0].metadata.name}')
-    if [ -z "$POD" ]; then
-      echo "ERROR: chat-app pod not found"
-      exit 1
+  deploy_pr_image: |-
+    echo "Deploying PR image to cluster..."
+    IMAGE="${PR_IMAGE:-}"
+    if [ -z "$IMAGE" ]; then
+      echo "WARNING: PR_IMAGE not set, skipping hot deploy"
+      return 0
     fi
-    if [ ! -d dist ]; then
-      echo "ERROR: dist/ directory not found — run pnpm build first"
-      exit 1
-    fi
-    kubectl cp dist/. ${APP_NAMESPACE}/${POD}:/usr/share/nginx/html/ -c chat-app
-    echo "App deployed to pod $POD"
+    kubectl set image deployment/chat-app chat-app="$IMAGE" -n ${APP_NAMESPACE}
+    kubectl rollout status deployment/chat-app -n ${APP_NAMESPACE} --timeout=120s
+    echo "PR image deployed successfully"
 
 deployments:
   e2e-runner:
@@ -80,8 +75,7 @@ pipelines:
   test-e2e:
     run: |-
       disable_argocd_sync
-      hot_deploy_app
-
+      deploy_pr_image
       create_deployments e2e-runner
       start_dev e2e-runner &
       sleep 5
