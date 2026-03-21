@@ -1,6 +1,22 @@
+import type { Page } from '@playwright/test';
 import { test as base, expect } from '@playwright/test';
-
+import { acquireOidcTokens } from './auth-helper';
 export { expect };
+
+async function injectAuthAndLoad(page: Page) {
+  const { storageKey, userJson } = await acquireOidcTokens();
+
+  await page.addInitScript(
+    ({ key, value }) => {
+      window.sessionStorage.setItem(key, value);
+    },
+    { key: storageKey, value: userJson },
+  );
+
+  await page.goto('/');
+  await page.waitForURL(/\/agents\/threads/, { timeout: 30000 });
+  await page.getByTestId('threads-list').waitFor();
+}
 
 export const test = base.extend({
   page: async ({ page }, runPage) => {
@@ -14,6 +30,7 @@ export const test = base.extend({
         `[request-failed] ${request.url()} — ${request.failure()?.errorText}`,
       );
     });
+    await injectAuthAndLoad(page);
     await runPage(page);
   },
 });
