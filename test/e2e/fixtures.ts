@@ -1,30 +1,25 @@
 import type { Page } from '@playwright/test';
 import { test as base, expect } from '@playwright/test';
-import { acquireOidcTokens } from './auth-helper';
-
 export { expect };
 
 type Fixtures = {
   authenticatedPage: Page;
 };
 
-async function injectAuthAndLoad(page: Page) {
-  const { storageKey, userJson } = await acquireOidcTokens();
-
-  console.log('[e2e-auth] storageKey:', storageKey);
-  console.log('[e2e-auth] userJson length:', userJson.length);
-
-  await page.route(/mockauth\.dev/, (route) => route.abort());
-
-  await page.addInitScript(
-    ({ key, value }) => {
-      window.sessionStorage.setItem(key, value);
-    },
-    { key: storageKey, value: userJson },
-  );
+async function loginWithMockAuth(page: Page) {
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') {
+      console.log('[browser-error]', msg.text());
+    }
+  });
+  page.on('requestfailed', (request) => {
+    console.log(
+      `[request-failed] ${request.url()} — ${request.failure()?.errorText}`,
+    );
+  });
 
   try {
-    await page.goto('/', { waitUntil: 'commit' });
+    await page.goto('/');
   } catch (error) {
     const message = error instanceof Error ? error.message : '';
     if (!message.includes('net::ERR_ABORTED') && !message.includes('Navigation interrupted')) {
@@ -32,25 +27,25 @@ async function injectAuthAndLoad(page: Page) {
     }
   }
 
-  await page.unrouteAll();
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForURL(/mockauth\.dev|\/agents\/threads/, { timeout: 30000 });
+
+  if (!page.url().includes('mockauth.dev')) {
+    await page.getByTestId('threads-list').waitFor();
+    return;
+  }
+
+  const emailInput = page.getByTestId('login-email-input');
+  await emailInput.waitFor({ timeout: 15000 });
+  await emailInput.fill('e2e-tester@agyn.test');
+  await page.getByRole('button', { name: 'Continue' }).click();
+
   await page.waitForURL(/\/agents\/threads/, { timeout: 30000 });
   await page.getByTestId('threads-list').waitFor();
 }
 
 export const test = base.extend<Fixtures>({
   page: async ({ page }, runPage) => {
-    page.on('console', (msg) => {
-      if (msg.type() === 'error') {
-        console.log('[browser-error]', msg.text());
-      }
-    });
-    page.on('requestfailed', (request) => {
-      console.log(
-        `[request-failed] ${request.url()} — ${request.failure()?.errorText}`,
-      );
-    });
-    await injectAuthAndLoad(page);
+    await loginWithMockAuth(page);
     await runPage(page);
   },
   authenticatedPage: async ({ page }, runAuthenticatedPage) => {
