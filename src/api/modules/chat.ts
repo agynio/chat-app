@@ -12,7 +12,7 @@ import type {
   SendMessageResponse,
 } from '@/api/types/chat';
 
-const CHAT_SERVICE = '/apiv2/agynio.api.gateway.v1.ChatGateway';
+const CHAT_SERVICE = '/api/agynio.api.gateway.v1.ChatGateway';
 
 function connectPost<TReq, TRes>(method: string, req: TReq): Promise<TRes> {
   return http.post<TRes>(`${CHAT_SERVICE}/${method}`, req, {
