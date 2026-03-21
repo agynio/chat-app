@@ -51,6 +51,13 @@ export default defineConfig([
       ],
     },
   },
+  {
+    files: ['test/e2e/**/*.{ts,tsx}'],
+    rules: {
+      'no-empty-pattern': 'off',
+      'react-hooks/rules-of-hooks': 'off',
+    },
+  },
   // Utility/context override for templates provider
   {
     files: ['src/lib/graph/templates.provider.tsx'],

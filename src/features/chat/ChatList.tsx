@@ -72,7 +72,10 @@ export function ChatList({
             <p className="text-xs text-[var(--agyn-gray)]">0 conversations</p>
           </div>
         </div>
-        <div className="flex flex-1 items-center justify-center text-[var(--agyn-gray)]">
+        <div
+          className="flex flex-1 items-center justify-center text-[var(--agyn-gray)]"
+          data-testid="chat-list-empty"
+        >
           {emptyState ?? <span>No chats found</span>}
         </div>
       </div>
@@ -108,13 +111,17 @@ export function ChatList({
           return (
             <div key={chat.id} className="relative">
               {isSelected ? (
-                <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-[var(--agyn-blue)]" />
+                <div
+                  className="absolute left-0 top-0 bottom-0 w-[2px] bg-[var(--agyn-blue)]"
+                  data-testid="chat-list-item-selected-indicator"
+                />
               ) : null}
               <button
                 type="button"
                 className={`w-full text-left px-4 py-3 border-b border-[var(--agyn-border-subtle)] transition-colors ${
                   isSelected ? 'bg-[var(--agyn-blue)]/5' : 'hover:bg-[var(--agyn-bg-light)]'
                 }`}
+                data-testid="chat-list-item"
                 onClick={() => onSelectChat?.(chat.id)}
               >
                 <div className="flex items-center justify-between gap-2">
