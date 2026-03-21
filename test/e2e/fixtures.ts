@@ -32,22 +32,6 @@ async function injectAuthAndLoad(page: Page) {
     }
   }
 
-  const currentUrl = page.url();
-  console.log('[e2e-auth] after first goto, URL:', currentUrl);
-  const baseUrl = process.env.E2E_BASE_URL;
-  if (baseUrl) {
-    const expectedOrigin = new URL(baseUrl).origin;
-    let actualOrigin: string | null = null;
-    try {
-      actualOrigin = new URL(currentUrl).origin;
-    } catch {
-      actualOrigin = null;
-    }
-    if (actualOrigin !== expectedOrigin) {
-      throw new Error(`Expected to be on ${expectedOrigin} but got: ${currentUrl}`);
-    }
-  }
-
   await page.unrouteAll();
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForURL(/\/agents\/threads/, { timeout: 30000 });

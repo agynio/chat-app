@@ -38,7 +38,7 @@ deployments:
           - image: ${E2E_IMAGE}
             env:
               - name: E2E_BASE_URL
-                value: "https://chat.agyn.dev:2496"
+                value: "https://chat.agyn.dev"
         labels:
           app.kubernetes.io/name: chat-app-e2e
 
@@ -84,7 +84,7 @@ pipelines:
           cd /opt/app/data
           corepack enable
           pnpm install --frozen-lockfile
-          E2E_BASE_URL=https://chat.agyn.dev:2496 pnpm test:e2e
+          E2E_BASE_URL=https://chat.agyn.dev pnpm test:e2e
         '
       EXIT_CODE=$?
       stop_dev e2e-runner
