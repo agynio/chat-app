@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect } from './fixtures';
+import { test, expect } from './chat-fixtures';
 import { waitForChatListState } from './chat-helpers';
 
 test.setTimeout(45000);
@@ -21,13 +21,10 @@ test('navigates to chat via sidebar', async ({ page }) => {
 test('navigates to chat via direct URL', async ({ page }) => {
   await page.goto('/agents/chat');
 
-  const { chatList, emptyState, count } = await waitForChatListState(page);
-  if (count === 0) {
-    await expect(emptyState).toBeVisible();
-    return;
-  }
-
-  await expect(chatList).toBeVisible();
+  const { emptyState, count } = await waitForChatListState(page);
+  expect(count).toBe(0);
+  await expect(emptyState).toBeVisible();
+  await expect(emptyState).toContainText(/No chats found/i);
 });
 
 test('sidebar shows Chat as active', async ({ page }) => {
