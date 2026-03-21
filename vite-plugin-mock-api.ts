@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import type { IncomingMessage, ServerResponse } from 'http';
 import type { Plugin } from 'vite';
 import type { ThreadMetrics, ThreadNode, ThreadReminder, RunMeta, RunMessageItem } from './src/api/types/agents';
+import type { Chat, ChatMessage } from './src/api/types/chat';
 import type { TemplateSchema } from './src/api/types/graph';
 import type { PersistedGraph } from './src/types/graph';
 import type { ContainerItem, ContainerEventItem, ContainerTerminalSessionResponse } from './src/api/modules/containers';
@@ -14,6 +15,11 @@ const iso = (minutesOffset: number) => new Date(now.getTime() + minutesOffset * 
 const threadOneId = '11111111-1111-1111-1111-111111111111';
 const threadTwoId = '22222222-2222-2222-2222-222222222222';
 const threadThreeId = '33333333-3333-3333-3333-333333333333';
+
+const chatSelfId = 'casey@example.com';
+const chatOneId = '44444444-4444-4444-4444-444444444444';
+const chatTwoId = '55555555-5555-5555-5555-555555555555';
+const chatThreeId = '66666666-6666-6666-6666-666666666666';
 
 const defaultMetrics: ThreadMetrics = {
   remindersCount: 0,
@@ -80,6 +86,166 @@ const threadStore = new Map<string, ThreadNode>([
       agentName: 'Campaign Planner',
     },
   ],
+]);
+
+const chatStore = new Map<string, Chat>([
+  [
+    chatOneId,
+    {
+      id: chatOneId,
+      participants: [
+        { id: chatSelfId, joinedAt: iso(-300) },
+        { id: 'planner@agyn.io', joinedAt: iso(-298) },
+        { id: 'designer@agyn.io', joinedAt: iso(-296) },
+      ],
+      createdAt: iso(-300),
+      updatedAt: iso(-120),
+    },
+  ],
+  [
+    chatTwoId,
+    {
+      id: chatTwoId,
+      participants: [
+        { id: chatSelfId, joinedAt: iso(-220) },
+        { id: 'ops@agyn.io', joinedAt: iso(-218) },
+      ],
+      createdAt: iso(-220),
+      updatedAt: iso(-55),
+    },
+  ],
+  [
+    chatThreeId,
+    {
+      id: chatThreeId,
+      participants: [
+        { id: chatSelfId, joinedAt: iso(-140) },
+        { id: 'support@agyn.io', joinedAt: iso(-138) },
+      ],
+      createdAt: iso(-140),
+      updatedAt: iso(-15),
+    },
+  ],
+]);
+
+const chatMessagesByChat = new Map<string, ChatMessage[]>([
+  [
+    chatOneId,
+    [
+      {
+        id: 'chat-1-msg-1',
+        chatId: chatOneId,
+        senderId: chatSelfId,
+        body: 'Can you share the brief outline when ready?',
+        fileIds: [],
+        createdAt: iso(-200),
+      },
+      {
+        id: 'chat-1-msg-2',
+        chatId: chatOneId,
+        senderId: 'planner@agyn.io',
+        body: 'Sure, drafting the outline now and will send shortly.',
+        fileIds: [],
+        createdAt: iso(-190),
+      },
+      {
+        id: 'chat-1-msg-3',
+        chatId: chatOneId,
+        senderId: 'designer@agyn.io',
+        body: 'I can add creative deliverables once the outline is set.',
+        fileIds: [],
+        createdAt: iso(-170),
+      },
+      {
+        id: 'chat-1-msg-4',
+        chatId: chatOneId,
+        senderId: chatSelfId,
+        body: 'Please include launch phases and key stakeholders.',
+        fileIds: [],
+        createdAt: iso(-150),
+      },
+      {
+        id: 'chat-1-msg-5',
+        chatId: chatOneId,
+        senderId: 'planner@agyn.io',
+        body: 'Outline updated with phases, stakeholders, and deliverables.',
+        fileIds: [],
+        createdAt: iso(-120),
+      },
+    ],
+  ],
+  [
+    chatTwoId,
+    [
+      {
+        id: 'chat-2-msg-1',
+        chatId: chatTwoId,
+        senderId: 'ops@agyn.io',
+        body: 'Any updates on the ops checklist for the release?',
+        fileIds: [],
+        createdAt: iso(-95),
+      },
+      {
+        id: 'chat-2-msg-2',
+        chatId: chatTwoId,
+        senderId: chatSelfId,
+        body: 'Working on the checklist today. Will share a draft soon.',
+        fileIds: [],
+        createdAt: iso(-80),
+      },
+      {
+        id: 'chat-2-msg-3',
+        chatId: chatTwoId,
+        senderId: 'ops@agyn.io',
+        body: 'Great, I added infra notes in the shared doc.',
+        fileIds: ['file-ops-1'],
+        createdAt: iso(-70),
+      },
+      {
+        id: 'chat-2-msg-4',
+        chatId: chatTwoId,
+        senderId: 'ops@agyn.io',
+        body: 'Let me know if you need more detail on the rollout plan.',
+        fileIds: [],
+        createdAt: iso(-55),
+      },
+    ],
+  ],
+  [
+    chatThreeId,
+    [
+      {
+        id: 'chat-3-msg-1',
+        chatId: chatThreeId,
+        senderId: 'support@agyn.io',
+        body: 'Drafted the FAQ updates for the release. Ready for review.',
+        fileIds: [],
+        createdAt: iso(-40),
+      },
+      {
+        id: 'chat-3-msg-2',
+        chatId: chatThreeId,
+        senderId: chatSelfId,
+        body: 'Thanks, I will review and send notes by tomorrow.',
+        fileIds: [],
+        createdAt: iso(-30),
+      },
+      {
+        id: 'chat-3-msg-3',
+        chatId: chatThreeId,
+        senderId: 'support@agyn.io',
+        body: 'Sounds good. Also flagged two edge cases for docs.',
+        fileIds: [],
+        createdAt: iso(-15),
+      },
+    ],
+  ],
+]);
+
+const chatUnreadIdsByChat = new Map<string, Set<string>>([
+  [chatOneId, new Set(['chat-1-msg-5'])],
+  [chatTwoId, new Set(['chat-2-msg-3', 'chat-2-msg-4'])],
+  [chatThreeId, new Set(['chat-3-msg-3'])],
 ]);
 
 const childrenByThread = new Map<string, string[]>([[threadOneId, [threadThreeId]]]);
@@ -394,6 +560,20 @@ function parseNumber(value: string | null, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function clampPageSize(value: unknown, fallback: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+  const normalized = Math.trunc(value);
+  if (normalized <= 0) return fallback;
+  return Math.min(100, normalized);
+}
+
+function parsePageToken(value: unknown): number | null {
+  if (typeof value !== 'string') return null;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return null;
+  return Math.max(0, Math.trunc(parsed));
+}
+
 export function mockApiPlugin(): Plugin {
   return {
     name: 'mock-api',
@@ -403,9 +583,134 @@ export function mockApiPlugin(): Plugin {
         if (!req.url) return next();
         const url = new URL(req.url, 'http://localhost');
         const { pathname } = url;
-        if (!pathname.startsWith('/api/')) return next();
-
         const method = req.method ?? 'GET';
+        const chatPrefix = '/apiv2/agynio.api.gateway.v1.ChatGateway/';
+
+        if (pathname.startsWith(chatPrefix)) {
+          if (method !== 'POST') {
+            return sendJson(res, 405, { code: 'invalid_argument', message: 'Method not allowed' });
+          }
+
+          let payload: unknown;
+          try {
+            payload = await readBody(req);
+          } catch (_error) {
+            return sendJson(res, 400, { code: 'invalid_argument', message: 'Invalid JSON payload' });
+          }
+
+          const rpc = pathname.slice(chatPrefix.length);
+
+          if (rpc === 'GetChats') {
+            const request = payload as { pageSize?: number; pageToken?: string };
+            const pageSize = clampPageSize(request.pageSize, 20);
+            const offset = parsePageToken(request.pageToken) ?? 0;
+            const chats = Array.from(chatStore.values()).sort((a, b) => {
+              const aTime = Date.parse(a.updatedAt);
+              const bTime = Date.parse(b.updatedAt);
+              const aValue = Number.isFinite(aTime) ? aTime : 0;
+              const bValue = Number.isFinite(bTime) ? bTime : 0;
+              return bValue - aValue;
+            });
+            const pageChats = chats.slice(offset, offset + pageSize);
+            const nextOffset = offset + pageSize;
+            const response: { chats: Chat[]; nextPageToken?: string } = { chats: pageChats };
+            if (nextOffset < chats.length) response.nextPageToken = String(nextOffset);
+            return sendJson(res, 200, response);
+          }
+
+          if (rpc === 'GetMessages') {
+            const request = payload as { chatId?: string; pageSize?: number; pageToken?: string };
+            const chatId = request.chatId;
+            if (!chatId || !chatStore.has(chatId)) {
+              return sendJson(res, 404, { code: 'not_found', message: 'chat not found' });
+            }
+            const messages = chatMessagesByChat.get(chatId) ?? [];
+            const pageSize = clampPageSize(request.pageSize, 30);
+            const endIndex = parsePageToken(request.pageToken) ?? messages.length;
+            const boundedEnd = Math.min(Math.max(endIndex, 0), messages.length);
+            const startIndex = Math.max(0, boundedEnd - pageSize);
+            const pageMessages = messages.slice(startIndex, boundedEnd);
+            const response: { messages: ChatMessage[]; nextPageToken?: string; unreadCount?: number } = {
+              messages: pageMessages,
+            };
+            if (startIndex > 0) response.nextPageToken = String(startIndex);
+            const unreadCount = chatUnreadIdsByChat.get(chatId)?.size ?? 0;
+            if (unreadCount > 0) response.unreadCount = unreadCount;
+            return sendJson(res, 200, response);
+          }
+
+          if (rpc === 'SendMessage') {
+            const request = payload as { chatId?: string; body?: string; fileIds?: string[] };
+            const chatId = request.chatId;
+            if (!chatId || !chatStore.has(chatId)) {
+              return sendJson(res, 404, { code: 'not_found', message: 'chat not found' });
+            }
+            const nextMessage: ChatMessage = {
+              id: randomUUID(),
+              chatId,
+              senderId: chatSelfId,
+              body: typeof request.body === 'string' ? request.body : '',
+              fileIds: Array.isArray(request.fileIds)
+                ? request.fileIds.filter((id): id is string => typeof id === 'string')
+                : [],
+              createdAt: new Date().toISOString(),
+            };
+            const messages = chatMessagesByChat.get(chatId) ?? [];
+            messages.push(nextMessage);
+            chatMessagesByChat.set(chatId, messages);
+            const chat = chatStore.get(chatId);
+            if (chat) {
+              chatStore.set(chatId, { ...chat, updatedAt: nextMessage.createdAt });
+            }
+            return sendJson(res, 200, { message: nextMessage });
+          }
+
+          if (rpc === 'CreateChat') {
+            const request = payload as { participantIds?: string[] };
+            const participantIds = Array.isArray(request.participantIds)
+              ? request.participantIds.filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+              : [];
+            const createdAt = new Date().toISOString();
+            const participants = Array.from(new Set([chatSelfId, ...participantIds])).map((id) => ({
+              id,
+              joinedAt: createdAt,
+            }));
+            const chat: Chat = {
+              id: randomUUID(),
+              participants,
+              createdAt,
+              updatedAt: createdAt,
+            };
+            chatStore.set(chat.id, chat);
+            chatMessagesByChat.set(chat.id, []);
+            chatUnreadIdsByChat.set(chat.id, new Set());
+            return sendJson(res, 200, { chat });
+          }
+
+          if (rpc === 'MarkAsRead') {
+            const request = payload as { chatId?: string; messageIds?: string[] };
+            const chatId = request.chatId;
+            if (!chatId || !chatStore.has(chatId)) {
+              return sendJson(res, 404, { code: 'not_found', message: 'chat not found' });
+            }
+            const messageIds = Array.isArray(request.messageIds)
+              ? request.messageIds.filter((id): id is string => typeof id === 'string')
+              : [];
+            const unreadIds = new Set(chatUnreadIdsByChat.get(chatId) ?? []);
+            let readCount = 0;
+            messageIds.forEach((id) => {
+              if (unreadIds.delete(id)) {
+                readCount += 1;
+              }
+            });
+            chatUnreadIdsByChat.set(chatId, unreadIds);
+            return sendJson(res, 200, { readCount });
+          }
+
+          return sendJson(res, 404, { code: 'not_found', message: 'unknown method' });
+        }
+
+        if (!pathname.startsWith('/api/')) return next();
 
         if (method === 'GET' && pathname === '/api/graph') {
           return sendJson(res, 200, graph);

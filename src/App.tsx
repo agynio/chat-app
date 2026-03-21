@@ -19,6 +19,7 @@ function App() {
             <Route element={<RootLayout />}>
               <Route path="/agents" element={<Navigate to="/agents/threads" replace />} />
               <Route path="/agents/chat" element={<AgentsChat />} />
+              <Route path="/agents/chat/:chatId" element={<AgentsChat />} />
               <Route path="/agents/threads" element={<AgentsThreads />} />
               <Route path="/agents/threads/:threadId" element={<AgentsThreads />} />
             </Route>
