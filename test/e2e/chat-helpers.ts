@@ -14,7 +14,7 @@ export async function mockChatApi(page: Page) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ chats: [], nextPageToken: '' }),
+        body: JSON.stringify({ chats: [] }),
       });
       return;
     }
@@ -23,7 +23,7 @@ export async function mockChatApi(page: Page) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ messages: [], nextPageToken: '' }),
+        body: JSON.stringify({ messages: [] }),
       });
       return;
     }
