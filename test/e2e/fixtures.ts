@@ -3,14 +3,8 @@ import { test as base, expect } from '@playwright/test';
 import { acquireOidcTokens } from './auth-helper';
 export { expect };
 
-type Fixtures = {
-  authenticatedPage: Page;
-};
-
 async function injectAuthAndLoad(page: Page) {
   const { storageKey, userJson } = await acquireOidcTokens();
-
-  console.log('[e2e-auth] storageKey:', storageKey);
 
   await page.addInitScript(
     ({ key, value }) => {
@@ -24,7 +18,7 @@ async function injectAuthAndLoad(page: Page) {
   await page.getByTestId('threads-list').waitFor();
 }
 
-export const test = base.extend<Fixtures>({
+export const test = base.extend({
   page: async ({ page }, runPage) => {
     page.on('console', (msg) => {
       if (msg.type() === 'error') {
@@ -38,8 +32,5 @@ export const test = base.extend<Fixtures>({
     });
     await injectAuthAndLoad(page);
     await runPage(page);
-  },
-  authenticatedPage: async ({ page }, runAuthenticatedPage) => {
-    await runAuthenticatedPage(page);
   },
 });

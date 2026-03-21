@@ -6,20 +6,16 @@ type TokenResponse = {
   expiresIn: number;
 };
 
-type ClientAuthMethod = 'none' | 'client_secret_basic' | 'client_secret_post';
+type ClientAuthMethod = 'client_secret_basic' | 'client_secret_post';
 
 type OidcTokens = {
   storageKey: string;
   userJson: string;
 };
 
-type HeadersWithSetCookie = Headers & {
-  getSetCookie?: () => string[];
-};
-
 const DEFAULT_AUTHORITY = 'https://mockauth.dev/r/301ebb13-15a8-48f4-baac-e3fa25be29fc/oidc';
 const DEFAULT_CLIENT_ID = 'client_MU95KU3gHQf5Ir7p';
-const DEFAULT_REDIRECT_URI = 'https://chat.agyn.dev:2496/callback';
+const DEFAULT_REDIRECT_URI = 'https://chat.agyn.dev/callback';
 const DEFAULT_SCOPE = 'openid profile email';
 const DEFAULT_EMAIL = 'e2e-tester@agyn.test';
 const DEFAULT_CLIENT_SECRET = 'XPKka2i9uzISrKZ95zxli8sY51BK4eTJ';
@@ -31,14 +27,6 @@ function readEnv(key: string, fallback: string): string {
     return value.trim();
   }
   return fallback;
-}
-
-function readOptionalEnv(key: string): string | null {
-  const value = process.env[key];
-  if (typeof value === 'string' && value.trim()) {
-    return value.trim();
-  }
-  return null;
 }
 
 function base64UrlEncode(buffer: Buffer): string {
@@ -55,17 +43,8 @@ function base64UrlDecode(value: string): string {
   return Buffer.from(padded, 'base64').toString('utf8');
 }
 
-function getSetCookies(headers: Headers): string[] {
-  const setCookie = (headers as HeadersWithSetCookie).getSetCookie?.();
-  if (setCookie && setCookie.length) {
-    return setCookie;
-  }
-  const fallback = headers.get('set-cookie');
-  return fallback ? [fallback] : [];
-}
-
 function storeCookies(cookieJar: Map<string, string>, headers: Headers): void {
-  for (const cookie of getSetCookies(headers)) {
+  for (const cookie of headers.getSetCookie()) {
     const [pair] = cookie.split(';');
     if (!pair) continue;
     const [name, ...valueParts] = pair.trim().split('=');
@@ -111,11 +90,10 @@ function parseTokenResponse(data: unknown): TokenResponse {
   if (typeof idToken !== 'string' || typeof accessToken !== 'string') {
     throw new Error('MockAuth token response missing tokens');
   }
-  const parsedExpires = typeof expiresIn === 'number' ? expiresIn : Number(expiresIn);
-  if (!Number.isFinite(parsedExpires)) {
+  if (typeof expiresIn !== 'number' || !Number.isFinite(expiresIn)) {
     throw new Error('MockAuth token response missing expires_in');
   }
-  return { idToken, accessToken, expiresIn: parsedExpires };
+  return { idToken, accessToken, expiresIn };
 }
 
 function decodeIdTokenClaims(idToken: string): Record<string, unknown> {
@@ -213,7 +191,7 @@ async function exchangeToken(
   redirectUri: string,
   codeVerifier: string,
   code: string,
-  clientSecret: string | null,
+  clientSecret: string,
   authMethod: ClientAuthMethod,
 ): Promise<TokenResponse> {
   const tokenUrl = `${authorityBase}/token`;
@@ -229,15 +207,9 @@ async function exchangeToken(
   });
 
   if (authMethod === 'client_secret_basic') {
-    if (!clientSecret) {
-      throw new Error('E2E_OIDC_CLIENT_SECRET is required for client_secret_basic');
-    }
     const encoded = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
     headers.authorization = `Basic ${encoded}`;
   } else if (authMethod === 'client_secret_post') {
-    if (!clientSecret) {
-      throw new Error('E2E_OIDC_CLIENT_SECRET is required for client_secret_post');
-    }
     body.set('client_secret', clientSecret);
   }
 
@@ -261,12 +233,9 @@ export async function acquireOidcTokens(): Promise<OidcTokens> {
   const redirectUri = readEnv('E2E_OIDC_REDIRECT_URI', DEFAULT_REDIRECT_URI);
   const scope = readEnv('E2E_OIDC_SCOPE', DEFAULT_SCOPE);
   const email = readEnv('E2E_OIDC_EMAIL', DEFAULT_EMAIL);
-  const clientSecret = readOptionalEnv('E2E_OIDC_CLIENT_SECRET') ?? DEFAULT_CLIENT_SECRET;
-  const authMethodValue = readEnv(
-    'E2E_OIDC_TOKEN_AUTH_METHOD',
-    clientSecret ? DEFAULT_TOKEN_AUTH_METHOD : 'none',
-  );
-  if (!['none', 'client_secret_basic', 'client_secret_post'].includes(authMethodValue)) {
+  const clientSecret = readEnv('E2E_OIDC_CLIENT_SECRET', DEFAULT_CLIENT_SECRET);
+  const authMethodValue = readEnv('E2E_OIDC_TOKEN_AUTH_METHOD', DEFAULT_TOKEN_AUTH_METHOD);
+  if (!['client_secret_basic', 'client_secret_post'].includes(authMethodValue)) {
     throw new Error(`Unsupported E2E_OIDC_TOKEN_AUTH_METHOD: ${authMethodValue}`);
   }
   const tokenAuthMethod = authMethodValue as ClientAuthMethod;
