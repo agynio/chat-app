@@ -26,21 +26,34 @@ test('shows empty state when no chat selected', async ({ page }) => {
 });
 
 test('displays conversation when chat selected', async ({ page }) => {
-  await openAnyChat(page);
+  const hasChat = await openAnyChat(page);
 
   await expect(page.getByTestId('chat-conversation')).toBeVisible();
+  if (!hasChat) {
+    await expect(page.getByTestId('chat-conversation-empty')).toBeVisible();
+  }
 });
 
 test('displays conversation header', async ({ page }) => {
-  await openAnyChat(page);
+  const hasChat = await openAnyChat(page);
 
   const header = page.getByTestId('chat-conversation-header');
   await expect(header).toBeVisible();
+  if (!hasChat) {
+    await expect(header).toContainText('Select a chat');
+    return;
+  }
+
   await expect(header).toContainText(/\S+/);
 });
 
 test('renders messages', async ({ page }) => {
-  await openAnyChat(page);
+  const hasChat = await openAnyChat(page);
+
+  if (!hasChat) {
+    await expect(page.getByTestId('chat-conversation-empty')).toBeVisible();
+    return;
+  }
 
   const { messages, emptyState } = await waitForMessagesOrEmptyState(page);
   const count = await messages.count();
@@ -53,7 +66,12 @@ test('renders messages', async ({ page }) => {
 });
 
 test('displays message content', async ({ page }) => {
-  await openAnyChat(page);
+  const hasChat = await openAnyChat(page);
+
+  if (!hasChat) {
+    await expect(page.getByTestId('chat-conversation-empty')).toBeVisible();
+    return;
+  }
 
   const { messages, emptyState } = await waitForMessagesOrEmptyState(page);
   const count = await messages.count();

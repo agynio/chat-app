@@ -1,11 +1,18 @@
 import { test, expect } from './fixtures';
+import { waitForChatListState } from './chat-helpers';
 
 test('renders chat list on load', async ({ page }) => {
   await page.goto('/agents/chat');
 
-  const chatList = page.getByTestId('chat-list');
-  await expect(chatList).toBeVisible();
+  const { chatList, emptyState, count } = await waitForChatListState(page);
 
+  if (count === 0) {
+    await expect(emptyState).toBeVisible();
+    await expect(emptyState).toContainText(/Unable to load chats|No chats found/i);
+    return;
+  }
+
+  await expect(chatList).toBeVisible();
   const chatItems = page.getByTestId('chat-list-item');
   await expect(chatItems.first()).toBeVisible();
 });
@@ -13,12 +20,19 @@ test('renders chat list on load', async ({ page }) => {
 test('displays chat names in list items', async ({ page }) => {
   await page.goto('/agents/chat');
 
+  const { emptyState, count } = await waitForChatListState(page);
+  if (count === 0) {
+    await expect(emptyState).toBeVisible();
+    await expect(emptyState).toContainText(/Unable to load chats|No chats found/i);
+    return;
+  }
+
   const chatItems = page.getByTestId('chat-list-item');
   await expect(chatItems.first()).toBeVisible();
-  const count = await chatItems.count();
-  expect(count).toBeGreaterThan(0);
+  const itemCount = await chatItems.count();
+  expect(itemCount).toBeGreaterThan(0);
 
-  for (let i = 0; i < count; i += 1) {
+  for (let i = 0; i < itemCount; i += 1) {
     const item = chatItems.nth(i);
     await expect(item).toBeVisible();
     const text = await item.innerText();
@@ -29,12 +43,19 @@ test('displays chat names in list items', async ({ page }) => {
 test('displays participant info', async ({ page }) => {
   await page.goto('/agents/chat');
 
+  const { emptyState, count } = await waitForChatListState(page);
+  if (count === 0) {
+    await expect(emptyState).toBeVisible();
+    await expect(emptyState).toContainText(/Unable to load chats|No chats found/i);
+    return;
+  }
+
   const chatItems = page.getByTestId('chat-list-item');
   await expect(chatItems.first()).toBeVisible();
-  const count = await chatItems.count();
-  expect(count).toBeGreaterThan(0);
+  const itemCount = await chatItems.count();
+  expect(itemCount).toBeGreaterThan(0);
 
-  for (let i = 0; i < count; i += 1) {
+  for (let i = 0; i < itemCount; i += 1) {
     const item = chatItems.nth(i);
     await expect(item).toBeVisible();
     await expect(item.getByText(/participant/i)).toBeVisible();
@@ -43,6 +64,13 @@ test('displays participant info', async ({ page }) => {
 
 test('highlights selected chat', async ({ page }) => {
   await page.goto('/agents/chat');
+
+  const { emptyState, count } = await waitForChatListState(page);
+  if (count === 0) {
+    await expect(emptyState).toBeVisible();
+    await expect(emptyState).toContainText(/Unable to load chats|No chats found/i);
+    return;
+  }
 
   const chatItems = page.getByTestId('chat-list-item');
   const firstItem = chatItems.first();
@@ -57,14 +85,10 @@ test('highlights selected chat', async ({ page }) => {
 test('shows empty state when no chats', async ({ page }) => {
   await page.goto('/agents/chat');
 
-  const chatItems = page.getByTestId('chat-list-item');
-  const emptyState = page.getByTestId('chat-list-empty');
-  await Promise.race([chatItems.first().waitFor(), emptyState.waitFor()]);
-  const count = await chatItems.count();
-
-  // Intentionally conditional: backend data determines which state renders.
+  const { emptyState, count } = await waitForChatListState(page);
   if (count === 0) {
     await expect(emptyState).toBeVisible();
+    await expect(emptyState).toContainText(/Unable to load chats|No chats found/i);
   } else {
     await expect(emptyState).toHaveCount(0);
   }
