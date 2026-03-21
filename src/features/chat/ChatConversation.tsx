@@ -113,7 +113,10 @@ export function ChatConversation({ chatId, chat, className = '' }: ChatConversat
       className={`flex min-h-0 flex-1 flex-col bg-white rounded-[10px] border border-[var(--agyn-border-subtle)] overflow-hidden ${className}`}
       data-testid="chat-conversation"
     >
-      <div className="px-6 py-4 border-b border-[var(--agyn-border-subtle)] bg-[var(--agyn-bg-light)]">
+      <div
+        className="px-6 py-4 border-b border-[var(--agyn-border-subtle)] bg-[var(--agyn-bg-light)]"
+        data-testid="chat-conversation-header"
+      >
         <p className="text-sm font-semibold text-[var(--agyn-dark)] truncate">{headerTitle}</p>
         <p className="text-xs text-[var(--agyn-gray)]">{headerSubtitle}</p>
       </div>
@@ -124,7 +127,10 @@ export function ChatConversation({ chatId, chat, className = '' }: ChatConversat
         className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-4"
       >
         {!chatId ? (
-          <div className="flex h-full items-center justify-center text-sm text-[var(--agyn-gray)]">
+          <div
+            className="flex h-full items-center justify-center text-sm text-[var(--agyn-gray)]"
+            data-testid="chat-conversation-empty"
+          >
             Select a chat to get started.
           </div>
         ) : null}

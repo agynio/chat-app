@@ -37,6 +37,7 @@ export function ChatInput({ onSend, disabled = false, isSending = false }: ChatI
         maxLines={6}
         disabled={disabled}
         className="text-sm"
+        data-testid="chat-input"
       />
       <Button
         size="sm"
@@ -44,6 +45,7 @@ export function ChatInput({ onSend, disabled = false, isSending = false }: ChatI
         onClick={handleSend}
         disabled={!canSend}
         className="h-9 px-3"
+        data-testid="chat-send-button"
       >
         <Send className="h-4 w-4" />
         <span className="ml-2">Send</span>
