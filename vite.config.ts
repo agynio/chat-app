@@ -5,6 +5,8 @@ import { defineConfig } from 'vite';
 import { configDefaults } from 'vitest/config';
 import { mockApiPlugin } from './vite-plugin-mock-api';
 
+const gatewayTarget = process.env.VITE_GATEWAY_URL || 'http://gateway:8080';
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss(), mockApiPlugin()],
@@ -15,12 +17,12 @@ export default defineConfig({
     allowedHosts: true,
     proxy: {
       '/socket.io': {
-        target: process.env.VITE_PROXY_TARGET || 'http://platform-server:3010',
+        target: gatewayTarget,
         changeOrigin: true,
         ws: true,
       },
-      '/apiv2': {
-        target: process.env.VITE_LLM_GATEWAY_URL || 'http://llm-gateway:8080',
+      '/api': {
+        target: gatewayTarget,
         changeOrigin: true,
       },
     },

@@ -584,7 +584,7 @@ export function mockApiPlugin(): Plugin {
         const url = new URL(req.url, 'http://localhost');
         const { pathname } = url;
         const method = req.method ?? 'GET';
-        const chatPrefix = '/apiv2/agynio.api.gateway.v1.ChatGateway/';
+        const chatPrefix = '/api/agynio.api.gateway.v1.ChatGateway/';
 
         if (pathname.startsWith(chatPrefix)) {
           if (method !== 'POST') {
