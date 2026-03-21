@@ -255,7 +255,8 @@ async function exchangeToken(
 }
 
 export async function acquireOidcTokens(): Promise<OidcTokens> {
-  const authority = readEnv('E2E_OIDC_AUTHORITY', DEFAULT_AUTHORITY).replace(/\/+$/g, '');
+  const authority = readEnv('E2E_OIDC_AUTHORITY', DEFAULT_AUTHORITY);
+  const authorityBase = authority.replace(/\/+$/g, '');
   const clientId = readEnv('E2E_OIDC_CLIENT_ID', DEFAULT_CLIENT_ID);
   const redirectUri = readEnv('E2E_OIDC_REDIRECT_URI', DEFAULT_REDIRECT_URI);
   const scope = readEnv('E2E_OIDC_SCOPE', DEFAULT_SCOPE);
@@ -275,7 +276,7 @@ export async function acquireOidcTokens(): Promise<OidcTokens> {
   const codeVerifier = base64UrlEncode(randomBytes(32));
   const codeChallenge = base64UrlEncode(createHash('sha256').update(codeVerifier).digest());
 
-  const authorizeUrl = new URL(`${authority}/authorize`);
+  const authorizeUrl = new URL(`${authorityBase}/authorize`);
   authorizeUrl.search = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
@@ -289,10 +290,10 @@ export async function acquireOidcTokens(): Promise<OidcTokens> {
 
   const cookieJar = new Map<string, string>();
   const returnTo = await fetchReturnTo(authorizeUrl.toString(), cookieJar);
-  const authorizeRedirect = await submitLogin(authority, email, returnTo, cookieJar);
+  const authorizeRedirect = await submitLogin(authorityBase, email, returnTo, cookieJar);
   const code = await fetchAuthorizationCode(authorizeRedirect, redirectUri, state, cookieJar);
   const tokenResponse = await exchangeToken(
-    authority,
+    authorityBase,
     clientId,
     redirectUri,
     codeVerifier,
@@ -313,7 +314,7 @@ export async function acquireOidcTokens(): Promise<OidcTokens> {
   };
 
   return {
-    storageKey: `oidc.user:${authority}:${clientId}`,
+    storageKey: `user:${authority}:${clientId}`,
     userJson: JSON.stringify(user),
   };
 }
