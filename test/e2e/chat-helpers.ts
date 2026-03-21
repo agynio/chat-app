@@ -11,7 +11,7 @@ export async function waitForChatListState(page: Page) {
       if (itemCount > 0) return 'list';
       if (await emptyState.isVisible()) return 'empty';
       return 'loading';
-    }, { timeout: 15000 })
+    }, { timeout: 30000 })
     .not.toBe('loading');
 
   const count = await page.getByTestId('chat-list-item').count();

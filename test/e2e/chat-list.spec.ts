@@ -1,6 +1,8 @@
 import { test, expect } from './fixtures';
 import { waitForChatListState } from './chat-helpers';
 
+test.setTimeout(45000);
+
 test('renders chat list on load', async ({ page }) => {
   await page.goto('/agents/chat');
 

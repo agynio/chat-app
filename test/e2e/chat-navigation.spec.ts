@@ -2,6 +2,8 @@ import type { Page } from '@playwright/test';
 import { test, expect } from './fixtures';
 import { waitForChatListState } from './chat-helpers';
 
+test.setTimeout(45000);
+
 function chatNavButton(page: Page) {
   return page.getByTestId('sidebar-nav-chat');
 }

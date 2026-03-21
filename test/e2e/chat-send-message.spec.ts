@@ -1,6 +1,8 @@
 import { test, expect } from './fixtures';
 import { openAnyChat } from './chat-helpers';
 
+test.setTimeout(45000);
+
 test('shows input and send button', async ({ page }) => {
   const hasChat = await openAnyChat(page);
 

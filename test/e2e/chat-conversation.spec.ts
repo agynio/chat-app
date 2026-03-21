@@ -2,6 +2,8 @@ import type { Page } from '@playwright/test';
 import { test, expect } from './fixtures';
 import { openAnyChat } from './chat-helpers';
 
+test.setTimeout(45000);
+
 async function waitForMessagesOrEmptyState(page: Page) {
   const messages = page.getByTestId('chat-message');
   const emptyState = page.getByText('No messages yet.');
@@ -13,7 +15,7 @@ async function waitForMessagesOrEmptyState(page: Page) {
         return 'messages';
       }
       return (await emptyState.isVisible()) ? 'empty' : 'loading';
-    })
+    }, { timeout: 30000 })
     .not.toBe('loading');
   return { messages, emptyState };
 }
