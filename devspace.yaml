@@ -25,6 +25,21 @@ functions:
     else
       echo "WARNING: ArgoCD Application 'chat-app' not found in argocd namespace."
     fi
+  hot_deploy_app: |-
+    echo "Hot-deploying app to cluster..."
+    POD=$(kubectl get pod -n ${APP_NAMESPACE} \
+      -l app.kubernetes.io/name=chat-app,app.kubernetes.io/instance=chat-app \
+      -o jsonpath='{.items[0].metadata.name}')
+    if [ -z "$POD" ]; then
+      echo "ERROR: chat-app pod not found"
+      exit 1
+    fi
+    if [ ! -d dist ]; then
+      echo "ERROR: dist/ directory not found — run pnpm build first"
+      exit 1
+    fi
+    kubectl cp dist/. ${APP_NAMESPACE}/${POD}:/usr/share/nginx/html/ -c chat-app
+    echo "App deployed to pod $POD"
 
 deployments:
   e2e-runner:
@@ -64,6 +79,9 @@ pipelines:
 
   test-e2e:
     run: |-
+      disable_argocd_sync
+      hot_deploy_app
+
       create_deployments e2e-runner
       start_dev e2e-runner &
       sleep 5
@@ -89,6 +107,7 @@ pipelines:
       EXIT_CODE=$?
       stop_dev e2e-runner
       purge_deployments e2e-runner
+      restore_argocd_sync
       exit $EXIT_CODE
 
 hooks:
