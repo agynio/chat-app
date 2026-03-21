@@ -314,7 +314,7 @@ export async function acquireOidcTokens(): Promise<OidcTokens> {
   };
 
   return {
-    storageKey: `user:${authority}:${clientId}`,
+    storageKey: `oidc.user:${authority}:${clientId}`,
     userJson: JSON.stringify(user),
   };
 }
