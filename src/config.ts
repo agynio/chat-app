@@ -5,8 +5,6 @@ type RuntimeConfig = {
   API_BASE_URL?: string;
   OIDC_AUTHORITY?: string;
   OIDC_CLIENT_ID?: string;
-  OIDC_REDIRECT_URI?: string;
-  OIDC_POST_LOGOUT_REDIRECT_URI?: string;
   OIDC_SCOPE?: string;
 };
 
@@ -14,8 +12,6 @@ type ViteEnv = {
   VITE_API_BASE_URL?: string;
   VITE_OIDC_AUTHORITY?: string;
   VITE_OIDC_CLIENT_ID?: string;
-  VITE_OIDC_REDIRECT_URI?: string;
-  VITE_OIDC_POST_LOGOUT_REDIRECT_URI?: string;
   VITE_OIDC_SCOPE?: string;
 };
 
@@ -23,8 +19,6 @@ type OidcConfigEnabled = {
   enabled: true;
   authority: string;
   clientId: string;
-  redirectUri: string;
-  postLogoutRedirectUri: string;
   scope: string;
 };
 
@@ -88,11 +82,6 @@ export const oidcConfig: OidcConfig = oidcEnabled
       enabled: true,
       authority: requireConfig('OIDC_AUTHORITY', rawOidcAuthority),
       clientId: requireConfig('OIDC_CLIENT_ID', readConfigValue('OIDC_CLIENT_ID', 'VITE_OIDC_CLIENT_ID')),
-      redirectUri: requireConfig('OIDC_REDIRECT_URI', readConfigValue('OIDC_REDIRECT_URI', 'VITE_OIDC_REDIRECT_URI')),
-      postLogoutRedirectUri: requireConfig(
-        'OIDC_POST_LOGOUT_REDIRECT_URI',
-        readConfigValue('OIDC_POST_LOGOUT_REDIRECT_URI', 'VITE_OIDC_POST_LOGOUT_REDIRECT_URI'),
-      ),
       scope: requireConfig('OIDC_SCOPE', readConfigValue('OIDC_SCOPE', 'VITE_OIDC_SCOPE')),
     }
   : { enabled: false };
