@@ -23,8 +23,8 @@ test.describe('real two-user chat conversation', () => {
       acquireAccessToken(USER_B_EMAIL),
     ]);
     const [identityIdA, identityIdB] = await Promise.all([
-      resolveIdentityId(BASE_URL, tokensA.accessToken),
-      resolveIdentityId(BASE_URL, tokensB.accessToken),
+      resolveIdentityId(tokensA.accessToken),
+      resolveIdentityId(tokensB.accessToken),
     ]);
     userA = { accessToken: tokensA.accessToken, identityId: identityIdA, email: tokensA.email };
     userB = { accessToken: tokensB.accessToken, identityId: identityIdB, email: tokensB.email };

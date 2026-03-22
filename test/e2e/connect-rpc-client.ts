@@ -70,22 +70,31 @@ export function createChatClient(baseUrl: string, accessToken: string): ChatClie
   };
 }
 
-export async function resolveIdentityId(baseUrl: string, accessToken: string): Promise<string> {
-  const svc = 'agynio.api.gateway.v1.UsersGateway';
-  const createResp = await connectPost<{ name: string }, { token: { id: string; identityId: string } }>(
-    baseUrl,
-    svc,
-    'CreateAPIToken',
-    accessToken,
-    { name: `e2e-identity-probe-${Date.now()}` },
-  );
+type MeResponse = {
+  identity_id: string;
+  identity_type: string;
+};
 
-  const identityId = createResp.token.identityId;
-  const tokenId = createResp.token.id;
-
-  await connectPost<{ tokenId: string }, Record<string, never>>(baseUrl, svc, 'RevokeAPIToken', accessToken, {
-    tokenId,
+/**
+ * Resolve the caller's platform identity_id via GET /me on the Gateway.
+ * Also triggers first-login user provisioning if needed.
+ * Uses the internal gateway service URL to avoid ingress path-routing issues.
+ */
+export async function resolveIdentityId(accessToken: string): Promise<string> {
+  const gatewayBaseUrl = process.env.E2E_GATEWAY_URL ?? 'http://gateway-gateway:8080';
+  const response = await fetch(`${gatewayBaseUrl}/me`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
   });
-
-  return identityId;
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`GET /me failed: ${response.status} ${body}`);
+  }
+  const data = (await response.json()) as MeResponse;
+  if (!data.identity_id) {
+    throw new Error('GET /me response missing identity_id');
+  }
+  return data.identity_id;
 }
