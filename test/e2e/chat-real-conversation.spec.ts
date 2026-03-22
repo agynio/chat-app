@@ -5,8 +5,8 @@ import { createChatClient, resolveIdentityId, type ChatClient } from './connect-
 const BASE_URL = process.env.E2E_BASE_URL;
 if (!BASE_URL) throw new Error('E2E_BASE_URL is required');
 
-const USER_A_EMAIL = 'e2e-chat-user-a@agyn.test';
-const USER_B_EMAIL = 'e2e-chat-user-b@agyn.test';
+const USER_A_EMAIL = process.env.E2E_OIDC_EMAIL_A ?? 'e2e-tester@agyn.test';
+const USER_B_EMAIL = process.env.E2E_OIDC_EMAIL_B ?? 'e2e-tester-b@agyn.test';
 
 test.describe('real two-user chat conversation', () => {
   test.describe.configure({ mode: 'serial' });

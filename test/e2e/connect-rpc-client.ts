@@ -1,5 +1,3 @@
-type ConnectError = { code: string; message: string };
-
 async function connectPost<TReq, TRes>(
   baseUrl: string,
   service: string,
@@ -21,12 +19,8 @@ async function connectPost<TReq, TRes>(
     const text = await response.text();
     throw new Error(`${service}/${method} HTTP ${response.status}: ${text}`);
   }
-  const data = (await response.json()) as TRes | ConnectError;
-  if (data && typeof data === 'object' && 'code' in data && typeof (data as ConnectError).code === 'string') {
-    const err = data as ConnectError;
-    throw new Error(`${service}/${method} ConnectRPC error: ${err.code} - ${err.message}`);
-  }
-  return data as TRes;
+  const data = (await response.json()) as TRes;
+  return data;
 }
 
 export type ChatClient = {
