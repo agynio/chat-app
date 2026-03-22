@@ -3,7 +3,6 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { TemplatesProvider as RuntimeTemplatesProvider } from './lib/graph/templates.provider';
 import { TooltipProvider } from './components/ui/tooltip';
 import { RootLayout } from './layout/RootLayout';
-import { AgentsChat } from './pages/AgentsChat';
 import { AgentsThreads } from './pages/AgentsThreads';
 
 const queryClient = new QueryClient();
@@ -18,8 +17,6 @@ function App() {
 
             <Route element={<RootLayout />}>
               <Route path="/agents" element={<Navigate to="/agents/threads" replace />} />
-              <Route path="/agents/chat" element={<AgentsChat />} />
-              <Route path="/agents/chat/:chatId" element={<AgentsChat />} />
               <Route path="/agents/threads" element={<AgentsThreads />} />
               <Route path="/agents/threads/:threadId" element={<AgentsThreads />} />
             </Route>
