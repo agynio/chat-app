@@ -1,21 +1,29 @@
 import type { Page } from '@playwright/test';
 import { test as base, expect } from '@playwright/test';
-import { acquireOidcTokens } from './auth-helper';
 export { expect };
 
-async function injectAuthAndLoad(page: Page) {
-  const { storageKey, userJson } = await acquireOidcTokens();
+const defaultEmail = 'e2e-tester@agyn.test';
+const expectedEmail = process.env.E2E_OIDC_EMAIL ?? defaultEmail;
 
-  await page.addInitScript(
-    ({ key, value }) => {
-      window.sessionStorage.setItem(key, value);
-    },
-    { key: storageKey, value: userJson },
-  );
-
+async function signInAndLoad(page: Page) {
   await page.goto('/');
-  await page.waitForURL(/\/agents\/threads/, { timeout: 30000 });
-  await page.getByTestId('threads-list').waitFor();
+
+  await page.waitForURL(/mockauth\.dev\/r\/.*\/oidc\/login/);
+
+  const strategyTabs = page.getByTestId('login-strategy-tabs');
+  if (await strategyTabs.isVisible()) {
+    await strategyTabs.getByRole('tab', { name: 'Email' }).click();
+  }
+
+  const emailInput = page.getByTestId('login-email-input');
+  await expect(emailInput).toBeVisible();
+  await emailInput.fill(expectedEmail);
+
+  await page.getByRole('button', { name: 'Continue' }).click();
+
+  await page.waitForURL(/\/agents\/threads/);
+  const threadsList = page.getByTestId('threads-list');
+  await expect(threadsList).toBeVisible();
 }
 
 export const test = base.extend({
@@ -30,7 +38,7 @@ export const test = base.extend({
         `[request-failed] ${request.url()} — ${request.failure()?.errorText}`,
       );
     });
-    await injectAuthAndLoad(page);
+    await signInAndLoad(page);
     await runPage(page);
   },
 });
