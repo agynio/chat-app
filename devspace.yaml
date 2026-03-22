@@ -93,10 +93,10 @@ pipelines:
         -- bash -c '
           echo "Waiting for file sync..."
           for i in $(seq 1 60); do
-            [ -f /opt/app/data/package.json ] && [ -f /opt/app/data/pnpm-lock.yaml ] && [ -f /opt/app/data/test/e2e/fixtures.ts ] && [ -f /opt/app/data/test/e2e/chat-fixtures.ts ] && [ -f /opt/app/data/test/e2e/sign-in-helper.ts ] && [ -f /opt/app/data/test/e2e/sign-in.spec.ts ] && break
+            [ -f /opt/app/data/package.json ] && [ -f /opt/app/data/pnpm-lock.yaml ] && [ -f /opt/app/data/test/e2e/fixtures.ts ] && [ -f /opt/app/data/test/e2e/sign-in-helper.ts ] && [ -f /opt/app/data/test/e2e/sign-in.spec.ts ] && [ -f /opt/app/data/test/e2e/connect-rpc-client.ts ] && [ -f /opt/app/data/test/e2e/chat-real-conversation.spec.ts ] && break
             sleep 2
           done
-          if [ ! -f /opt/app/data/package.json ] || [ ! -f /opt/app/data/pnpm-lock.yaml ] || [ ! -f /opt/app/data/test/e2e/fixtures.ts ] || [ ! -f /opt/app/data/test/e2e/chat-fixtures.ts ] || [ ! -f /opt/app/data/test/e2e/sign-in-helper.ts ] || [ ! -f /opt/app/data/test/e2e/sign-in.spec.ts ]; then
+          if [ ! -f /opt/app/data/package.json ] || [ ! -f /opt/app/data/pnpm-lock.yaml ] || [ ! -f /opt/app/data/test/e2e/fixtures.ts ] || [ ! -f /opt/app/data/test/e2e/sign-in-helper.ts ] || [ ! -f /opt/app/data/test/e2e/sign-in.spec.ts ] || [ ! -f /opt/app/data/test/e2e/connect-rpc-client.ts ] || [ ! -f /opt/app/data/test/e2e/chat-real-conversation.spec.ts ]; then
             echo "ERROR: File sync timed out (package.json, pnpm-lock.yaml, or test/e2e files not found after 120s)"
             exit 1
           fi
