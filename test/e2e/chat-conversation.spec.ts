@@ -1,3 +1,4 @@
+import { argosScreenshot } from '@argos-ci/playwright';
 import { test, expect } from './chat-fixtures';
 import { getChatTitle, getParticipantLabel, openChatFromList, waitForChatListState } from './chat-helpers';
 
@@ -10,6 +11,7 @@ test('shows empty state when no chat selected', async ({ page }) => {
   const emptyState = page.getByTestId('chat-conversation-empty');
   await expect(emptyState).toBeVisible();
   await expect(emptyState).toContainText(/Select a chat/i);
+  await argosScreenshot(page, 'chat-conversation-empty');
 });
 
 test('renders conversation header for selected chat', async ({ page, chatSeed }) => {
@@ -20,6 +22,7 @@ test('renders conversation header for selected chat', async ({ page, chatSeed })
   await expect(header).toBeVisible();
   await expect(header).toContainText(getChatTitle(chat, chatSeed.currentUserId));
   await expect(header).toContainText(getParticipantLabel(chat));
+  await argosScreenshot(page, 'chat-conversation-header');
 });
 
 test('renders messages for selected chat', async ({ page, chatSeed }) => {
@@ -31,4 +34,5 @@ test('renders messages for selected chat', async ({ page, chatSeed }) => {
   for (const message of messages) {
     await expect(page.getByText(message.body)).toBeVisible();
   }
+  await argosScreenshot(page, 'chat-conversation-messages');
 });

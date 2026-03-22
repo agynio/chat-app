@@ -1,3 +1,4 @@
+import { argosScreenshot } from '@argos-ci/playwright';
 import { test, expect } from '@playwright/test';
 import { signInViaMockAuth } from './sign-in-helper';
 
@@ -12,6 +13,7 @@ test('signs in via mockauth redirect flow', async ({ page }) => {
       await expect(loginHeading).toContainText('Log in to');
     },
   });
+  await argosScreenshot(page, 'sign-in-complete');
 
   const storedUser = await page.evaluate(() => {
     let storageKey: string | null = null;

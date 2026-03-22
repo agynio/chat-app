@@ -111,6 +111,7 @@ jobs:
         env:
           KUBECONFIG: ${{ github.workspace }}/bootstrap/stacks/k8s/.kube/agyn-local-kubeconfig.yaml
           PR_IMAGE: ${{ env.PR_IMAGE }}
+          ARGOS_TOKEN: ${{ secrets.ARGOS_TOKEN }}
         run: devspace run-pipeline test-e2e
 
       - name: Upload Playwright report
