@@ -1,3 +1,6 @@
+// Allow self-signed certificates in e2e test environments (in-cluster TLS)
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
 async function connectPost<TReq, TRes>(
   baseUrl: string,
   service: string,
