@@ -1,3 +1,4 @@
+import { argosScreenshot } from '@argos-ci/playwright';
 import { test, expect } from './fixtures';
 
 test('creates a new thread', async ({ page }) => {
@@ -28,4 +29,5 @@ test('creates a new thread', async ({ page }) => {
 
   const threadsList = page.getByTestId('threads-list');
   await expect(threadsList.getByText(message)).toBeVisible();
+  await argosScreenshot(page, 'thread-create-complete');
 });

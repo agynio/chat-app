@@ -1,3 +1,4 @@
+import { argosScreenshot } from '@argos-ci/playwright';
 import { test, expect } from './chat-fixtures';
 import { openChatFromList } from './chat-helpers';
 
@@ -12,6 +13,7 @@ test('enables input for selected chat', async ({ page, chatSeed }) => {
 
   await expect(input).toBeEnabled();
   await expect(sendButton).toBeDisabled();
+  await argosScreenshot(page, 'chat-send-input-ready');
 });
 
 test('allows typing and enables send', async ({ page, chatSeed }) => {
@@ -23,6 +25,7 @@ test('allows typing and enables send', async ({ page, chatSeed }) => {
   await input.fill('Following up on the demo notes.');
 
   await expect(sendButton).toBeEnabled();
+  await argosScreenshot(page, 'chat-send-input-filled');
 });
 
 test('sends message and renders it', async ({ page, chatSeed }) => {
@@ -39,4 +42,5 @@ test('sends message and renders it', async ({ page, chatSeed }) => {
 
   await expect(input).toHaveValue('');
   await expect(page.getByText(messageText)).toBeVisible();
+  await argosScreenshot(page, 'chat-send-message-sent');
 });

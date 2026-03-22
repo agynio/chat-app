@@ -1,3 +1,4 @@
+import { argosScreenshot } from '@argos-ci/playwright';
 import { test, emptyTest, expect } from './chat-fixtures';
 import { getChatTitle, getParticipantLabel, waitForChatListState } from './chat-helpers';
 
@@ -10,6 +11,7 @@ test('renders chat list items', async ({ page, chatSeed }) => {
   await expect(list).toBeVisible();
   expect(count).toBe(chatSeed.chats.length);
   await expect(page.getByText(`${chatSeed.chats.length} conversations`)).toBeVisible();
+  await argosScreenshot(page, 'chat-list-items');
 });
 
 test('displays chat participant names', async ({ page, chatSeed }) => {
@@ -20,6 +22,7 @@ test('displays chat participant names', async ({ page, chatSeed }) => {
     const title = getChatTitle(chat, chatSeed.currentUserId);
     await expect(page.getByTestId('chat-list-item').filter({ hasText: title })).toBeVisible();
   }
+  await argosScreenshot(page, 'chat-list-participant-names');
 });
 
 test('shows participant counts for chats', async ({ page, chatSeed }) => {
@@ -31,6 +34,7 @@ test('shows participant counts for chats', async ({ page, chatSeed }) => {
   const chatItem = page.getByTestId('chat-list-item').filter({ hasText: title }).first();
   await expect(chatItem).toBeVisible();
   await expect(chatItem).toContainText(getParticipantLabel(chat));
+  await argosScreenshot(page, 'chat-list-participant-counts');
 });
 
 test('highlights selected chat', async ({ page, chatSeed }) => {
@@ -46,6 +50,7 @@ test('highlights selected chat', async ({ page, chatSeed }) => {
   await expect(page).toHaveURL(new RegExp(`/agents/chat/${chat.id}$`));
   const wrapper = chatItem.locator('..');
   await expect(wrapper.getByTestId('chat-list-item-selected-indicator')).toBeVisible();
+  await argosScreenshot(page, 'chat-list-selected');
 });
 
 emptyTest('shows empty state when no chats', async ({ page }) => {
@@ -55,4 +60,5 @@ emptyTest('shows empty state when no chats', async ({ page }) => {
   expect(count).toBe(0);
   await expect(emptyState).toBeVisible();
   await expect(emptyState).toContainText(/No chats found/i);
+  await argosScreenshot(page, 'chat-list-empty');
 });

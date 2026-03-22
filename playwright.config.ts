@@ -1,3 +1,4 @@
+import { createArgosReporterOptions } from '@argos-ci/playwright/reporter';
 import { defineConfig, devices } from '@playwright/test';
 
 const BASE_URL = process.env.E2E_BASE_URL;
@@ -15,7 +16,16 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   retries: 1,
   workers: 2,
-  reporter: [['list'], ['html', { open: 'never' }]],
+  reporter: [
+    process.env.CI ? ['dot'] : ['list'],
+    ['html', { open: 'never' }],
+    [
+      '@argos-ci/playwright/reporter',
+      createArgosReporterOptions({
+        uploadToArgos: Boolean(process.env.CI),
+      }),
+    ],
+  ],
   use: {
     baseURL: BASE_URL,
     ignoreHTTPSErrors: true,
