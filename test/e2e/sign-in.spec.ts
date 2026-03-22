@@ -1,32 +1,17 @@
 import { test, expect } from '@playwright/test';
+import { signInViaMockAuth } from './sign-in-helper';
 
 const defaultEmail = 'e2e-tester@agyn.test';
 const expectedEmail = process.env.E2E_OIDC_EMAIL ?? defaultEmail;
 
 test('signs in via mockauth redirect flow', async ({ page }) => {
   test.setTimeout(60_000);
-  await page.goto('/');
-
-  await page.waitForURL(/mockauth\.dev\/r\/.*\/oidc\/login/);
-
-  const loginHeading = page.getByRole('heading', { level: 1 });
-  await expect(loginHeading).toContainText('Log in to');
-
-  const strategyTabs = page.getByTestId('login-strategy-tabs');
-  if (await strategyTabs.isVisible()) {
-    await strategyTabs.getByRole('tab', { name: 'Email' }).click();
-  }
-
-  const emailInput = page.getByTestId('login-email-input');
-  await expect(emailInput).toBeVisible();
-  await emailInput.fill(expectedEmail);
-
-  await page.getByRole('button', { name: 'Continue' }).click();
-
-  await page.waitForURL(/\/agents\/threads/);
-
-  const threadsList = page.getByTestId('threads-list');
-  await expect(threadsList).toBeVisible();
+  await signInViaMockAuth(page, expectedEmail, {
+    onLoginPage: async (loginPage) => {
+      const loginHeading = loginPage.getByRole('heading', { level: 1 });
+      await expect(loginHeading).toContainText('Log in to');
+    },
+  });
 
   const storedUser = await page.evaluate(() => {
     let storageKey: string | null = null;
