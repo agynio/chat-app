@@ -5,8 +5,8 @@ export const userManager = oidcConfig.enabled
   ? new UserManager({
       authority: oidcConfig.authority,
       client_id: oidcConfig.clientId,
-      redirect_uri: oidcConfig.redirectUri,
-      post_logout_redirect_uri: oidcConfig.postLogoutRedirectUri,
+      redirect_uri: `${window.location.origin}/callback`,
+      post_logout_redirect_uri: window.location.origin,
       scope: oidcConfig.scope,
       response_type: 'code',
       userStore: new WebStorageStateStore({ store: window.sessionStorage }),

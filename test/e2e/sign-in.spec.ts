@@ -4,6 +4,7 @@ const defaultEmail = 'e2e-tester@agyn.test';
 const expectedEmail = process.env.E2E_OIDC_EMAIL ?? defaultEmail;
 
 test('signs in via mockauth redirect flow', async ({ page }) => {
+  test.setTimeout(60_000);
   await page.goto('/');
 
   await page.waitForURL(/mockauth\.dev\/r\/.*\/oidc\/login/);
