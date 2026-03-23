@@ -1,11 +1,12 @@
-import { test, expect } from './multi-user-fixtures';
-import { createChat, sendChatMessage } from './chat-api';
+import { test, expect, USER_B_EMAIL } from './multi-user-fixtures';
+import { createChat, resolveUserId, sendChatMessage } from './chat-api';
 
 test('two users exchange messages in a shared chat', async ({ userAPage, userBPage }) => {
   const messageFromA = `Hello from User A ${Date.now()}`;
   const messageFromB = `Reply from User B ${Date.now()}`;
 
-  const chatId = await createChat(userAPage.context());
+  const userBId = await resolveUserId(userBPage, USER_B_EMAIL);
+  const chatId = await createChat(userAPage.context(), userBId);
   await sendChatMessage(userAPage.context(), chatId, messageFromA);
 
   await userAPage.goto(`/chats/${chatId}`);
