@@ -6,11 +6,11 @@ import type { NodeStatusEvent, ReminderCountEvent } from './types';
 
 // Strictly typed server-to-client socket events (listener signatures)
 type NodeStateEvent = { nodeId: string; state: Record<string, unknown>; updatedAt: string };
-type ThreadSummary = { id: string; alias: string; summary: string | null; status: 'open' | 'closed'; createdAt: string; parentId?: string | null };
+type ConversationSummary = { id: string; alias: string; summary: string | null; status: 'open' | 'closed'; createdAt: string; parentId?: string | null };
 type MessageSummary = { id: string; kind: 'user' | 'assistant' | 'system' | 'tool'; text: string | null; source: unknown; createdAt: string; runId?: string };
 type RunSummary = {
   id: string;
-  threadId?: string;
+  conversationId?: string;
   status: 'running' | 'finished' | 'terminated';
   createdAt: string;
   updatedAt: string;
@@ -19,11 +19,11 @@ interface ServerToClientEvents {
   node_status: (payload: NodeStatusEvent) => void;
   node_state: (payload: NodeStateEvent) => void;
   node_reminder_count: (payload: ReminderCountEvent) => void;
-  thread_created: (payload: { thread: ThreadSummary }) => void;
-  thread_updated: (payload: { thread: ThreadSummary }) => void;
-  thread_activity_changed: (payload: { threadId: string; activity: 'working' | 'waiting' | 'idle' }) => void;
-  thread_reminders_count: (payload: { threadId: string; remindersCount: number }) => void;
-  message_created: (payload: { threadId: string; message: MessageSummary }) => void;
+  conversation_created: (payload: { conversation: ConversationSummary }) => void;
+  conversation_updated: (payload: { conversation: ConversationSummary }) => void;
+  conversation_activity_changed: (payload: { conversationId: string; activity: 'working' | 'waiting' | 'idle' }) => void;
+  conversation_reminders_count: (payload: { conversationId: string; remindersCount: number }) => void;
+  message_created: (payload: { conversationId: string; message: MessageSummary }) => void;
   run_status_changed: (payload: RunStatusChangedPayload) => void;
 }
 // Client-to-server emits: subscribe to rooms
@@ -33,12 +33,12 @@ interface ClientToServerEvents { subscribe: (payload: SubscribePayload) => void 
 type Listener = (ev: NodeStatusEvent) => void;
 type StateListener = (ev: { nodeId: string; state: Record<string, unknown>; updatedAt: string }) => void;
 type ReminderListener = (ev: ReminderCountEvent) => void;
-type ThreadCreatedPayload = { thread: ThreadSummary };
-type ThreadUpdatedPayload = { thread: ThreadSummary };
-type ThreadActivityPayload = { threadId: string; activity: 'working' | 'waiting' | 'idle' };
-type ThreadRemindersPayload = { threadId: string; remindersCount: number };
-type MessageCreatedPayload = { message: MessageSummary; threadId: string };
-type RunStatusChangedPayload = { threadId: string; run: RunSummary };
+type ConversationCreatedPayload = { conversation: ConversationSummary };
+type ConversationUpdatedPayload = { conversation: ConversationSummary };
+type ConversationActivityPayload = { conversationId: string; activity: 'working' | 'waiting' | 'idle' };
+type ConversationRemindersPayload = { conversationId: string; remindersCount: number };
+type MessageCreatedPayload = { message: MessageSummary; conversationId: string };
+type RunStatusChangedPayload = { conversationId: string; run: RunSummary };
 
 // TODO: restore production socket connections when backend is available.
 const socketsEnabled = !import.meta.env.PROD;
@@ -49,10 +49,10 @@ class GraphSocket {
   private listeners = new Map<string, Set<Listener>>();
   private stateListeners = new Map<string, Set<StateListener>>();
   private reminderListeners = new Map<string, Set<ReminderListener>>();
-  private threadCreatedListeners = new Set<(payload: ThreadCreatedPayload) => void>();
-  private threadUpdatedListeners = new Set<(payload: ThreadUpdatedPayload) => void>();
-  private threadActivityListeners = new Set<(payload: ThreadActivityPayload) => void>();
-  private threadRemindersListeners = new Set<(payload: ThreadRemindersPayload) => void>();
+  private conversationCreatedListeners = new Set<(payload: ConversationCreatedPayload) => void>();
+  private conversationUpdatedListeners = new Set<(payload: ConversationUpdatedPayload) => void>();
+  private conversationActivityListeners = new Set<(payload: ConversationActivityPayload) => void>();
+  private conversationRemindersListeners = new Set<(payload: ConversationRemindersPayload) => void>();
   private messageCreatedListeners = new Set<(payload: MessageCreatedPayload) => void>();
   private runStatusListeners = new Set<(payload: RunStatusChangedPayload) => void>();
   private subscribedRooms = new Set<string>();
@@ -148,30 +148,30 @@ class GraphSocket {
     };
     socket.on('node_reminder_count', handleNodeReminderCount);
     this.socketCleanup.push(() => socket.off('node_reminder_count', handleNodeReminderCount));
-    // Threads events
-    const handleThreadCreated: ServerToClientEvents['thread_created'] = (payload) => {
-      for (const fn of this.threadCreatedListeners) fn(payload);
+    // Conversation events
+    const handleConversationCreated: ServerToClientEvents['conversation_created'] = (payload) => {
+      for (const fn of this.conversationCreatedListeners) fn(payload);
     };
-    socket.on('thread_created', handleThreadCreated);
-    this.socketCleanup.push(() => socket.off('thread_created', handleThreadCreated));
+    socket.on('conversation_created', handleConversationCreated);
+    this.socketCleanup.push(() => socket.off('conversation_created', handleConversationCreated));
 
-    const handleThreadUpdated: ServerToClientEvents['thread_updated'] = (payload) => {
-      for (const fn of this.threadUpdatedListeners) fn(payload);
+    const handleConversationUpdated: ServerToClientEvents['conversation_updated'] = (payload) => {
+      for (const fn of this.conversationUpdatedListeners) fn(payload);
     };
-    socket.on('thread_updated', handleThreadUpdated);
-    this.socketCleanup.push(() => socket.off('thread_updated', handleThreadUpdated));
+    socket.on('conversation_updated', handleConversationUpdated);
+    this.socketCleanup.push(() => socket.off('conversation_updated', handleConversationUpdated));
 
-    const handleThreadActivityChanged: ServerToClientEvents['thread_activity_changed'] = (payload) => {
-      for (const fn of this.threadActivityListeners) fn(payload);
+    const handleConversationActivityChanged: ServerToClientEvents['conversation_activity_changed'] = (payload) => {
+      for (const fn of this.conversationActivityListeners) fn(payload);
     };
-    socket.on('thread_activity_changed', handleThreadActivityChanged);
-    this.socketCleanup.push(() => socket.off('thread_activity_changed', handleThreadActivityChanged));
+    socket.on('conversation_activity_changed', handleConversationActivityChanged);
+    this.socketCleanup.push(() => socket.off('conversation_activity_changed', handleConversationActivityChanged));
 
-    const handleThreadRemindersCount: ServerToClientEvents['thread_reminders_count'] = (payload) => {
-      for (const fn of this.threadRemindersListeners) fn(payload);
+    const handleConversationRemindersCount: ServerToClientEvents['conversation_reminders_count'] = (payload) => {
+      for (const fn of this.conversationRemindersListeners) fn(payload);
     };
-    socket.on('thread_reminders_count', handleThreadRemindersCount);
-    this.socketCleanup.push(() => socket.off('thread_reminders_count', handleThreadRemindersCount));
+    socket.on('conversation_reminders_count', handleConversationRemindersCount);
+    this.socketCleanup.push(() => socket.off('conversation_reminders_count', handleConversationRemindersCount));
 
     const handleMessageCreated: ServerToClientEvents['message_created'] = (payload) => {
       for (const fn of this.messageCreatedListeners) fn(payload);
@@ -265,10 +265,10 @@ class GraphSocket {
     this.listeners.clear();
     this.stateListeners.clear();
     this.reminderListeners.clear();
-    this.threadCreatedListeners.clear();
-    this.threadUpdatedListeners.clear();
-    this.threadActivityListeners.clear();
-    this.threadRemindersListeners.clear();
+    this.conversationCreatedListeners.clear();
+    this.conversationUpdatedListeners.clear();
+    this.conversationActivityListeners.clear();
+    this.conversationRemindersListeners.clear();
     this.messageCreatedListeners.clear();
     this.runStatusListeners.clear();
     this.connectCallbacks.clear();
@@ -276,29 +276,29 @@ class GraphSocket {
     this.disconnectCallbacks.clear();
   }
 
-  // Threads listeners
-  onThreadCreated(cb: (payload: ThreadCreatedPayload) => void) {
-    this.threadCreatedListeners.add(cb);
+  // Conversation listeners
+  onConversationCreated(cb: (payload: ConversationCreatedPayload) => void) {
+    this.conversationCreatedListeners.add(cb);
     return () => {
-      this.threadCreatedListeners.delete(cb);
+      this.conversationCreatedListeners.delete(cb);
     };
   }
-  onThreadUpdated(cb: (payload: ThreadUpdatedPayload) => void) {
-    this.threadUpdatedListeners.add(cb);
+  onConversationUpdated(cb: (payload: ConversationUpdatedPayload) => void) {
+    this.conversationUpdatedListeners.add(cb);
     return () => {
-      this.threadUpdatedListeners.delete(cb);
+      this.conversationUpdatedListeners.delete(cb);
     };
   }
-  onThreadActivityChanged(cb: (payload: ThreadActivityPayload) => void) {
-    this.threadActivityListeners.add(cb);
+  onConversationActivityChanged(cb: (payload: ConversationActivityPayload) => void) {
+    this.conversationActivityListeners.add(cb);
     return () => {
-      this.threadActivityListeners.delete(cb);
+      this.conversationActivityListeners.delete(cb);
     };
   }
-  onThreadRemindersCount(cb: (payload: ThreadRemindersPayload) => void) {
-    this.threadRemindersListeners.add(cb);
+  onConversationRemindersCount(cb: (payload: ConversationRemindersPayload) => void) {
+    this.conversationRemindersListeners.add(cb);
     return () => {
-      this.threadRemindersListeners.delete(cb);
+      this.conversationRemindersListeners.delete(cb);
     };
   }
   onMessageCreated(cb: (payload: MessageCreatedPayload) => void) {

@@ -1,6 +1,6 @@
 # Chat App
 
-The Chat application provides the conversational thread interface for the Agyn platform.
+The Chat application provides the conversation interface for the Agyn platform.
 
 Architecture: [Chat](https://github.com/agynio/architecture/blob/main/architecture/chat.md)
 

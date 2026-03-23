@@ -3,8 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { TemplatesProvider as RuntimeTemplatesProvider } from './lib/graph/templates.provider';
 import { TooltipProvider } from './components/ui/tooltip';
 import { RootLayout } from './layout/RootLayout';
-import { AgentsChat } from './pages/AgentsChat';
-import { AgentsThreads } from './pages/AgentsThreads';
+import { Conversations } from './pages/Conversations';
 
 const queryClient = new QueryClient();
 
@@ -14,17 +13,14 @@ function App() {
       <RuntimeTemplatesProvider>
         <TooltipProvider delayDuration={200}>
           <Routes>
-            <Route path="/" element={<Navigate to="/agents/threads" replace />} />
+            <Route path="/" element={<Navigate to="/conversations" replace />} />
 
             <Route element={<RootLayout />}>
-              <Route path="/agents" element={<Navigate to="/agents/threads" replace />} />
-              <Route path="/agents/chat" element={<AgentsChat />} />
-              <Route path="/agents/chat/:chatId" element={<AgentsChat />} />
-              <Route path="/agents/threads" element={<AgentsThreads />} />
-              <Route path="/agents/threads/:threadId" element={<AgentsThreads />} />
+              <Route path="/conversations" element={<Conversations />} />
+              <Route path="/conversations/:conversationId" element={<Conversations />} />
             </Route>
 
-            <Route path="*" element={<Navigate to="/agents/threads" replace />} />
+            <Route path="*" element={<Navigate to="/conversations" replace />} />
           </Routes>
         </TooltipProvider>
       </RuntimeTemplatesProvider>

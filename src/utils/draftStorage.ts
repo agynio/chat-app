@@ -1,6 +1,6 @@
-const STORAGE_PREFIX = 'ui.draft.threads';
+const STORAGE_PREFIX = 'ui.draft.conversations';
 const STORAGE_VERSION = 1;
-export const THREAD_MESSAGE_MAX_LENGTH = 100000;
+export const CONVERSATION_MESSAGE_MAX_LENGTH = 100000;
 
 type DraftRecord = {
   version: number;
@@ -18,19 +18,19 @@ function resolveStorage(): Storage | null {
   }
 }
 
-export function makeDraftKey(threadId: string, userEmail?: string | null): string {
-  const normalizedId = threadId ?? '';
+export function makeDraftKey(conversationId: string, userEmail?: string | null): string {
+  const normalizedId = conversationId ?? '';
   const normalizedEmail = typeof userEmail === 'string' && userEmail.trim().length > 0 ? userEmail : null;
   const base = `${STORAGE_PREFIX}.${normalizedId}`;
   return normalizedEmail ? `${base}::user::${normalizedEmail}` : base;
 }
 
-export function readDraft(threadId: string, userEmail?: string | null): { text: string; updatedAt: string; userEmail: string | null } | null {
-  if (!threadId) return null;
+export function readDraft(conversationId: string, userEmail?: string | null): { text: string; updatedAt: string; userEmail: string | null } | null {
+  if (!conversationId) return null;
   const storage = resolveStorage();
   if (!storage) return null;
   try {
-    const raw = storage.getItem(makeDraftKey(threadId, userEmail));
+    const raw = storage.getItem(makeDraftKey(conversationId, userEmail));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as DraftRecord | null;
     if (!parsed || typeof parsed !== 'object') return null;
@@ -47,13 +47,13 @@ export function readDraft(threadId: string, userEmail?: string | null): { text: 
   }
 }
 
-export function writeDraft(threadId: string, text: string, userEmail?: string | null): void {
-  if (!threadId) return;
+export function writeDraft(conversationId: string, text: string, userEmail?: string | null): void {
+  if (!conversationId) return;
   const storage = resolveStorage();
   if (!storage) return;
   const trimmed = text.trim();
   if (trimmed.length === 0) {
-    clearDraft(threadId, userEmail);
+    clearDraft(conversationId, userEmail);
     return;
   }
   const payload: DraftRecord = {
@@ -63,18 +63,18 @@ export function writeDraft(threadId: string, text: string, userEmail?: string | 
     userEmail: typeof userEmail === 'string' && userEmail.trim().length > 0 ? userEmail : null,
   };
   try {
-    storage.setItem(makeDraftKey(threadId, userEmail), JSON.stringify(payload));
+    storage.setItem(makeDraftKey(conversationId, userEmail), JSON.stringify(payload));
   } catch (_error) {
     // Swallow storage errors (quota, permissions, etc.)
   }
 }
 
-export function clearDraft(threadId: string, userEmail?: string | null): void {
-  if (!threadId) return;
+export function clearDraft(conversationId: string, userEmail?: string | null): void {
+  if (!conversationId) return;
   const storage = resolveStorage();
   if (!storage) return;
   try {
-    storage.removeItem(makeDraftKey(threadId, userEmail));
+    storage.removeItem(makeDraftKey(conversationId, userEmail));
   } catch (_error) {
     // Ignore storage errors
   }

@@ -1,6 +1,7 @@
 import { memo, type ReactNode } from 'react';
-import { User, Bot, Terminal, Settings } from 'lucide-react';
+import { User, Bot, Terminal, Settings, Trash2 } from 'lucide-react';
 import { MarkdownContent } from './MarkdownContent';
+import { IconButton } from './IconButton';
 
 export type MessageRole = 'system' | 'user' | 'assistant' | 'tool';
 
@@ -8,6 +9,10 @@ interface MessageProps {
   role: MessageRole;
   content: ReactNode;
   timestamp?: string;
+  senderLabel?: string;
+  isUnread?: boolean;
+  showDelete?: boolean;
+  onDelete?: () => void;
   className?: string;
 }
 
@@ -38,9 +43,20 @@ const roleConfig = {
   },
 };
 
-function MessageComponent({ role, content, timestamp, className = '' }: MessageProps) {
+function MessageComponent({
+  role,
+  content,
+  timestamp,
+  senderLabel,
+  isUnread = false,
+  showDelete = false,
+  onDelete,
+  className = '',
+}: MessageProps) {
   const config = roleConfig[role];
   const Icon = config.icon;
+  const deleteDisabled = !onDelete;
+  const deleteTitle = deleteDisabled ? 'Delete message (coming soon)' : 'Delete message';
 
   return (
     <div
@@ -61,11 +77,27 @@ function MessageComponent({ role, content, timestamp, className = '' }: MessageP
         <div className="flex flex-col gap-1 flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="text-xs" style={{ color: config.color }}>
-              {config.label}
+              {senderLabel ?? config.label}
             </span>
             {timestamp && (
               <span className="text-xs text-[var(--agyn-gray)]">{timestamp}</span>
             )}
+            {isUnread ? (
+              <span className="text-[10px] font-medium uppercase tracking-wide text-[var(--agyn-status-pending)]">
+                Unread
+              </span>
+            ) : null}
+            {showDelete ? (
+              <IconButton
+                icon={<Trash2 className="h-3 w-3" />}
+                size="xs"
+                variant="ghost"
+                aria-label={deleteTitle}
+                title={deleteTitle}
+                onClick={onDelete}
+                disabled={deleteDisabled}
+              />
+            ) : null}
           </div>
           <div className="text-[var(--agyn-dark)] min-w-0">
             {typeof content === 'string' ? (

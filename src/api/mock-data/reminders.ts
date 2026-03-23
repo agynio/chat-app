@@ -1,12 +1,12 @@
-import type { ThreadReminder } from '@/api/types/agents';
+import type { ConversationReminder } from '@/api/types/conversation-resources';
 import { iso } from './time';
 import { runTwoId } from './runs';
-import { threadOneId } from './threads';
+import { conversationOneId } from './conversations';
 
-export const reminders: ThreadReminder[] = [
+export const conversationReminders: ConversationReminder[] = [
   {
     id: 'reminder-1',
-    threadId: threadOneId,
+    conversationId: conversationOneId,
     note: 'Send the draft to marketing by EOD.',
     at: iso(240),
     createdAt: iso(-120),

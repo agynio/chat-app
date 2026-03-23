@@ -10,6 +10,10 @@ export interface ConversationMessage {
   role: MessageRole;
   content: ReactNode;
   timestamp?: string;
+  senderLabel?: string;
+  isUnread?: boolean;
+  showDelete?: boolean;
+  onDelete?: () => void;
 }
 
 export interface Run {
@@ -140,6 +144,10 @@ function ConversationImpl({
                           role={message.role}
                           content={message.content}
                           timestamp={message.timestamp}
+                          senderLabel={message.senderLabel}
+                          isUnread={message.isUnread}
+                          showDelete={message.showDelete}
+                          onDelete={message.onDelete}
                         />
                       ))}
                     </div>
