@@ -4,8 +4,8 @@ import { createChat, sendChatMessage } from './chat-api';
 
 test('shows conversation messages', async ({ page }) => {
   const message = `E2E detail message ${Date.now()}`;
-  const chatId = await createChat(page.request);
-  await sendChatMessage(page.request, chatId, message);
+  const chatId = await createChat(page.context());
+  await sendChatMessage(page.context(), chatId, message);
 
   await page.goto(`/conversations/${chatId}`);
 

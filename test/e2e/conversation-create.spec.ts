@@ -12,7 +12,7 @@ test('creates a new conversation', async ({ page }) => {
   await expect(participantInput).toBeVisible();
   await participantInput.click();
 
-  const agents = await listAgents(page.request);
+  const agents = await listAgents(page.context());
   if (agents.length === 0) {
     await expect(page.getByText('Add participants to start a conversation.')).toBeVisible();
     await expect(page.getByText('Start your new conversation by adding participants.')).toBeVisible();

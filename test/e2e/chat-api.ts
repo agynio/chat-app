@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import type { APIRequestContext } from '@playwright/test';
+import type { BrowserContext } from '@playwright/test';
 
 const CHAT_GATEWAY_PATH = '/api/agynio.api.gateway.v1.ChatGateway';
 const AGENTS_GATEWAY_PATH = '/api/agynio.api.gateway.v1.AgentsGateway';
@@ -35,12 +35,12 @@ function buildRpcUrl(servicePath: string, method: string): string {
 }
 
 async function postConnect<T>(
-  request: APIRequestContext,
+  context: BrowserContext,
   servicePath: string,
   method: string,
   payload: unknown,
 ): Promise<T> {
-  const response = await request.post(buildRpcUrl(servicePath, method), {
+  const response = await context.request.post(buildRpcUrl(servicePath, method), {
     data: payload,
     headers: CONNECT_HEADERS,
   });
@@ -52,17 +52,17 @@ async function postConnect<T>(
 
 export type AgentOption = { id: string; name: string };
 
-export async function listAgents(request: APIRequestContext): Promise<AgentOption[]> {
-  const response = await postConnect<ListAgentsResponseWire>(request, AGENTS_GATEWAY_PATH, 'ListAgents', {});
+export async function listAgents(context: BrowserContext): Promise<AgentOption[]> {
+  const response = await postConnect<ListAgentsResponseWire>(context, AGENTS_GATEWAY_PATH, 'ListAgents', {});
   const agents = Array.isArray(response.agents) ? response.agents : [];
   return agents
     .map((agent) => ({ id: agent.meta?.id, name: agent.name }))
     .filter((agent): agent is AgentOption => Boolean(agent.id && agent.name));
 }
 
-export async function createChat(request: APIRequestContext, participantId?: string): Promise<string> {
+export async function createChat(context: BrowserContext, participantId?: string): Promise<string> {
   const resolvedParticipantId = participantId ?? randomUUID();
-  const response = await postConnect<CreateChatResponseWire>(request, CHAT_GATEWAY_PATH, 'CreateChat', {
+  const response = await postConnect<CreateChatResponseWire>(context, CHAT_GATEWAY_PATH, 'CreateChat', {
     participantIds: [resolvedParticipantId],
   });
   if (!response.chat?.id) {
@@ -72,11 +72,11 @@ export async function createChat(request: APIRequestContext, participantId?: str
 }
 
 export async function sendChatMessage(
-  request: APIRequestContext,
+  context: BrowserContext,
   chatId: string,
   message: string,
 ): Promise<void> {
-  await postConnect(request, CHAT_GATEWAY_PATH, 'SendMessage', {
+  await postConnect(context, CHAT_GATEWAY_PATH, 'SendMessage', {
     chatId,
     body: message,
   });
