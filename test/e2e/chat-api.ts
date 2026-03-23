@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import type { BrowserContext } from '@playwright/test';
+import type { AgentWire } from '../../src/api/types/wire/agents';
 
 const CHAT_GATEWAY_PATH = '/api/agynio.api.gateway.v1.ChatGateway';
 const AGENTS_GATEWAY_PATH = '/api/agynio.api.gateway.v1.AgentsGateway';
@@ -7,11 +8,6 @@ const AGENTS_GATEWAY_PATH = '/api/agynio.api.gateway.v1.AgentsGateway';
 const CONNECT_HEADERS = {
   'Content-Type': 'application/json',
   'Connect-Protocol-Version': '1',
-};
-
-type AgentWire = {
-  meta?: { id?: string };
-  name?: string;
 };
 
 type ListAgentsResponseWire = {
@@ -54,10 +50,18 @@ export type AgentOption = { id: string; name: string };
 
 export async function listAgents(context: BrowserContext): Promise<AgentOption[]> {
   const response = await postConnect<ListAgentsResponseWire>(context, AGENTS_GATEWAY_PATH, 'ListAgents', {});
-  const agents = Array.isArray(response.agents) ? response.agents : [];
-  return agents
-    .map((agent) => ({ id: agent.meta?.id, name: agent.name }))
-    .filter((agent): agent is AgentOption => Boolean(agent.id && agent.name));
+  if (!Array.isArray(response.agents)) {
+    throw new Error('Invalid agents response');
+  }
+  return response.agents.map((agent) => {
+    if (!agent.meta?.id || typeof agent.meta.id !== 'string') {
+      throw new Error(`Invalid agent payload: ${JSON.stringify(agent)}`);
+    }
+    if (!agent.name || typeof agent.name !== 'string') {
+      throw new Error(`Invalid agent payload: ${JSON.stringify(agent)}`);
+    }
+    return { id: agent.meta.id, name: agent.name };
+  });
 }
 
 export async function createChat(context: BrowserContext, participantId?: string): Promise<string> {

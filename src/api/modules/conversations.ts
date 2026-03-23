@@ -37,7 +37,7 @@ function mapChatMessage(message: ChatMessageRecord): ConversationMessageRecord {
   return { ...rest, conversationId: chatId };
 }
 
-function mapConversationResponse(chat: ConversationSummary): ConversationSummary {
+function validateChatPayload(chat: ConversationSummary): ConversationSummary {
   if (!chat?.id || typeof chat.id !== 'string') {
     throw new Error('Invalid chat payload');
   }
@@ -51,7 +51,7 @@ export const conversationsApi = {
       'CreateChat',
       req,
     );
-    return { conversation: mapConversationResponse(response.chat) };
+    return { conversation: validateChatPayload(response.chat) };
   },
   getConversations: async (req: GetConversationsRequest): Promise<GetConversationsResponse> => {
     const response = await connectPost<GetConversationsRequest, GetChatsResponseWire>(CHAT_SERVICE, 'GetChats', req);
@@ -59,7 +59,7 @@ export const conversationsApi = {
       throw new Error('Invalid chats response');
     }
     return {
-      conversations: response.chats.map(mapConversationResponse),
+      conversations: response.chats.map(validateChatPayload),
       nextPageToken: response.nextPageToken,
     };
   },
@@ -108,6 +108,6 @@ export const conversationsApi = {
         status: req.status,
       },
     );
-    return { conversation: mapConversationResponse(response.chat) };
+    return { conversation: validateChatPayload(response.chat) };
   },
 };

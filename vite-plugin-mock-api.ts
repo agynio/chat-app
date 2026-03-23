@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import type { IncomingMessage, ServerResponse } from 'http';
 import type { Plugin } from 'vite';
 import type { AgentSummary } from './src/api/types/agents';
+import type { AgentWire } from './src/api/types/wire/agents';
 import type { ConversationMessageRecord, ConversationSummary } from './src/api/types/conversations';
 import type { FileRecord } from './src/api/types/files';
 import type { TemplateSchema } from './src/api/types/graph';
@@ -34,12 +35,6 @@ const conversationStore = new Map<string, ConversationSummary>(
 
 const messagesByConversation = createConversationMessagesMap();
 const unreadIdsByConversation = createUnreadIdsByConversationMap();
-
-type AgentWire = {
-  meta: { id: string };
-  name: string;
-  role?: string;
-};
 
 function summarize(text: string | undefined | null): string {
   if (!text) return 'New conversation';

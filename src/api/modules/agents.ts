@@ -1,13 +1,8 @@
 import { connectPost } from '@/api/connect';
 import type { AgentSummary, ListAgentsRequest, ListAgentsResponse } from '@/api/types/agents';
+import type { AgentWire } from '@/api/types/wire/agents';
 
 const AGENTS_SERVICE = '/api/agynio.api.gateway.v1.AgentsGateway';
-
-type AgentWire = {
-  meta?: { id?: string };
-  name?: string;
-  role?: string;
-};
 
 type ListAgentsResponseWire = { agents: AgentWire[]; nextPageToken?: string };
 
