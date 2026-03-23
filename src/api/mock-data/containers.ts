@@ -1,11 +1,11 @@
 import type { ContainerItem } from '@/api/modules/containers';
 import { iso } from './time';
-import { threadOneId } from './threads';
+import { conversationOneId } from './conversations';
 
 export const containers: ContainerItem[] = [
   {
     containerId: 'container-1',
-    threadId: threadOneId,
+    conversationId: conversationOneId,
     image: 'ghcr.io/agyn/workspace:latest',
     name: 'workspace-q2',
     status: 'running',

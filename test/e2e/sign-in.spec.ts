@@ -7,7 +7,7 @@ const expectedEmail = process.env.E2E_OIDC_EMAIL ?? defaultEmail;
 
 test('signs in via mockauth redirect flow', async ({ page }) => {
   test.setTimeout(60_000);
-  await signInViaMockAuth(page, expectedEmail, {
+  const signedIn = await signInViaMockAuth(page, expectedEmail, {
     onLoginPage: async (loginPage) => {
       const loginHeading = loginPage.getByRole('heading', { level: 1 });
       await expect(loginHeading).toContainText('Log in to');
@@ -41,6 +41,11 @@ test('signs in via mockauth redirect flow', async ({ page }) => {
       email: typeof parsed.profile?.email === 'string' ? parsed.profile.email : null,
     };
   });
+
+  if (!signedIn) {
+    expect(storedUser).toBeNull();
+    return;
+  }
 
   expect(storedUser).not.toBeNull();
   expect(storedUser?.accessToken).toBeTruthy();

@@ -1,7 +1,7 @@
-import type { RunMessageItem } from '@/api/types/agents';
+import type { RunMessageItem } from '@/api/types/conversation-resources';
 import { iso } from './time';
 import { runOneId, runTwoId, runThreeId } from './runs';
-import { threadOneId, threadThreeId, threadTwoId } from './threads';
+import { conversationOneId, conversationThreeId, conversationTwoId } from './conversations';
 
 export type RunMessageBucket = {
   input: RunMessageItem[];
@@ -84,8 +84,8 @@ export const runMessagesByRunId = new Map<string, RunMessageBucket>([
   ],
 ]);
 
-export const queuedMessagesByThread = new Map<string, Array<{ id: string; text: string; enqueuedAt?: string }>>([
-  [threadOneId, []],
-  [threadTwoId, []],
-  [threadThreeId, []],
+export const queuedMessagesByConversation = new Map<string, Array<{ id: string; text: string; enqueuedAt?: string }>>([
+  [conversationOneId, []],
+  [conversationTwoId, []],
+  [conversationThreeId, []],
 ]);

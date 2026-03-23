@@ -1,4 +1,4 @@
-import type { PersistedGraph } from '@/types/graph';
+import type { PersistedGraph } from '../../types/graph';
 import { iso } from './time';
 
 export const graph: PersistedGraph = {

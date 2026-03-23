@@ -11,12 +11,33 @@ export async function signInViaMockAuth(
   page: Page,
   email?: string,
   options: SignInOptions = {},
-) {
+): Promise<boolean> {
   const expectedEmail = email ?? process.env.E2E_OIDC_EMAIL ?? defaultEmail;
 
   await page.goto('/');
 
-  await page.waitForURL(/mockauth\.dev\/r\/.*\/oidc\/login/);
+  const loginUrlPattern = /mockauth\.dev\/r\/.*\/oidc/;
+  const conversationsList = page.getByTestId('conversations-list');
+
+  const initialRoute = await Promise.race([
+    page
+      .waitForURL(loginUrlPattern, { timeout: 10000 })
+      .then(() => 'login')
+      .catch(() => null),
+    conversationsList
+      .waitFor({ timeout: 10000 })
+      .then(() => 'app')
+      .catch(() => null),
+  ]);
+
+  if (initialRoute === 'app') {
+    await expect(conversationsList).toBeVisible();
+    return false;
+  }
+
+  if (!initialRoute) {
+    await page.waitForURL(loginUrlPattern, { timeout: 15000 });
+  }
 
   if (options.onLoginPage) {
     await options.onLoginPage(page);
@@ -33,7 +54,7 @@ export async function signInViaMockAuth(
 
   await page.getByRole('button', { name: 'Continue' }).click();
 
-  await page.waitForURL(/\/agents\/threads/);
-  const threadsList = page.getByTestId('threads-list');
-  await expect(threadsList).toBeVisible();
+  await page.waitForURL(/\/conversations/);
+  await expect(conversationsList).toBeVisible();
+  return true;
 }

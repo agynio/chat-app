@@ -1,4 +1,4 @@
-import type { TemplateSchema } from '@/api/types/graph';
+import type { TemplateSchema } from '../types/graph';
 
 export const templates: TemplateSchema[] = [
   {
@@ -14,7 +14,7 @@ export const templates: TemplateSchema[] = [
     name: 'remind-me',
     title: 'Reminder',
     kind: 'tool',
-    description: 'Schedules reminders for a thread.',
+    description: 'Schedules reminders for a conversation.',
     sourcePorts: ['output'],
     targetPorts: ['input'],
   },

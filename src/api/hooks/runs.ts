@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { runs } from '@/api/modules/runs';
 
-export function useThreadRuns(threadId: string | undefined) {
+export function useConversationRuns(conversationId: string | undefined) {
   return useQuery({
-    enabled: !!threadId,
-    queryKey: ['agents', 'threads', threadId, 'runs'],
-    queryFn: () => runs.listByThread(threadId as string),
+    enabled: !!conversationId,
+    queryKey: ['conversations', conversationId, 'runs'],
+    queryFn: () => runs.listByConversation(conversationId as string),
     staleTime: 20000,
     refetchOnWindowFocus: false,
   });
