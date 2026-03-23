@@ -6,16 +6,17 @@ import type { ConversationMessageRecord, ConversationSummary } from './src/api/t
 import type { FileRecord } from './src/api/types/files';
 import type { TemplateSchema } from './src/api/types/graph';
 import type { PersistedGraph } from './src/types/graph';
-import { agents as mockAgents, agentAccountId, agentCampaignId, agentResearchId } from './src/api/mock-data/agents';
-import { conversationSeeds, conversationOneId, conversationTwoId, conversationThreeId } from './src/api/mock-data/conversations';
+import { agents as mockAgents } from './src/api/mock-data/agents';
+import {
+  createConversationMessagesMap,
+  createUnreadIdsByConversationMap,
+} from './src/api/mock-data/conversation-messages';
+import { conversationSeeds } from './src/api/mock-data/conversations';
 import { graph as mockGraph } from './src/api/mock-data/graph';
 import { templates as mockTemplates } from './src/api/mock-data/templates';
 import { stubUsers } from './src/data/stub-users';
 
-const now = new Date();
-const iso = (minutesOffset: number) => new Date(now.getTime() + minutesOffset * 60 * 1000).toISOString();
-
-const [casey, alex, jamie] = stubUsers;
+const [casey] = stubUsers;
 
 const conversationStore = new Map<string, ConversationSummary>(
   conversationSeeds.map((seed) => [
@@ -31,125 +32,8 @@ const conversationStore = new Map<string, ConversationSummary>(
   ]),
 );
 
-const messagesByConversation = new Map<string, ConversationMessageRecord[]>([
-  [
-    conversationOneId,
-    [
-      {
-        id: 'conv-1-msg-1',
-        conversationId: conversationOneId,
-        senderId: casey.id,
-        body: 'Draft a Q2 marketing brief focused on the new launch.',
-        fileIds: [],
-        createdAt: iso(-159),
-      },
-      {
-        id: 'conv-1-msg-2',
-        conversationId: conversationOneId,
-        senderId: agentCampaignId,
-        body: 'Here is a draft brief with positioning, goals, and launch phases.',
-        fileIds: [],
-        createdAt: iso(-158),
-      },
-      {
-        id: 'conv-1-msg-3',
-        conversationId: conversationOneId,
-        senderId: casey.id,
-        body: 'Add a section on creative deliverables and internal review dates.',
-        fileIds: [],
-        createdAt: iso(-19),
-      },
-      {
-        id: 'conv-1-msg-4',
-        conversationId: conversationOneId,
-        senderId: agentCampaignId,
-        body: 'Updated draft includes a deliverables checklist and review cadence.',
-        fileIds: ['file-brief-1'],
-        createdAt: iso(-18),
-      },
-    ],
-  ],
-  [
-    conversationTwoId,
-    [
-      {
-        id: 'conv-2-msg-1',
-        conversationId: conversationTwoId,
-        senderId: alex.id,
-        body: 'Draft a follow-up note for the ACME renewal.',
-        fileIds: [],
-        createdAt: iso(-379),
-      },
-      {
-        id: 'conv-2-msg-2',
-        conversationId: conversationTwoId,
-        senderId: agentAccountId,
-        body: 'Drafted a friendly renewal follow-up highlighting next steps.',
-        fileIds: [],
-        createdAt: iso(-378),
-      },
-      {
-        id: 'conv-2-msg-3',
-        conversationId: conversationTwoId,
-        senderId: alex.id,
-        body: 'Please include pricing highlights and the renewal deadline.',
-        fileIds: ['file-acme-1'],
-        createdAt: iso(-310),
-      },
-      {
-        id: 'conv-2-msg-4',
-        conversationId: conversationTwoId,
-        senderId: agentAccountId,
-        body: 'Added pricing details, renewal timeline, and next-step CTA.',
-        fileIds: [],
-        createdAt: iso(-300),
-      },
-    ],
-  ],
-  [
-    conversationThreeId,
-    [
-      {
-        id: 'conv-3-msg-1',
-        conversationId: conversationThreeId,
-        senderId: jamie.id,
-        body: 'Review edits and finalize the Q2 campaign outline.',
-        fileIds: [],
-        createdAt: iso(-88),
-      },
-      {
-        id: 'conv-3-msg-2',
-        conversationId: conversationThreeId,
-        senderId: agentResearchId,
-        body: 'Summarized competitive insights and top three growth channels.',
-        fileIds: [],
-        createdAt: iso(-80),
-      },
-      {
-        id: 'conv-3-msg-3',
-        conversationId: conversationThreeId,
-        senderId: jamie.id,
-        body: 'Can you add a short section on regional rollout considerations?',
-        fileIds: [],
-        createdAt: iso(-60),
-      },
-      {
-        id: 'conv-3-msg-4',
-        conversationId: conversationThreeId,
-        senderId: agentResearchId,
-        body: 'Added rollout considerations for NA, EMEA, and APAC regions.',
-        fileIds: [],
-        createdAt: iso(-45),
-      },
-    ],
-  ],
-]);
-
-const unreadIdsByConversation = new Map<string, Set<string>>([
-  [conversationOneId, new Set(['conv-1-msg-4'])],
-  [conversationTwoId, new Set(['conv-2-msg-3', 'conv-2-msg-4'])],
-  [conversationThreeId, new Set(['conv-3-msg-4'])],
-]);
+const messagesByConversation = createConversationMessagesMap();
+const unreadIdsByConversation = createUnreadIdsByConversationMap();
 
 function summarize(text: string | undefined | null): string {
   if (!text) return 'New conversation';
