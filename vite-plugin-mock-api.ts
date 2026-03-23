@@ -284,15 +284,18 @@ export function mockApiPlugin(): Plugin {
           }
 
           if (rpc === 'SendMessage') {
-            const request = payload as { conversationId?: string; body?: string; fileIds?: string[] };
+            const request = payload as { conversationId?: string; body?: string; fileIds?: string[]; senderId?: string };
             const conversationId = request.conversationId;
             if (!conversationId || !conversationStore.has(conversationId)) {
               return sendJson(res, 404, { code: 'not_found', message: 'conversation not found' });
             }
+            const senderId = typeof request.senderId === 'string' && request.senderId.trim()
+              ? request.senderId
+              : casey.id;
             const nextMessage: ConversationMessageRecord = {
               id: randomUUID(),
               conversationId,
-              senderId: casey.id,
+              senderId,
               body: typeof request.body === 'string' ? request.body : '',
               fileIds: Array.isArray(request.fileIds)
                 ? request.fileIds.filter((id): id is string => typeof id === 'string')
@@ -359,6 +362,28 @@ export function mockApiPlugin(): Plugin {
             });
             unreadIdsByConversation.set(conversationId, unreadIds);
             return sendJson(res, 200, { readCount });
+          }
+
+          if (rpc === 'UpdateChatStatus') {
+            const request = payload as { conversationId?: string; status?: ConversationSummary['status'] };
+            const conversationId = request.conversationId;
+            if (!conversationId || !conversationStore.has(conversationId)) {
+              return sendJson(res, 404, { code: 'not_found', message: 'conversation not found' });
+            }
+            if (request.status !== 'open' && request.status !== 'closed') {
+              return sendJson(res, 400, { code: 'invalid_argument', message: 'invalid conversation status' });
+            }
+            const conversation = conversationStore.get(conversationId);
+            if (!conversation) {
+              return sendJson(res, 404, { code: 'not_found', message: 'conversation not found' });
+            }
+            const updatedConversation: ConversationSummary = {
+              ...conversation,
+              status: request.status,
+              updatedAt: new Date().toISOString(),
+            };
+            conversationStore.set(conversationId, updatedConversation);
+            return sendJson(res, 200, { conversation: buildConversationResponse(updatedConversation) });
           }
 
           return sendJson(res, 404, { code: 'not_found', message: 'unknown method' });

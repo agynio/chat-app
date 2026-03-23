@@ -158,7 +158,7 @@ export function useConversationDrafts({
       id: draftId,
       inputValue: '',
       participants: [],
-      createdAt: new Date().toLocaleString(),
+      createdAt: new Date().toISOString(),
     };
 
     setDrafts((prev) => [newDraft, ...prev]);

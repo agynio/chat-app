@@ -1,3 +1,4 @@
+// TODO: Replace stub users with a real directory integration.
 export type StubUser = {
   id: string;
   name: string;

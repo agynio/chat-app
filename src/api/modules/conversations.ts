@@ -1,4 +1,4 @@
-import { http } from '@/api/http';
+import { connectPost } from '@/api/connect';
 import type {
   CreateConversationRequest,
   CreateConversationResponse,
@@ -10,28 +10,23 @@ import type {
   MarkConversationReadResponse,
   SendConversationMessageRequest,
   SendConversationMessageResponse,
+  UpdateConversationStatusRequest,
+  UpdateConversationStatusResponse,
 } from '@/api/types/conversations';
 
 const CHAT_SERVICE = '/api/agynio.api.gateway.v1.ChatGateway';
 
-function connectPost<TReq, TRes>(method: string, req: TReq): Promise<TRes> {
-  return http.post<TRes>(`${CHAT_SERVICE}/${method}`, req, {
-    headers: {
-      'Content-Type': 'application/json',
-      'Connect-Protocol-Version': '1',
-    },
-  });
-}
-
 export const conversationsApi = {
   createConversation: (req: CreateConversationRequest) =>
-    connectPost<CreateConversationRequest, CreateConversationResponse>('CreateChat', req),
+    connectPost<CreateConversationRequest, CreateConversationResponse>(CHAT_SERVICE, 'CreateChat', req),
   getConversations: (req: GetConversationsRequest) =>
-    connectPost<GetConversationsRequest, GetConversationsResponse>('GetChats', req),
+    connectPost<GetConversationsRequest, GetConversationsResponse>(CHAT_SERVICE, 'GetChats', req),
   getMessages: (req: GetConversationMessagesRequest) =>
-    connectPost<GetConversationMessagesRequest, GetConversationMessagesResponse>('GetMessages', req),
+    connectPost<GetConversationMessagesRequest, GetConversationMessagesResponse>(CHAT_SERVICE, 'GetMessages', req),
   sendMessage: (req: SendConversationMessageRequest) =>
-    connectPost<SendConversationMessageRequest, SendConversationMessageResponse>('SendMessage', req),
+    connectPost<SendConversationMessageRequest, SendConversationMessageResponse>(CHAT_SERVICE, 'SendMessage', req),
   markAsRead: (req: MarkConversationReadRequest) =>
-    connectPost<MarkConversationReadRequest, MarkConversationReadResponse>('MarkAsRead', req),
+    connectPost<MarkConversationReadRequest, MarkConversationReadResponse>(CHAT_SERVICE, 'MarkAsRead', req),
+  updateStatus: (req: UpdateConversationStatusRequest) =>
+    connectPost<UpdateConversationStatusRequest, UpdateConversationStatusResponse>(CHAT_SERVICE, 'UpdateChatStatus', req),
 };

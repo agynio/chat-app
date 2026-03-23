@@ -38,8 +38,11 @@ export type GetConversationMessagesResponse = {
   unreadCount?: number;
 };
 
-export type SendConversationMessageRequest = { conversationId: string; body?: string; fileIds?: string[] };
+export type SendConversationMessageRequest = { conversationId: string; body?: string; fileIds?: string[]; senderId?: string };
 export type SendConversationMessageResponse = { message: ConversationMessageRecord };
 
 export type MarkConversationReadRequest = { conversationId: string; messageIds: string[] };
 export type MarkConversationReadResponse = { readCount: number };
+
+export type UpdateConversationStatusRequest = { conversationId: string; status: ConversationStatus };
+export type UpdateConversationStatusResponse = { conversation: ConversationSummary };

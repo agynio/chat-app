@@ -17,6 +17,7 @@ import {
   useCreateConversation,
   useSendConversationMessage,
   useMarkConversationRead,
+  useToggleConversationStatus,
 } from '@/api/hooks/conversations';
 import { useConversationRuns } from '@/api/hooks/runs';
 import {
@@ -31,6 +32,7 @@ import { stubUsers } from '@/data/stub-users';
 import { cancelReminder } from '@/features/reminders/api';
 import { clearDraft, CONVERSATION_MESSAGE_MAX_LENGTH } from '@/utils/draftStorage';
 import type { DraftParticipant } from '@/types/conversations';
+import type { User } from '@/user/user-types';
 import { isDraftConversationId } from './conversations/draftUtils';
 import { compareRunMeta } from './conversations/comparators';
 import { formatDate, formatReminderDate, formatReminderScheduledTime, sanitizeSummary } from './conversations/formatters';
@@ -45,6 +47,9 @@ const EMPTY_PARTICIPANTS: DraftParticipant[] = [];
 const EMPTY_RUN_ITEMS: RunMeta[] = [];
 const EMPTY_REMINDERS: ConversationReminder[] = [];
 const EMPTY_CONTAINERS: ContainerItem[] = [];
+
+const mapConversationIndicatorStatus = (status: ConversationStatus): ConversationListItem['status'] =>
+  status === 'open' ? 'pending' : 'finished';
 
 const mapRunStatus = (status: RunMeta['status']): Run['status'] => {
   if (status === 'terminated') return 'failed';
@@ -88,20 +93,19 @@ const resolveParticipantLabel = (participantId: string, lookup: Map<string, Draf
   return lookup.get(participantId)?.name ?? UNKNOWN_PARTICIPANT_LABEL;
 };
 
-export function Conversations() {
+function ConversationsContent({ user }: { user: User }) {
   const params = useParams<{ conversationId?: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user } = useUser();
-  const userEmail = user?.email ?? null;
-  const currentUserId = userEmail ?? 'user';
+  const userEmail = user.email;
+  const currentUserId = userEmail;
 
   const [filterMode, setFilterMode] = useState<'open' | 'closed' | 'all'>('open');
-  const [statusOverrides, setStatusOverrides] = useState<Record<string, ConversationStatus>>({});
   const [selectedConversationIdState, setSelectedConversationIdState] = useState<string | null>(params.conversationId ?? null);
   const [cancellingReminderIds, setCancellingReminderIds] = useState<ReadonlySet<string>>(() => new Set());
   const [isRunsInfoCollapsed, setRunsInfoCollapsed] = useState(false);
   const [selectedContainerId, setSelectedContainerId] = useState<string | null>(null);
+  const [deletedMessageIds, setDeletedMessageIds] = useState<ReadonlySet<string>>(() => new Set());
 
   const selectedConversationId = params.conversationId ?? selectedConversationIdState;
 
@@ -166,20 +170,23 @@ export function Conversations() {
     clearAttachments();
   }, [clearAttachments, selectedConversationId]);
 
+  useEffect(() => {
+    setDeletedMessageIds(new Set());
+  }, [selectedConversationId]);
+
   const agents = useMemo(() => agentsQuery.data?.agents ?? [], [agentsQuery.data]);
   const participantLookup = useMemo(() => {
     const map = new Map<string, DraftParticipant>();
     for (const agent of agents) {
       map.set(agent.id, { id: agent.id, name: agent.name, type: 'agent' });
     }
+    // TODO: Replace stub users with directory-backed identities.
     for (const stubUser of stubUsers) {
       map.set(stubUser.id, { id: stubUser.id, name: stubUser.name, type: 'user' });
     }
-    if (userEmail) {
-      map.set(userEmail, { id: userEmail, name: user?.name ?? userEmail, type: 'user' });
-    }
+    map.set(userEmail, { id: userEmail, name: user.name || userEmail, type: 'user' });
     return map;
-  }, [agents, userEmail, user?.name]);
+  }, [agents, userEmail, user.name]);
 
   const draftParticipants = useMemo(() => activeDraft?.participants ?? EMPTY_PARTICIPANTS, [activeDraft]);
   const selectedParticipantIds = useMemo(
@@ -260,7 +267,7 @@ export function Conversations() {
   const conversationsForList = useMemo(() => {
     const fromDrafts = drafts.map(mapDraftToConversation);
     const fromData = conversationSummaries.map((conversation) => {
-      const status = statusOverrides[conversation.id] ?? conversation.status ?? 'open';
+      const status = conversation.status ?? 'open';
       const isOpen = status === 'open';
       return {
         id: conversation.id,
@@ -268,13 +275,13 @@ export function Conversations() {
         subtitle: sanitizeSummary(conversation.summary ?? null),
         createdAt: conversation.createdAt,
         updatedAt: conversation.updatedAt,
-        status: conversation.unreadCount && conversation.unreadCount > 0 ? 'pending' : 'finished',
+        status: mapConversationIndicatorStatus(status),
         isOpen,
         unreadCount: conversation.unreadCount ?? 0,
       } satisfies ConversationListItem;
     });
     return [...fromDrafts, ...fromData];
-  }, [drafts, mapDraftToConversation, conversationSummaries, statusOverrides, resolveConversationTitle]);
+  }, [drafts, mapDraftToConversation, conversationSummaries, resolveConversationTitle]);
 
   const selectedConversation = useMemo(
     () => conversationsForList.find((conversation) => conversation.id === selectedConversationId),
@@ -320,6 +327,7 @@ export function Conversations() {
 
   const sendConversationMessage = useSendConversationMessage();
   const createConversation = useCreateConversation();
+  const toggleConversationStatus = useToggleConversationStatus();
 
   const runItems = useMemo(() => runMetaQuery.data?.items ?? EMPTY_RUN_ITEMS, [runMetaQuery.data]);
   const runItemsSorted = useMemo(() => [...runItems].sort(compareRunMeta), [runItems]);
@@ -341,12 +349,17 @@ export function Conversations() {
     });
   }, [conversationMessagesQuery.data]);
 
+  const filteredConversationMessages = useMemo(
+    () => conversationMessages.filter((message) => !deletedMessageIds.has(message.id)),
+    [conversationMessages, deletedMessageIds],
+  );
+
   const unreadCount = conversationMessagesQuery.data?.pages?.[0]?.unreadCount ?? 0;
   const unreadMessageIds = useMemo(() => {
     if (!unreadCount) return [] as string[];
-    const sliceStart = Math.max(0, conversationMessages.length - unreadCount);
-    return conversationMessages.slice(sliceStart).map((message) => message.id);
-  }, [conversationMessages, unreadCount]);
+    const sliceStart = Math.max(0, filteredConversationMessages.length - unreadCount);
+    return filteredConversationMessages.slice(sliceStart).map((message) => message.id);
+  }, [filteredConversationMessages, unreadCount]);
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const pendingScrollHeightRef = useRef<number | null>(null);
@@ -379,7 +392,7 @@ export function Conversations() {
     if (isAtBottomRef.current) {
       container.scrollTop = container.scrollHeight;
     }
-  }, [conversationMessages.length]);
+  }, [filteredConversationMessages.length]);
 
   useEffect(() => {
     pendingScrollHeightRef.current = null;
@@ -409,13 +422,23 @@ export function Conversations() {
   const agentIdSet = useMemo(() => new Set(agents.map((agent) => agent.id)), [agents]);
   const unreadMessageIdSet = useMemo(() => new Set(unreadMessageIds), [unreadMessageIds]);
 
-  const handleDeleteMessage = useCallback(() => {
-    notifyError('Message deletion is not available yet.');
-  }, []);
+  const handleDeleteMessage = useCallback(
+    (messageId: string) => {
+      if (!selectedConversationId || effectiveDraftMode) return;
+      setDeletedMessageIds((prev) => {
+        if (prev.has(messageId)) return prev;
+        const next = new Set(prev);
+        next.add(messageId);
+        return next;
+      });
+      // TODO: Wire up message deletion API + rollback once available.
+    },
+    [selectedConversationId, effectiveDraftMode],
+  );
 
   const conversationMessagesForDisplay = useMemo<ConversationMessage[]>(
     () =>
-      conversationMessages.map((message) => {
+      filteredConversationMessages.map((message) => {
         const senderLabel = message.senderId === currentUserId
           ? 'You'
           : resolveParticipantLabel(message.senderId, participantLookup);
@@ -443,10 +466,10 @@ export function Conversations() {
           senderLabel,
           isUnread: unreadMessageIdSet.has(message.id),
           showDelete: role === 'user',
-          onDelete: role === 'user' ? handleDeleteMessage : undefined,
+          onDelete: role === 'user' ? () => handleDeleteMessage(message.id) : undefined,
         } satisfies ConversationMessage;
       }),
-    [conversationMessages, currentUserId, participantLookup, agentIdSet, unreadMessageIdSet, handleDeleteMessage],
+    [filteredConversationMessages, currentUserId, participantLookup, agentIdSet, unreadMessageIdSet, handleDeleteMessage],
   );
 
   const conversationRuns = useMemo<Run[]>(() => {
@@ -555,9 +578,17 @@ export function Conversations() {
   const handleToggleConversationStatus = useCallback(
     (conversationId: string, nextStatus: 'open' | 'closed') => {
       if (isDraftConversationId(conversationId)) return;
-      setStatusOverrides((prev) => ({ ...prev, [conversationId]: nextStatus }));
+      if (toggleConversationStatus.isPending) return;
+      toggleConversationStatus.mutate(
+        { conversationId, status: nextStatus },
+        {
+          onError: (error) => {
+            notifyError(error instanceof Error ? error.message : 'Failed to update conversation status.');
+          },
+        },
+      );
     },
-    [],
+    [toggleConversationStatus],
   );
 
   const handleToggleRunsInfoCollapsed = useCallback((collapsed: boolean) => {
@@ -726,7 +757,7 @@ export function Conversations() {
           onConversationsLoadMore={handleConversationsLoadMore}
           onCreateDraft={handleCreateDraft}
           onToggleConversationStatus={handleToggleConversationStatus}
-          isToggleConversationStatusPending={false}
+          isToggleConversationStatusPending={toggleConversationStatus.isPending}
           isSendMessagePending={sendConversationMessage.isPending || createConversation.isPending}
           onOpenContainerTerminal={handleOpenContainerTerminal}
           draftMode={effectiveDraftMode}
@@ -754,4 +785,18 @@ export function Conversations() {
       />
     </div>
   );
+}
+
+export function Conversations() {
+  const { user } = useUser();
+
+  if (!user?.email) {
+    return (
+      <div className="flex h-full items-center justify-center text-sm text-[var(--agyn-status-failed)]">
+        Unable to load user profile. Please sign in again.
+      </div>
+    );
+  }
+
+  return <ConversationsContent user={user} />;
 }

@@ -12,6 +12,11 @@ export type ConversationReminder = {
 
 export type ReminderItem = ConversationReminder;
 
+export type JsonPrimitive = string | number | boolean | null;
+export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
+
+export type ConversationActivity = 'working' | 'waiting' | 'idle';
+
 export type RunMeta = {
   id: string;
   conversationId: string;
@@ -20,4 +25,10 @@ export type RunMeta = {
   updatedAt: string;
 };
 
-export type RunMessageItem = { id: string; kind: 'user' | 'assistant' | 'system' | 'tool'; text?: string | null; source: unknown; createdAt: string };
+export type RunMessageItem = {
+  id: string;
+  kind: 'user' | 'assistant' | 'system' | 'tool';
+  text?: string | null;
+  source: JsonValue;
+  createdAt: string;
+};

@@ -1,7 +1,8 @@
-import { conversationReminders } from '@/api/mock-data/reminders';
 import { queuedMessagesByConversation } from '@/api/mock-data/messages';
-
-const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+import { conversationReminders } from '@/api/mock-data/reminders';
+import { runsByConversation } from '@/api/mock-data/runs';
+import type { ConversationActivity } from '@/api/types/conversation-resources';
+import { UUID_REGEX } from '@/utils/validation';
 
 const clampTake = (value: number | undefined, fallback = 200) => {
   if (!Number.isFinite(value)) return fallback;
@@ -17,7 +18,21 @@ const resolveQueue = (conversationId: string) => {
   return next;
 };
 
+const resolveActivity = (conversationId: string): ConversationActivity => {
+  const runs = runsByConversation.get(conversationId) ?? [];
+  if (runs.some((run) => run.status === 'running')) return 'working';
+  const queued = queuedMessagesByConversation.get(conversationId) ?? [];
+  if (queued.length > 0) return 'waiting';
+  return 'idle';
+};
+
 export const conversationResources = {
+  activity: async (conversationId: string) => {
+    if (!UUID_REGEX.test(conversationId)) {
+      throw new Error('Invalid conversation identifier');
+    }
+    return resolveActivity(conversationId);
+  },
   reminders: async (conversationId: string, take: number = 200) => {
     if (!UUID_REGEX.test(conversationId)) {
       throw new Error('Invalid conversation identifier');

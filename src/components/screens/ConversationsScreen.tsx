@@ -89,6 +89,456 @@ function AppLogo() {
   );
 }
 
+function UserMenu() {
+  const { user } = useUser();
+  const userInitials = useMemo(() => getInitials(user?.name ?? user?.email), [user?.name, user?.email]);
+  const displayName = user?.name?.trim() || 'Signed in';
+  const displayEmail = user?.email?.trim() || 'Not connected';
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="flex items-center gap-2 rounded-full px-2 py-1 transition-colors hover:bg-[var(--agyn-bg-light)]"
+        >
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--agyn-blue)] text-xs font-medium text-white">
+            {userInitials}
+          </div>
+          <ChevronDown className="h-4 w-4 text-[var(--agyn-gray)]" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        className="w-[220px] rounded-[10px] border border-[var(--agyn-border-subtle)] bg-white p-2 shadow-lg"
+        align="end"
+      >
+        <DropdownMenuLabel className="text-xs text-[var(--agyn-gray)]">Signed in as</DropdownMenuLabel>
+        <div className="px-2 py-1">
+          <p className="text-sm text-[var(--agyn-dark)]">{displayName}</p>
+          <p className="text-xs text-[var(--agyn-gray)]">{displayEmail}</p>
+        </div>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem disabled>
+          <User className="h-4 w-4 text-[var(--agyn-gray)]" />
+          <span>Account</span>
+        </DropdownMenuItem>
+        {oidcConfig.enabled ? (
+          <DropdownMenuItem asChild>
+            <LogoutButton className="w-full">
+              <LogOut className="h-4 w-4 text-[var(--agyn-gray)]" />
+              <span>Sign out</span>
+            </LogoutButton>
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem disabled>
+            <LogOut className="h-4 w-4 text-[var(--agyn-gray)]" />
+            <span>Sign out</span>
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+type ConversationDraftPanelProps = {
+  draftParticipants: DraftParticipant[];
+  draftFetchOptions?: (query: string) => Promise<AutocompleteOption[]>;
+  onDraftParticipantAdd?: (participantId: string) => void;
+  onDraftParticipantRemove?: (participantId: string) => void;
+  onDraftCancel?: () => void;
+};
+
+function ConversationDraftPanel({
+  draftParticipants,
+  draftFetchOptions,
+  onDraftParticipantAdd,
+  onDraftParticipantRemove,
+  onDraftCancel,
+}: ConversationDraftPanelProps) {
+  const [draftParticipantQuery, setDraftParticipantQuery] = useState('');
+  const draftParticipantInputRef = useRef<AutocompleteInputHandle | null>(null);
+
+  const resolvedDraftFetchOptions = useCallback(
+    async (query: string) => {
+      if (!draftFetchOptions) return [];
+      return draftFetchOptions(query);
+    },
+    [draftFetchOptions],
+  );
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      draftParticipantInputRef.current?.focus();
+      draftParticipantInputRef.current?.open();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  const handleDraftParticipantInputChange = useCallback((next: string) => {
+    setDraftParticipantQuery(next);
+  }, []);
+
+  const handleDraftParticipantSelect = useCallback(
+    (option: AutocompleteOption) => {
+      setDraftParticipantQuery('');
+      onDraftParticipantAdd?.(option.value);
+      requestAnimationFrame(() => {
+        draftParticipantInputRef.current?.focus();
+      });
+    },
+    [onDraftParticipantAdd],
+  );
+
+  return (
+    <>
+      <div className="border-b border-[var(--agyn-border-subtle)] bg-white p-4">
+        <div className="flex flex-col gap-3">
+          <AutocompleteInput
+            ref={draftParticipantInputRef}
+            value={draftParticipantQuery}
+            onChange={handleDraftParticipantInputChange}
+            onSelect={handleDraftParticipantSelect}
+            fetchOptions={resolvedDraftFetchOptions}
+            placeholder="Search participants..."
+            clearable
+            autoOpenOnMount
+            disabled={!draftFetchOptions}
+          />
+          {draftParticipants.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {draftParticipants.map((participant) => (
+                <span
+                  key={participant.id}
+                  className="inline-flex items-center gap-2 rounded-full bg-[var(--agyn-bg-light)] px-3 py-1 text-xs text-[var(--agyn-dark)]"
+                >
+                  <span>{participant.name || UNKNOWN_PARTICIPANT_LABEL}</span>
+                  <span className="text-[var(--agyn-gray)]">
+                    {participant.type === 'agent' ? 'Agent' : 'User'}
+                  </span>
+                  {onDraftParticipantRemove ? (
+                    <IconButton
+                      icon={<X className="h-3 w-3" />}
+                      size="xs"
+                      variant="ghost"
+                      aria-label="Remove participant"
+                      title="Remove participant"
+                      onClick={() => onDraftParticipantRemove(participant.id)}
+                    />
+                  ) : null}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-[var(--agyn-gray)]">Add participants to start a conversation.</p>
+          )}
+          {onDraftCancel ? (
+            <div className="flex justify-end">
+              <Button variant="ghost" size="sm" type="button" onClick={onDraftCancel}>
+                Cancel
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+      <div className="flex flex-1 items-center justify-center px-4 text-center text-sm text-[var(--agyn-gray)]">
+        Start your new conversation by adding participants.
+      </div>
+    </>
+  );
+}
+
+type ConversationDetailHeaderProps = {
+  conversation: ConversationListItem;
+  runsCount: number;
+  containers: { id: string; name: string; status: 'running' | 'finished' }[];
+  reminders: { id: string; title: string; time: string }[];
+  isToggleConversationStatusPending: boolean;
+  onToggleConversationStatus?: (conversationId: string, nextStatus: 'open' | 'closed') => void;
+  isRunsInfoCollapsed: boolean;
+  onToggleRunsInfoCollapsed?: (isCollapsed: boolean) => void;
+  onOpenContainerTerminal?: (containerId: string) => void;
+  onCancelReminder?: (reminderId: string) => void;
+  cancellingReminderIds?: ReadonlySet<string>;
+};
+
+function ConversationDetailHeader({
+  conversation,
+  runsCount,
+  containers,
+  reminders,
+  isToggleConversationStatusPending,
+  onToggleConversationStatus,
+  isRunsInfoCollapsed,
+  onToggleRunsInfoCollapsed,
+  onOpenContainerTerminal,
+  onCancelReminder,
+  cancellingReminderIds,
+}: ConversationDetailHeaderProps) {
+  const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
+  const [isContainersPopoverOpen, setIsContainersPopoverOpen] = useState(false);
+  const [isRemindersPopoverOpen, setIsRemindersPopoverOpen] = useState(false);
+
+  const hasContainers = containers.length > 0;
+  const hasReminders = reminders.length > 0;
+
+  const runningContainersCount = useMemo(
+    () => containers.reduce((count, container) => count + (container.status === 'running' ? 1 : 0), 0),
+    [containers],
+  );
+
+  useEffect(() => {
+    setIsStatusMenuOpen(false);
+  }, [conversation.id]);
+
+  useEffect(() => {
+    setIsContainersPopoverOpen(false);
+    setIsRemindersPopoverOpen(false);
+  }, [conversation.id]);
+
+  useEffect(() => {
+    if (!hasContainers) {
+      setIsContainersPopoverOpen(false);
+    }
+  }, [hasContainers]);
+
+  useEffect(() => {
+    if (!hasReminders) {
+      setIsRemindersPopoverOpen(false);
+    }
+  }, [hasReminders]);
+
+  useEffect(() => {
+    if (isToggleConversationStatusPending) {
+      setIsStatusMenuOpen(false);
+    }
+  }, [isToggleConversationStatusPending]);
+
+  const createdAtValue = conversation.createdAt ?? conversation.updatedAt;
+  const createdAtDate = new Date(createdAtValue);
+  const createdAtValid = Number.isFinite(createdAtDate.getTime());
+  const createdAtRelative = createdAtValid
+    ? formatDistanceToNow(createdAtDate, { addSuffix: true })
+    : createdAtValue;
+  const createdAtTitle = createdAtValid ? createdAtDate.toLocaleString() : undefined;
+  const currentStatusValue: 'open' | 'closed' = conversation.isOpen ? 'open' : 'closed';
+  const currentStatusLabel = conversation.isOpen ? 'Open' : 'Resolved';
+  const CurrentStatusIcon = conversation.isOpen ? Circle : CheckCircle;
+  const statusSelectionDisabled = !onToggleConversationStatus || isToggleConversationStatusPending;
+
+  const handleStatusChange = (nextStatus: 'open' | 'closed') => {
+    if (!onToggleConversationStatus || isToggleConversationStatusPending) return;
+    if (nextStatus === currentStatusValue) return;
+    setIsStatusMenuOpen(false);
+    onToggleConversationStatus(conversation.id, nextStatus);
+  };
+
+  const conversationTitle = conversation.title?.trim() || UNKNOWN_PARTICIPANT_LABEL;
+  const conversationSubtitle = conversation.subtitle?.trim();
+
+  return (
+    <div className="bg-white border-b border-[var(--agyn-border-subtle)] p-4">
+      <div className="mb-3 flex items-start justify-between">
+        <div className="flex-1">
+          <div className="mb-1 flex items-center gap-2">
+            <StatusIndicator status={conversation.status} size="sm" showTooltip={false} />
+            <span className="text-xs text-[var(--agyn-gray)]">{conversationTitle}</span>
+            <span className="text-xs text-[var(--agyn-gray)]">•</span>
+            <span className="text-xs text-[var(--agyn-gray)]" title={createdAtTitle}>
+              {createdAtRelative}
+            </span>
+          </div>
+          <h3 className="mt-1 text-[var(--agyn-dark)]">
+            {conversationSubtitle || conversation.title}
+          </h3>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <DropdownMenu
+            open={isStatusMenuOpen}
+            onOpenChange={(open) => {
+              if (statusSelectionDisabled) {
+                setIsStatusMenuOpen(false);
+                return;
+              }
+              setIsStatusMenuOpen(open);
+            }}
+          >
+            <DropdownMenuTrigger asChild disabled={statusSelectionDisabled}>
+              <button
+                type="button"
+                className="flex items-center gap-2 rounded-[6px] px-2 py-1 transition-colors hover:bg-[var(--agyn-bg-light)]"
+                aria-label={`Conversation status: ${currentStatusLabel}`}
+                aria-busy={isToggleConversationStatusPending || undefined}
+                aria-haspopup="menu"
+                aria-expanded={isStatusMenuOpen}
+                disabled={statusSelectionDisabled}
+              >
+                <CurrentStatusIcon className="h-4 w-4 text-[var(--agyn-gray)]" />
+                <span className="text-sm text-[var(--agyn-dark)]">{currentStatusLabel}</span>
+                <ChevronDown className="h-4 w-4 text-[var(--agyn-gray)]" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              className="w-[160px] rounded-[10px] border border-[var(--agyn-border-subtle)] bg-white p-1 shadow-lg"
+              align="start"
+            >
+              <DropdownMenuRadioGroup
+                value={currentStatusValue}
+                onValueChange={(value) => handleStatusChange(value as 'open' | 'closed')}
+              >
+                <DropdownMenuRadioItem
+                  value="open"
+                  disabled={statusSelectionDisabled}
+                  hideIndicator
+                  className="data-[state=checked]:font-medium"
+                >
+                  <Circle className="h-4 w-4 text-[var(--agyn-gray)] group-data-[state=checked]:text-[var(--agyn-blue)]" />
+                  <span>Open</span>
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem
+                  value="closed"
+                  disabled={statusSelectionDisabled}
+                  hideIndicator
+                  className="data-[state=checked]:font-medium"
+                >
+                  <CheckCircle className="h-4 w-4 text-[var(--agyn-gray)] group-data-[state=checked]:text-[var(--agyn-blue)]" />
+                  <span>Resolved</span>
+                </DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <div className="flex items-center gap-2">
+            <Play className="h-4 w-4 text-[var(--agyn-gray)]" />
+            <span className="text-sm text-[var(--agyn-dark)]">{runsCount}</span>
+            <span className="text-xs text-[var(--agyn-gray)]">runs</span>
+          </div>
+
+          <Popover
+            open={isContainersPopoverOpen}
+            onOpenChange={(open) => {
+              if (!hasContainers) return;
+              setIsContainersPopoverOpen(open);
+            }}
+          >
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center gap-2 rounded-[6px] px-2 py-1 transition-colors hover:bg-[var(--agyn-bg-light)]"
+                aria-haspopup="dialog"
+                aria-expanded={isContainersPopoverOpen}
+              >
+                <Container className="h-4 w-4 text-[var(--agyn-gray)]" />
+                <span className="text-sm text-[var(--agyn-dark)]">{runningContainersCount}</span>
+                <span className="text-xs text-[var(--agyn-gray)]">containers</span>
+              </button>
+            </PopoverTrigger>
+            {hasContainers ? (
+              <PopoverContent
+                className="w-[280px] rounded-[10px] border border-[var(--agyn-border-subtle)] bg-white p-1 shadow-lg"
+                align="end"
+              >
+                <ul className="flex flex-col gap-1">
+                  {containers.map((container) => {
+                    const isRunning = container.status === 'running';
+                    return (
+                      <li
+                        key={container.id}
+                        className={cn(menuItemBaseClasses, 'justify-between')}
+                      >
+                        <span className="min-w-0 flex-1 truncate">{container.name}</span>
+                        <div className="flex items-center gap-2">
+                          <IconButton
+                            variant="ghost"
+                            size="sm"
+                            icon={<Terminal className="h-4 w-4" />}
+                            aria-label="Open terminal"
+                            title="Open terminal"
+                            onClick={() => onOpenContainerTerminal?.(container.id)}
+                            disabled={!isRunning || !onOpenContainerTerminal}
+                          />
+                          <StatusIndicator status={container.status} size="sm" showTooltip={false} />
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </PopoverContent>
+            ) : null}
+          </Popover>
+
+          <Popover
+            open={isRemindersPopoverOpen}
+            onOpenChange={(open) => {
+              if (!hasReminders) return;
+              setIsRemindersPopoverOpen(open);
+            }}
+          >
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center gap-2 rounded-[6px] px-2 py-1 transition-colors hover:bg-[var(--agyn-bg-light)]"
+                aria-haspopup="dialog"
+                aria-expanded={isRemindersPopoverOpen}
+              >
+                <Bell className="h-4 w-4 text-[var(--agyn-gray)]" />
+                <span className="text-sm text-[var(--agyn-dark)]">{reminders.length}</span>
+                <span className="text-xs text-[var(--agyn-gray)]">reminders</span>
+              </button>
+            </PopoverTrigger>
+            {hasReminders ? (
+              <PopoverContent
+                className="w-[300px] rounded-[10px] border border-[var(--agyn-border-subtle)] bg-white p-1 shadow-lg"
+                align="end"
+              >
+                <ul className="flex flex-col gap-1">
+                  {reminders.map((reminder) => {
+                    const isCancelling = cancellingReminderIds?.has(reminder.id) ?? false;
+                    return (
+                      <li
+                        key={reminder.id}
+                        className={cn(menuItemBaseClasses, 'flex-col items-start gap-1')}
+                      >
+                        <div className="flex w-full items-center justify-between gap-2">
+                          <p className="min-w-0 truncate text-sm text-[var(--agyn-dark)]">{reminder.title}</p>
+                          <IconButton
+                            icon={isCancelling ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                            size="xs"
+                            variant="danger"
+                            aria-label="Cancel reminder"
+                            title="Cancel reminder"
+                            onClick={() => onCancelReminder?.(reminder.id)}
+                            disabled={!onCancelReminder || isCancelling}
+                          />
+                        </div>
+                        <p className="text-xs text-[var(--agyn-gray)]">{reminder.time}</p>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </PopoverContent>
+            ) : null}
+          </Popover>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <IconButton
+            icon={
+              isRunsInfoCollapsed ? <PanelRight className="h-4 w-4" /> : <PanelRightClose className="h-4 w-4" />
+            }
+            variant="ghost"
+            size="sm"
+            onClick={() => onToggleRunsInfoCollapsed?.(!isRunsInfoCollapsed)}
+            title={isRunsInfoCollapsed ? 'Show runs info' : 'Hide runs info'}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface ConversationsScreenProps {
   conversations: ConversationListItem[];
   runs: Run[];
@@ -188,11 +638,6 @@ export default function ConversationsScreen({
   conversationScrollRef,
   onConversationScroll,
 }: ConversationsScreenProps) {
-  const { user } = useUser();
-  const userInitials = useMemo(() => getInitials(user?.name ?? user?.email), [user?.name, user?.email]);
-  const displayName = user?.name?.trim() || 'Signed in';
-  const displayEmail = user?.email?.trim() || 'Not connected';
-
   const filteredConversations = conversations.filter((conversation) => {
     if (filterMode === 'all') return true;
     if (filterMode === 'open') return conversation.isOpen;
@@ -208,85 +653,6 @@ export default function ConversationsScreen({
   useConversationSoundNotifications({ conversations: notificationConversations });
 
   const resolvedSelectedConversation = selectedConversation ?? conversations.find((conversation) => conversation.id === selectedConversationId);
-  const [draftParticipantQuery, setDraftParticipantQuery] = useState('');
-  const draftParticipantInputRef = useRef<AutocompleteInputHandle | null>(null);
-  const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
-  const [isContainersPopoverOpen, setIsContainersPopoverOpen] = useState(false);
-  const [isRemindersPopoverOpen, setIsRemindersPopoverOpen] = useState(false);
-
-  const hasContainers = containers.length > 0;
-  const hasReminders = reminders.length > 0;
-
-  const runningContainersCount = useMemo(
-    () => containers.reduce((count, container) => count + (container.status === 'running' ? 1 : 0), 0),
-    [containers],
-  );
-
-  const resolvedDraftFetchOptions = useCallback(
-    async (query: string) => {
-      if (!draftFetchOptions) return [];
-      return draftFetchOptions(query);
-    },
-    [draftFetchOptions],
-  );
-
-  useEffect(() => {
-    setIsStatusMenuOpen(false);
-  }, [resolvedSelectedConversation?.id]);
-
-  useEffect(() => {
-    setIsContainersPopoverOpen(false);
-    setIsRemindersPopoverOpen(false);
-  }, [resolvedSelectedConversation?.id]);
-
-  useEffect(() => {
-    if (!hasContainers) {
-      setIsContainersPopoverOpen(false);
-    }
-  }, [hasContainers]);
-
-  useEffect(() => {
-    if (!hasReminders) {
-      setIsRemindersPopoverOpen(false);
-    }
-  }, [hasReminders]);
-
-  useEffect(() => {
-    if (!draftMode) {
-      setDraftParticipantQuery('');
-      return;
-    }
-  }, [draftMode]);
-
-  useEffect(() => {
-    if (!draftMode) return;
-    const frame = requestAnimationFrame(() => {
-      draftParticipantInputRef.current?.focus();
-      draftParticipantInputRef.current?.open();
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [draftMode]);
-
-  useEffect(() => {
-    if (isToggleConversationStatusPending) {
-      setIsStatusMenuOpen(false);
-    }
-  }, [isToggleConversationStatusPending]);
-
-  const handleDraftParticipantInputChange = useCallback((next: string) => {
-    setDraftParticipantQuery(next);
-  }, []);
-
-  const handleDraftParticipantSelect = useCallback(
-    (option: AutocompleteOption) => {
-      setDraftParticipantQuery('');
-      onDraftParticipantAdd?.(option.value);
-      requestAnimationFrame(() => {
-        draftParticipantInputRef.current?.focus();
-      });
-    },
-    [onDraftParticipantAdd],
-  );
 
   const renderConversationsList = () => {
     if (listError) {
@@ -320,6 +686,7 @@ export default function ConversationsScreen({
     const nearLimit = trimmedLength >= NEAR_LIMIT_THRESHOLD && !lengthExceeded;
     const sendDisabled = baseDisabled || lengthExceeded || isUploading;
     const trimmedLabel = trimmedLength.toLocaleString();
+    const counterLabel = `${trimmedLabel} / ${MESSAGE_LENGTH_LIMIT_LABEL}`;
 
     return (
       <div className="border-t border-[var(--agyn-border-subtle)] bg-[var(--agyn-bg-light)] p-4">
@@ -342,12 +709,12 @@ export default function ConversationsScreen({
         />
         {nearLimit ? (
           <div className="mt-2 text-xs text-[var(--agyn-yellow)]">
-            Approaching the {MESSAGE_LENGTH_LIMIT_LABEL} character limit (current: {trimmedLabel} characters).
+            Approaching the {MESSAGE_LENGTH_LIMIT_LABEL} character limit ({counterLabel}).
           </div>
         ) : null}
         {lengthExceeded ? (
           <div className="mt-2 text-xs text-[var(--agyn-status-failed)]">
-            Message exceeds the {MESSAGE_LENGTH_LIMIT_LABEL} character limit (current: {trimmedLabel} characters).
+            Message exceeds the {MESSAGE_LENGTH_LIMIT_LABEL} character limit ({counterLabel}).
           </div>
         ) : null}
       </div>
@@ -372,58 +739,13 @@ export default function ConversationsScreen({
 
       return (
         <>
-          <div className="border-b border-[var(--agyn-border-subtle)] bg-white p-4">
-            <div className="flex flex-col gap-3">
-              <AutocompleteInput
-                ref={draftParticipantInputRef}
-                value={draftParticipantQuery}
-                onChange={handleDraftParticipantInputChange}
-                onSelect={handleDraftParticipantSelect}
-                fetchOptions={resolvedDraftFetchOptions}
-                placeholder="Search participants..."
-                clearable
-                autoOpenOnMount
-                disabled={!draftFetchOptions}
-              />
-              {draftParticipants.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {draftParticipants.map((participant) => (
-                    <span
-                      key={participant.id}
-                      className="inline-flex items-center gap-2 rounded-full bg-[var(--agyn-bg-light)] px-3 py-1 text-xs text-[var(--agyn-dark)]"
-                    >
-                      <span>{participant.name || UNKNOWN_PARTICIPANT_LABEL}</span>
-                      <span className="text-[var(--agyn-gray)]">
-                        {participant.type === 'agent' ? 'Agent' : 'User'}
-                      </span>
-                      {onDraftParticipantRemove ? (
-                        <IconButton
-                          icon={<X className="h-3 w-3" />}
-                          size="xs"
-                          variant="ghost"
-                          aria-label="Remove participant"
-                          title="Remove participant"
-                          onClick={() => onDraftParticipantRemove(participant.id)}
-                        />
-                      ) : null}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-[var(--agyn-gray)]">Add participants to start a conversation.</p>
-              )}
-              {onDraftCancel ? (
-                <div className="flex justify-end">
-                  <Button variant="ghost" size="sm" type="button" onClick={onDraftCancel}>
-                    Cancel
-                  </Button>
-                </div>
-              ) : null}
-            </div>
-          </div>
-          <div className="flex flex-1 items-center justify-center px-4 text-center text-sm text-[var(--agyn-gray)]">
-            Start your new conversation by adding participants.
-          </div>
+          <ConversationDraftPanel
+            draftParticipants={draftParticipants}
+            draftFetchOptions={draftFetchOptions}
+            onDraftParticipantAdd={onDraftParticipantAdd}
+            onDraftParticipantRemove={onDraftParticipantRemove}
+            onDraftCancel={onDraftCancel}
+          />
           {renderComposer({ baseDisabled: draftBaseDisabled, trimmedLength })}
         </>
       );
@@ -445,231 +767,23 @@ export default function ConversationsScreen({
       );
     }
 
-    const createdAtValue = resolvedSelectedConversation.createdAt ?? resolvedSelectedConversation.updatedAt;
-    const createdAtDate = new Date(createdAtValue);
-    const createdAtValid = Number.isFinite(createdAtDate.getTime());
-    const createdAtRelative = createdAtValid
-      ? formatDistanceToNow(createdAtDate, { addSuffix: true })
-      : createdAtValue;
-    const createdAtTitle = createdAtValid ? createdAtDate.toLocaleString() : undefined;
-    const currentStatusValue: 'open' | 'closed' = resolvedSelectedConversation.isOpen ? 'open' : 'closed';
-    const currentStatusLabel = resolvedSelectedConversation.isOpen ? 'Open' : 'Resolved';
-    const CurrentStatusIcon = resolvedSelectedConversation.isOpen ? Circle : CheckCircle;
-    const statusSelectionDisabled = !onToggleConversationStatus || isToggleConversationStatusPending;
-
-    const handleStatusChange = (nextStatus: 'open' | 'closed') => {
-      if (!onToggleConversationStatus || isToggleConversationStatusPending) return;
-      if (nextStatus === currentStatusValue) return;
-      setIsStatusMenuOpen(false);
-      onToggleConversationStatus(resolvedSelectedConversation.id, nextStatus);
-    };
-
-    const conversationTitle = resolvedSelectedConversation.title?.trim() || UNKNOWN_PARTICIPANT_LABEL;
-    const conversationSubtitle = resolvedSelectedConversation.subtitle?.trim();
     const conversationTrimmedLength = inputValue.trim().length;
 
     return (
       <div className="relative flex min-h-0 flex-1 flex-col">
-        <div className="bg-white border-b border-[var(--agyn-border-subtle)] p-4">
-          <div className="mb-3 flex items-start justify-between">
-            <div className="flex-1">
-              <div className="mb-1 flex items-center gap-2">
-                <StatusIndicator status={resolvedSelectedConversation.status} size="sm" showTooltip={false} />
-                <span className="text-xs text-[var(--agyn-gray)]">{conversationTitle}</span>
-                <span className="text-xs text-[var(--agyn-gray)]">•</span>
-                <span className="text-xs text-[var(--agyn-gray)]" title={createdAtTitle}>
-                  {createdAtRelative}
-                </span>
-              </div>
-              <h3 className="mt-1 text-[var(--agyn-dark)]">
-                {conversationSubtitle || resolvedSelectedConversation.title}
-              </h3>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <DropdownMenu
-                open={isStatusMenuOpen}
-                onOpenChange={(open) => {
-                  if (statusSelectionDisabled) {
-                    setIsStatusMenuOpen(false);
-                    return;
-                  }
-                  setIsStatusMenuOpen(open);
-                }}
-              >
-                <DropdownMenuTrigger asChild disabled={statusSelectionDisabled}>
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 rounded-[6px] px-2 py-1 transition-colors hover:bg-[var(--agyn-bg-light)]"
-                    aria-label={`Conversation status: ${currentStatusLabel}`}
-                    aria-busy={isToggleConversationStatusPending || undefined}
-                    aria-haspopup="menu"
-                    aria-expanded={isStatusMenuOpen}
-                    disabled={statusSelectionDisabled}
-                  >
-                    <CurrentStatusIcon className="h-4 w-4 text-[var(--agyn-gray)]" />
-                    <span className="text-sm text-[var(--agyn-dark)]">{currentStatusLabel}</span>
-                    <ChevronDown className="h-4 w-4 text-[var(--agyn-gray)]" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  className="w-[160px] rounded-[10px] border border-[var(--agyn-border-subtle)] bg-white p-1 shadow-lg"
-                  align="start"
-                >
-                  <DropdownMenuRadioGroup
-                    value={currentStatusValue}
-                    onValueChange={(value) => handleStatusChange(value as 'open' | 'closed')}
-                  >
-                    <DropdownMenuRadioItem
-                      value="open"
-                      disabled={statusSelectionDisabled}
-                      hideIndicator
-                      className="data-[state=checked]:font-medium"
-                    >
-                      <Circle className="h-4 w-4 text-[var(--agyn-gray)] group-data-[state=checked]:text-[var(--agyn-blue)]" />
-                      <span>Open</span>
-                    </DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem
-                      value="closed"
-                      disabled={statusSelectionDisabled}
-                      hideIndicator
-                      className="data-[state=checked]:font-medium"
-                    >
-                      <CheckCircle className="h-4 w-4 text-[var(--agyn-gray)] group-data-[state=checked]:text-[var(--agyn-blue)]" />
-                      <span>Resolved</span>
-                    </DropdownMenuRadioItem>
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <div className="flex items-center gap-2">
-                <Play className="h-4 w-4 text-[var(--agyn-gray)]" />
-                <span className="text-sm text-[var(--agyn-dark)]">{runsCount}</span>
-                <span className="text-xs text-[var(--agyn-gray)]">runs</span>
-              </div>
-
-              <Popover
-                open={isContainersPopoverOpen}
-                onOpenChange={(open) => {
-                  if (!hasContainers) return;
-                  setIsContainersPopoverOpen(open);
-                }}
-              >
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 rounded-[6px] px-2 py-1 transition-colors hover:bg-[var(--agyn-bg-light)]"
-                    aria-haspopup="dialog"
-                    aria-expanded={isContainersPopoverOpen}
-                  >
-                    <Container className="h-4 w-4 text-[var(--agyn-gray)]" />
-                    <span className="text-sm text-[var(--agyn-dark)]">{runningContainersCount}</span>
-                    <span className="text-xs text-[var(--agyn-gray)]">containers</span>
-                  </button>
-                </PopoverTrigger>
-                {hasContainers ? (
-                  <PopoverContent
-                    className="w-[280px] rounded-[10px] border border-[var(--agyn-border-subtle)] bg-white p-1 shadow-lg"
-                    align="end"
-                  >
-                    <ul className="flex flex-col gap-1">
-                      {containers.map((container) => {
-                        const isRunning = container.status === 'running';
-                        return (
-                          <li
-                            key={container.id}
-                            className={cn(menuItemBaseClasses, 'justify-between')}
-                          >
-                            <span className="min-w-0 flex-1 truncate">{container.name}</span>
-                            <div className="flex items-center gap-2">
-                              <IconButton
-                                variant="ghost"
-                                size="sm"
-                                icon={<Terminal className="h-4 w-4" />}
-                                aria-label="Open terminal"
-                                title="Open terminal"
-                                onClick={() => onOpenContainerTerminal?.(container.id)}
-                                disabled={!isRunning || !onOpenContainerTerminal}
-                              />
-                              <StatusIndicator status={container.status} size="sm" showTooltip={false} />
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </PopoverContent>
-                ) : null}
-              </Popover>
-
-              <Popover
-                open={isRemindersPopoverOpen}
-                onOpenChange={(open) => {
-                  if (!hasReminders) return;
-                  setIsRemindersPopoverOpen(open);
-                }}
-              >
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 rounded-[6px] px-2 py-1 transition-colors hover:bg-[var(--agyn-bg-light)]"
-                    aria-haspopup="dialog"
-                    aria-expanded={isRemindersPopoverOpen}
-                  >
-                    <Bell className="h-4 w-4 text-[var(--agyn-gray)]" />
-                    <span className="text-sm text-[var(--agyn-dark)]">{reminders.length}</span>
-                    <span className="text-xs text-[var(--agyn-gray)]">reminders</span>
-                  </button>
-                </PopoverTrigger>
-                {hasReminders ? (
-                  <PopoverContent
-                    className="w-[300px] rounded-[10px] border border-[var(--agyn-border-subtle)] bg-white p-1 shadow-lg"
-                    align="end"
-                  >
-                    <ul className="flex flex-col gap-1">
-                      {reminders.map((reminder) => {
-                        const isCancelling = cancellingReminderIds?.has(reminder.id) ?? false;
-                        return (
-                          <li
-                            key={reminder.id}
-                            className={cn(menuItemBaseClasses, 'flex-col items-start gap-1')}
-                          >
-                            <div className="flex w-full items-center justify-between gap-2">
-                              <p className="min-w-0 truncate text-sm text-[var(--agyn-dark)]">{reminder.title}</p>
-                              <IconButton
-                                icon={isCancelling ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
-                                size="xs"
-                                variant="danger"
-                                aria-label="Cancel reminder"
-                                title="Cancel reminder"
-                                onClick={() => onCancelReminder?.(reminder.id)}
-                                disabled={!onCancelReminder || isCancelling}
-                              />
-                            </div>
-                            <p className="text-xs text-[var(--agyn-gray)]">{reminder.time}</p>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </PopoverContent>
-                ) : null}
-              </Popover>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <IconButton
-                icon={
-                  isRunsInfoCollapsed ? <PanelRight className="h-4 w-4" /> : <PanelRightClose className="h-4 w-4" />
-                }
-                variant="ghost"
-                size="sm"
-                onClick={() => onToggleRunsInfoCollapsed?.(!isRunsInfoCollapsed)}
-                title={isRunsInfoCollapsed ? 'Show runs info' : 'Hide runs info'}
-              />
-            </div>
-          </div>
-        </div>
+        <ConversationDetailHeader
+          conversation={resolvedSelectedConversation}
+          runsCount={runsCount}
+          containers={containers}
+          reminders={reminders}
+          isToggleConversationStatusPending={isToggleConversationStatusPending}
+          onToggleConversationStatus={onToggleConversationStatus}
+          isRunsInfoCollapsed={isRunsInfoCollapsed}
+          onToggleRunsInfoCollapsed={onToggleRunsInfoCollapsed}
+          onOpenContainerTerminal={onOpenContainerTerminal}
+          onCancelReminder={onCancelReminder}
+          cancellingReminderIds={cancellingReminderIds}
+        />
 
         <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
           <Conversation
@@ -707,47 +821,7 @@ export default function ConversationsScreen({
         <div className="border-b border-[var(--agyn-border-subtle)]">
           <div className="flex items-center justify-between px-4 py-4">
             <AppLogo />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="flex items-center gap-2 rounded-full px-2 py-1 transition-colors hover:bg-[var(--agyn-bg-light)]"
-                >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--agyn-blue)] text-xs font-medium text-white">
-                    {userInitials}
-                  </div>
-                  <ChevronDown className="h-4 w-4 text-[var(--agyn-gray)]" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className="w-[220px] rounded-[10px] border border-[var(--agyn-border-subtle)] bg-white p-2 shadow-lg"
-                align="end"
-              >
-                <DropdownMenuLabel className="text-xs text-[var(--agyn-gray)]">Signed in as</DropdownMenuLabel>
-                <div className="px-2 py-1">
-                  <p className="text-sm text-[var(--agyn-dark)]">{displayName}</p>
-                  <p className="text-xs text-[var(--agyn-gray)]">{displayEmail}</p>
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem disabled>
-                  <User className="h-4 w-4 text-[var(--agyn-gray)]" />
-                  <span>Account</span>
-                </DropdownMenuItem>
-                {oidcConfig.enabled ? (
-                  <DropdownMenuItem asChild>
-                    <LogoutButton className="w-full">
-                      <LogOut className="h-4 w-4 text-[var(--agyn-gray)]" />
-                      <span>Sign out</span>
-                    </LogoutButton>
-                  </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem disabled>
-                    <LogOut className="h-4 w-4 text-[var(--agyn-gray)]" />
-                    <span>Sign out</span>
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <UserMenu />
           </div>
           <div className="flex items-center justify-between px-4 pb-4">
             <SegmentedControl

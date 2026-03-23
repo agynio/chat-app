@@ -2,10 +2,13 @@ import { useInfiniteQuery, useMutation, useQueryClient, type InfiniteData } from
 import { conversationsApi } from '@/api/modules/conversations';
 import type {
   ConversationMessageRecord,
+  ConversationStatus,
   CreateConversationRequest,
   CreateConversationResponse,
+  GetConversationsResponse,
   GetConversationMessagesResponse,
   SendConversationMessageResponse,
+  UpdateConversationStatusResponse,
 } from '@/api/types/conversations';
 
 const CONVERSATION_PAGE_SIZE = 25;
@@ -19,7 +22,7 @@ export function useConversations() {
         pageSize: CONVERSATION_PAGE_SIZE,
         pageToken: pageParam ?? undefined,
       }),
-    initialPageParam: '' as string | undefined,
+    initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextPageToken ?? undefined,
     staleTime: 15000,
     refetchOnWindowFocus: false,
@@ -60,8 +63,8 @@ export function useSendConversationMessage() {
   const queryClient = useQueryClient();
 
   return useMutation<SendConversationMessageResponse, Error, SendConversationMessageInput, SendConversationMessageContext>({
-    mutationFn: ({ conversationId, body, fileIds }) =>
-      conversationsApi.sendMessage({ conversationId, body, fileIds }),
+    mutationFn: ({ conversationId, body, fileIds, senderId }) =>
+      conversationsApi.sendMessage({ conversationId, body, fileIds, senderId }),
     onMutate: async ({ conversationId, body, senderId, fileIds }) => {
       const queryKey = ['conversations', conversationId, 'messages', MESSAGE_PAGE_SIZE];
       await queryClient.cancelQueries({ queryKey });
@@ -112,6 +115,72 @@ export function useSendConversationMessage() {
           })),
         };
       });
+      queryClient.invalidateQueries({ queryKey: ['conversations', 'list'] });
+    },
+  });
+}
+
+type ToggleConversationStatusInput = {
+  conversationId: string;
+  status: ConversationStatus;
+};
+
+type ToggleConversationStatusContext = {
+  queryKey: (string | number)[];
+  previous?: InfiniteData<GetConversationsResponse>;
+};
+
+export function useToggleConversationStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation<UpdateConversationStatusResponse, Error, ToggleConversationStatusInput, ToggleConversationStatusContext>({
+    mutationFn: ({ conversationId, status }) => conversationsApi.updateStatus({ conversationId, status }),
+    onMutate: async ({ conversationId, status }) => {
+      const queryKey = ['conversations', 'list', CONVERSATION_PAGE_SIZE];
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<InfiniteData<GetConversationsResponse>>(queryKey);
+      const now = new Date().toISOString();
+      queryClient.setQueryData<InfiniteData<GetConversationsResponse>>(queryKey, (current) => {
+        if (!current) return current;
+        return {
+          ...current,
+          pages: current.pages.map((page) => ({
+            ...page,
+            conversations: page.conversations.map((conversation) =>
+              conversation.id === conversationId
+                ? {
+                    ...conversation,
+                    status,
+                    updatedAt: now,
+                  }
+                : conversation,
+            ),
+          })),
+        };
+      });
+      return { queryKey, previous };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(context.queryKey, context.previous);
+      }
+    },
+    onSuccess: (data, _variables, context) => {
+      const queryKey = context?.queryKey ?? ['conversations', 'list', CONVERSATION_PAGE_SIZE];
+      queryClient.setQueryData<InfiniteData<GetConversationsResponse>>(queryKey, (current) => {
+        if (!current) return current;
+        return {
+          ...current,
+          pages: current.pages.map((page) => ({
+            ...page,
+            conversations: page.conversations.map((conversation) =>
+              conversation.id === data.conversation.id ? data.conversation : conversation,
+            ),
+          })),
+        };
+      });
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['conversations', 'list'] });
     },
   });
