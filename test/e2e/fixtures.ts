@@ -1,11 +1,9 @@
 import type { Page } from '@playwright/test';
 import { test as base, expect } from '@playwright/test';
-import { mockGatewayApis } from './api-mocks';
 import { signInViaMockAuth } from './sign-in-helper';
 export { expect };
 
 async function signInAndLoad(page: Page) {
-  await mockGatewayApis(page);
   await signInViaMockAuth(page);
 }
 

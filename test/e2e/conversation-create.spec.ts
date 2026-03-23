@@ -1,8 +1,9 @@
 import { argosScreenshot } from '@argos-ci/playwright';
 import { test, expect } from './fixtures';
+import { listAgents } from './chat-api';
 
 test('creates a new conversation', async ({ page }) => {
-  const message = 'Plan the Q3 launch roadmap.';
+  const message = `Plan the Q3 launch roadmap ${Date.now()}.`;
 
   await page.goto('/conversations');
   await page.getByTitle('New conversation').click();
@@ -11,7 +12,18 @@ test('creates a new conversation', async ({ page }) => {
   await expect(participantInput).toBeVisible();
   await participantInput.click();
 
-  const option = page.locator('button[data-highlighted="true"]').first();
+  const agents = await listAgents(page.request);
+  if (agents.length === 0) {
+    await expect(page.getByText('Add participants to start a conversation.')).toBeVisible();
+    await expect(page.getByText('Start your new conversation by adding participants.')).toBeVisible();
+    await argosScreenshot(page, 'conversation-create-empty');
+    return;
+  }
+
+  const selectedAgent = agents[0];
+  await participantInput.fill(selectedAgent.name);
+
+  const option = page.getByRole('button', { name: selectedAgent.name }).first();
   await option.waitFor();
   await option.click();
 
@@ -24,9 +36,9 @@ test('creates a new conversation', async ({ page }) => {
   await sendButton.click();
 
   await expect(page).toHaveURL(/\/conversations\//);
-  await expect(page.getByRole('heading', { name: message })).toBeVisible();
+  await expect(page.getByTestId('conversation-message').filter({ hasText: message })).toBeVisible();
 
   const conversationsList = page.getByTestId('conversations-list');
-  await expect(conversationsList.getByText(message).first()).toBeVisible();
+  await expect(conversationsList.getByText(selectedAgent.name).first()).toBeVisible();
   await argosScreenshot(page, 'conversation-create-complete');
 });

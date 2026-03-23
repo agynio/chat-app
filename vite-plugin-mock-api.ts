@@ -35,6 +35,12 @@ const conversationStore = new Map<string, ConversationSummary>(
 const messagesByConversation = createConversationMessagesMap();
 const unreadIdsByConversation = createUnreadIdsByConversationMap();
 
+type AgentWire = {
+  meta: { id: string };
+  name: string;
+  role?: string;
+};
+
 function summarize(text: string | undefined | null): string {
   if (!text) return 'New conversation';
   const trimmed = text.trim();
@@ -90,10 +96,25 @@ function buildConversationResponse(conversation: ConversationSummary): Conversat
   };
 }
 
+function mapMessageToChat(message: ConversationMessageRecord) {
+  const { conversationId, ...rest } = message;
+  return { ...rest, chatId: conversationId };
+}
+
+function mapAgentToWire(agent: AgentSummary): AgentWire {
+  return {
+    meta: { id: agent.id },
+    name: agent.name,
+    role: agent.role,
+  };
+}
+
 function buildAgentsResponse(agents: AgentSummary[], offset: number, pageSize: number) {
   const pageAgents = agents.slice(offset, offset + pageSize);
   const nextOffset = offset + pageSize;
-  const response: { agents: AgentSummary[]; nextPageToken?: string } = { agents: pageAgents };
+  const response: { agents: AgentWire[]; nextPageToken?: string } = {
+    agents: pageAgents.map(mapAgentToWire),
+  };
   if (nextOffset < agents.length) response.nextPageToken = String(nextOffset);
   return response;
 }
@@ -139,16 +160,16 @@ export function mockApiPlugin(): Plugin {
               });
             const pageConversations = conversations.slice(offset, offset + pageSize);
             const nextOffset = offset + pageSize;
-            const response: { conversations: ConversationSummary[]; nextPageToken?: string } = {
-              conversations: pageConversations,
+            const response: { chats: ConversationSummary[]; nextPageToken?: string } = {
+              chats: pageConversations,
             };
             if (nextOffset < conversations.length) response.nextPageToken = String(nextOffset);
             return sendJson(res, 200, response);
           }
 
           if (rpc === 'GetMessages') {
-            const request = payload as { conversationId?: string; pageSize?: number; pageToken?: string };
-            const conversationId = request.conversationId;
+            const request = payload as { chatId?: string; pageSize?: number; pageToken?: string };
+            const conversationId = request.chatId;
             if (!conversationId || !conversationStore.has(conversationId)) {
               return sendJson(res, 404, { code: 'not_found', message: 'conversation not found' });
             }
@@ -158,8 +179,8 @@ export function mockApiPlugin(): Plugin {
             const boundedEnd = Math.min(Math.max(endIndex, 0), messages.length);
             const startIndex = Math.max(0, boundedEnd - pageSize);
             const pageMessages = messages.slice(startIndex, boundedEnd);
-            const response: { messages: ConversationMessageRecord[]; nextPageToken?: string; unreadCount?: number } = {
-              messages: pageMessages,
+            const response: { messages: ReturnType<typeof mapMessageToChat>[]; nextPageToken?: string; unreadCount?: number } = {
+              messages: pageMessages.map(mapMessageToChat),
             };
             if (startIndex > 0) response.nextPageToken = String(startIndex);
             const unreadCount = unreadIdsByConversation.get(conversationId)?.size ?? 0;
@@ -168,18 +189,15 @@ export function mockApiPlugin(): Plugin {
           }
 
           if (rpc === 'SendMessage') {
-            const request = payload as { conversationId?: string; body?: string; fileIds?: string[]; senderId?: string };
-            const conversationId = request.conversationId;
+            const request = payload as { chatId?: string; body?: string; fileIds?: string[] };
+            const conversationId = request.chatId;
             if (!conversationId || !conversationStore.has(conversationId)) {
               return sendJson(res, 404, { code: 'not_found', message: 'conversation not found' });
             }
-            const senderId = typeof request.senderId === 'string' && request.senderId.trim()
-              ? request.senderId
-              : casey.id;
             const nextMessage: ConversationMessageRecord = {
               id: randomUUID(),
               conversationId,
-              senderId,
+              senderId: casey.id,
               body: typeof request.body === 'string' ? request.body : '',
               fileIds: Array.isArray(request.fileIds)
                 ? request.fileIds.filter((id): id is string => typeof id === 'string')
@@ -199,7 +217,7 @@ export function mockApiPlugin(): Plugin {
               });
             }
 
-            return sendJson(res, 200, { message: nextMessage });
+            return sendJson(res, 200, { message: mapMessageToChat(nextMessage) });
           }
 
           if (rpc === 'CreateChat') {
@@ -225,12 +243,12 @@ export function mockApiPlugin(): Plugin {
             conversationStore.set(conversation.id, conversation);
             messagesByConversation.set(conversation.id, []);
             unreadIdsByConversation.set(conversation.id, new Set());
-            return sendJson(res, 200, { conversation: buildConversationResponse(conversation) });
+            return sendJson(res, 200, { chat: buildConversationResponse(conversation) });
           }
 
           if (rpc === 'MarkAsRead') {
-            const request = payload as { conversationId?: string; messageIds?: string[] };
-            const conversationId = request.conversationId;
+            const request = payload as { chatId?: string; messageIds?: string[] };
+            const conversationId = request.chatId;
             if (!conversationId || !conversationStore.has(conversationId)) {
               return sendJson(res, 404, { code: 'not_found', message: 'conversation not found' });
             }
@@ -249,8 +267,8 @@ export function mockApiPlugin(): Plugin {
           }
 
           if (rpc === 'UpdateChatStatus') {
-            const request = payload as { conversationId?: string; status?: ConversationSummary['status'] };
-            const conversationId = request.conversationId;
+            const request = payload as { chatId?: string; status?: ConversationSummary['status'] };
+            const conversationId = request.chatId;
             if (!conversationId || !conversationStore.has(conversationId)) {
               return sendJson(res, 404, { code: 'not_found', message: 'conversation not found' });
             }
@@ -267,7 +285,7 @@ export function mockApiPlugin(): Plugin {
               updatedAt: new Date().toISOString(),
             };
             conversationStore.set(conversationId, updatedConversation);
-            return sendJson(res, 200, { conversation: buildConversationResponse(updatedConversation) });
+            return sendJson(res, 200, { chat: buildConversationResponse(updatedConversation) });
           }
 
           return sendJson(res, 404, { code: 'not_found', message: 'unknown method' });

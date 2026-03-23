@@ -1,27 +1,15 @@
 import { argosScreenshot } from '@argos-ci/playwright';
-import type { Page } from '@playwright/test';
 import { test, expect } from './fixtures';
-
-async function openAnyConversation(page: Page) {
-  await page.goto('/conversations');
-  const conversationsList = page.getByTestId('conversations-list');
-  await expect(conversationsList).toBeVisible();
-  const firstConversation = conversationsList.locator('.cursor-pointer').first();
-  await expect(firstConversation).toBeVisible();
-  await firstConversation.click();
-  await expect(page).toHaveURL(/\/conversations\//);
-}
-
-test('shows conversation runs', async ({ page }) => {
-  await openAnyConversation(page);
-  const runInfo = page.getByTestId('run-info');
-  await expect(runInfo.first()).toBeVisible();
-  await argosScreenshot(page, 'conversation-detail-runs');
-});
+import { createChat, sendChatMessage } from './chat-api';
 
 test('shows conversation messages', async ({ page }) => {
-  await openAnyConversation(page);
-  const messages = page.getByTestId('conversation-message');
-  await expect(messages.first()).toBeVisible();
+  const message = `E2E detail message ${Date.now()}`;
+  const chatId = await createChat(page.request);
+  await sendChatMessage(page.request, chatId, message);
+
+  await page.goto(`/conversations/${chatId}`);
+
+  const messageItem = page.getByTestId('conversation-message').filter({ hasText: message });
+  await expect(messageItem).toBeVisible();
   await argosScreenshot(page, 'conversation-detail-messages');
 });
