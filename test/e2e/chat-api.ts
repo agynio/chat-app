@@ -1,4 +1,4 @@
-import type { BrowserContext, Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import type { Agent } from '../../src/api/types/agents';
 
 const CHAT_GATEWAY_PATH = '/api/agynio.api.gateway.v1.ChatGateway';
@@ -66,6 +66,32 @@ async function readOidcSession(page: Page): Promise<OidcStorageSnapshot | null> 
   });
 }
 
+async function getAccessToken(page: Page): Promise<string | null> {
+  const snapshot = await page.evaluate(() => {
+    let hasOidcEntry = false;
+    for (let i = 0; i < window.sessionStorage.length; i += 1) {
+      const key = window.sessionStorage.key(i);
+      if (!key || !key.startsWith('oidc.user:')) continue;
+      hasOidcEntry = true;
+      const raw = window.sessionStorage.getItem(key);
+      if (!raw) continue;
+      try {
+        const parsed = JSON.parse(raw) as { access_token?: unknown };
+        if (typeof parsed.access_token === 'string') {
+          return { token: parsed.access_token, hasOidcEntry };
+        }
+      } catch (_error) {
+        continue;
+      }
+    }
+    return { token: null, hasOidcEntry };
+  });
+
+  if (snapshot.token) return snapshot.token;
+  if (!snapshot.hasOidcEntry) return null;
+  throw new Error('No access_token found in sessionStorage. Is the user signed in?');
+}
+
 function decodeJwtSubject(token: string): string | null {
   const parts = token.split('.');
   if (parts.length < 2) return null;
@@ -81,14 +107,16 @@ function decodeJwtSubject(token: string): string | null {
 }
 
 async function postConnect<T>(
-  context: BrowserContext,
+  page: Page,
   servicePath: string,
   method: string,
   payload: unknown,
 ): Promise<T> {
-  const response = await context.request.post(buildRpcUrl(servicePath, method), {
+  const token = await getAccessToken(page);
+  const headers = token ? { ...CONNECT_HEADERS, Authorization: `Bearer ${token}` } : CONNECT_HEADERS;
+  const response = await page.context().request.post(buildRpcUrl(servicePath, method), {
     data: payload,
-    headers: CONNECT_HEADERS,
+    headers,
   });
   if (!response.ok()) {
     throw new Error(`ConnectRPC ${method} failed with status ${response.status()}.`);
@@ -98,8 +126,8 @@ async function postConnect<T>(
 
 export type AgentOption = { id: string; name: string };
 
-export async function listAgents(context: BrowserContext): Promise<AgentOption[]> {
-  const response = await postConnect<ListAgentsResponse>(context, AGENTS_GATEWAY_PATH, 'ListAgents', {});
+export async function listAgents(page: Page): Promise<AgentOption[]> {
+  const response = await postConnect<ListAgentsResponse>(page, AGENTS_GATEWAY_PATH, 'ListAgents', {});
   if (!Array.isArray(response.agents)) {
     throw new Error('Invalid agents response');
   }
@@ -133,9 +161,9 @@ export async function resolveUserId(page: Page, fallbackId?: string): Promise<st
   throw new Error('Unable to resolve user id from OIDC session.');
 }
 
-export async function createChat(context: BrowserContext, participantId?: string): Promise<string> {
+export async function createChat(page: Page, participantId?: string): Promise<string> {
   const participantIds = participantId ? [participantId] : [];
-  const response = await postConnect<CreateChatResponseWire>(context, CHAT_GATEWAY_PATH, 'CreateChat', {
+  const response = await postConnect<CreateChatResponseWire>(page, CHAT_GATEWAY_PATH, 'CreateChat', {
     participantIds,
   });
   if (!response.chat?.id) {
@@ -145,11 +173,11 @@ export async function createChat(context: BrowserContext, participantId?: string
 }
 
 export async function sendChatMessage(
-  context: BrowserContext,
+  page: Page,
   chatId: string,
   message: string,
 ): Promise<void> {
-  await postConnect(context, CHAT_GATEWAY_PATH, 'SendMessage', {
+  await postConnect(page, CHAT_GATEWAY_PATH, 'SendMessage', {
     chatId,
     body: message,
   });

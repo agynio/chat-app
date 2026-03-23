@@ -23,7 +23,7 @@ test('redirects root to /chats', async ({ page }) => {
 });
 
 test('navigates to chat detail', async ({ page }) => {
-  const chatId = await createChat(page.context());
+  const chatId = await createChat(page);
 
   await page.goto('/chats');
 

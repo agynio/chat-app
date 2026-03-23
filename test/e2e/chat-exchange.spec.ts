@@ -6,8 +6,8 @@ test('two users exchange messages in a shared chat', async ({ userAPage, userBPa
   const messageFromB = `Reply from User B ${Date.now()}`;
 
   const userBId = await resolveUserId(userBPage, USER_B_EMAIL);
-  const chatId = await createChat(userAPage.context(), userBId);
-  await sendChatMessage(userAPage.context(), chatId, messageFromA);
+  const chatId = await createChat(userAPage, userBId);
+  await sendChatMessage(userAPage, chatId, messageFromA);
 
   await userAPage.goto(`/chats/${chatId}`);
   await expect(userAPage.getByTestId('chat-message').filter({ hasText: messageFromA })).toBeVisible();

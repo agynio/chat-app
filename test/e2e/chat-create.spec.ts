@@ -12,7 +12,7 @@ test('creates a new chat', async ({ page }) => {
   await expect(participantInput).toBeVisible();
   await participantInput.click();
 
-  const agents = await listAgents(page.context());
+  const agents = await listAgents(page);
   test.skip(agents.length === 0, 'No agents available in the cluster — skipping');
 
   const selectedAgent = agents[0];
