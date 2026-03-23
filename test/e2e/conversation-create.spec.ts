@@ -34,7 +34,7 @@ test('creates a new conversation', async ({ page }) => {
   await sendButton.click();
 
   await expect(page).toHaveURL(/\/conversations\//);
-  await expect(page.getByTestId('conversation-message').filter({ hasText: message })).toBeVisible();
+  await expect(page.getByTestId('chat-message').filter({ hasText: message })).toBeVisible();
 
   const conversationsList = page.getByTestId('conversations-list');
   await expect(conversationsList.getByText(selectedAgent.name).first()).toBeVisible();

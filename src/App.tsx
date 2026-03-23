@@ -18,6 +18,8 @@ function App() {
             <Route element={<RootLayout />}>
               <Route path="/conversations" element={<Conversations />} />
               <Route path="/conversations/:conversationId" element={<Conversations />} />
+              <Route path="/chats" element={<Conversations />} />
+              <Route path="/chats/:conversationId" element={<Conversations />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/conversations" replace />} />

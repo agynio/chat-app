@@ -9,7 +9,7 @@ test('shows conversation messages', async ({ page }) => {
 
   await page.goto(`/conversations/${chatId}`);
 
-  const messageItem = page.getByTestId('conversation-message').filter({ hasText: message });
+  const messageItem = page.getByTestId('chat-message').filter({ hasText: message });
   await expect(messageItem).toBeVisible();
   await argosScreenshot(page, 'conversation-detail-messages');
 });
