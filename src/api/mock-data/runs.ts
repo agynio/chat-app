@@ -1,4 +1,4 @@
-import type { RunMeta } from '@/api/types/conversation-resources';
+import type { RunMeta } from '@/api/types/chat-resources';
 import { iso } from './time';
 import { conversationOneId, conversationTwoId, conversationThreeId } from './conversations';
 
@@ -12,14 +12,14 @@ export const runsByConversation = new Map<string, RunMeta[]>([
     [
       {
         id: runOneId,
-        conversationId: conversationOneId,
+        chatId: conversationOneId,
         status: 'finished',
         createdAt: iso(-160),
         updatedAt: iso(-150),
       },
       {
         id: runTwoId,
-        conversationId: conversationOneId,
+        chatId: conversationOneId,
         status: 'running',
         createdAt: iso(-20),
         updatedAt: iso(-2),
@@ -31,7 +31,7 @@ export const runsByConversation = new Map<string, RunMeta[]>([
     [
       {
         id: runThreeId,
-        conversationId: conversationTwoId,
+        chatId: conversationTwoId,
         status: 'finished',
         createdAt: iso(-380),
         updatedAt: iso(-360),

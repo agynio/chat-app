@@ -1,7 +1,7 @@
 import { queuedMessagesByConversation } from '@/api/mock-data/messages';
 import { conversationReminders } from '@/api/mock-data/reminders';
 import { runsByConversation } from '@/api/mock-data/runs';
-import type { ConversationActivity } from '@/api/types/conversation-resources';
+import type { ChatActivity } from '@/api/types/chat-resources';
 import { UUID_REGEX } from '@/utils/validation';
 
 const clampTake = (value: number | undefined, fallback = 200) => {
@@ -10,48 +10,48 @@ const clampTake = (value: number | undefined, fallback = 200) => {
   return Math.min(1000, Math.max(1, coerced));
 };
 
-const resolveQueue = (conversationId: string) => {
-  const existing = queuedMessagesByConversation.get(conversationId);
+const resolveQueue = (chatId: string) => {
+  const existing = queuedMessagesByConversation.get(chatId);
   if (existing) return existing;
   const next: Array<{ id: string; text: string; enqueuedAt?: string }> = [];
-  queuedMessagesByConversation.set(conversationId, next);
+  queuedMessagesByConversation.set(chatId, next);
   return next;
 };
 
-const resolveActivity = (conversationId: string): ConversationActivity => {
-  const runs = runsByConversation.get(conversationId) ?? [];
+const resolveActivity = (chatId: string): ChatActivity => {
+  const runs = runsByConversation.get(chatId) ?? [];
   if (runs.some((run) => run.status === 'running')) return 'working';
-  const queued = queuedMessagesByConversation.get(conversationId) ?? [];
+  const queued = queuedMessagesByConversation.get(chatId) ?? [];
   if (queued.length > 0) return 'waiting';
   return 'idle';
 };
 
-export const conversationResources = {
-  activity: async (conversationId: string) => {
-    if (!UUID_REGEX.test(conversationId)) {
-      throw new Error('Invalid conversation identifier');
+export const chatResources = {
+  activity: async (chatId: string) => {
+    if (!UUID_REGEX.test(chatId)) {
+      throw new Error('Invalid chat identifier');
     }
-    return resolveActivity(conversationId);
+    return resolveActivity(chatId);
   },
-  reminders: async (conversationId: string, take: number = 200) => {
-    if (!UUID_REGEX.test(conversationId)) {
-      throw new Error('Invalid conversation identifier');
+  reminders: async (chatId: string, take: number = 200) => {
+    if (!UUID_REGEX.test(chatId)) {
+      throw new Error('Invalid chat identifier');
     }
     const limit = clampTake(take);
     const items = conversationReminders
-      .filter((reminder) => reminder.conversationId === conversationId)
+      .filter((reminder) => reminder.chatId === chatId)
       .filter((reminder) => reminder.cancelledAt === null && reminder.completedAt === null)
       .slice(0, limit)
       .map((reminder) => ({ ...reminder }));
     items.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
     return { items };
   },
-  queuedMessages: async (conversationId: string) => {
-    const queue = resolveQueue(conversationId);
+  queuedMessages: async (chatId: string) => {
+    const queue = resolveQueue(chatId);
     return { items: queue.map((item) => ({ ...item })) };
   },
-  clearQueuedMessages: async (conversationId: string) => {
-    const queue = resolveQueue(conversationId);
+  clearQueuedMessages: async (chatId: string) => {
+    const queue = resolveQueue(chatId);
     const clearedCount = queue.length;
     queue.splice(0, queue.length);
     return { clearedCount };

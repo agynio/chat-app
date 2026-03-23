@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import type { BrowserContext } from '@playwright/test';
-import type { AgentWire } from '../../src/api/types/wire/agents';
+import type { Agent } from '../../src/api/types/agents';
 
 const CHAT_GATEWAY_PATH = '/api/agynio.api.gateway.v1.ChatGateway';
 const AGENTS_GATEWAY_PATH = '/api/agynio.api.gateway.v1.AgentsGateway';
@@ -10,8 +10,8 @@ const CONNECT_HEADERS = {
   'Connect-Protocol-Version': '1',
 };
 
-type ListAgentsResponseWire = {
-  agents?: AgentWire[];
+type ListAgentsResponse = {
+  agents?: Agent[];
 };
 
 type CreateChatResponseWire = {
@@ -49,7 +49,7 @@ async function postConnect<T>(
 export type AgentOption = { id: string; name: string };
 
 export async function listAgents(context: BrowserContext): Promise<AgentOption[]> {
-  const response = await postConnect<ListAgentsResponseWire>(context, AGENTS_GATEWAY_PATH, 'ListAgents', {});
+  const response = await postConnect<ListAgentsResponse>(context, AGENTS_GATEWAY_PATH, 'ListAgents', {});
   if (!Array.isArray(response.agents)) {
     throw new Error('Invalid agents response');
   }

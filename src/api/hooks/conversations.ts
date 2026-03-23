@@ -1,15 +1,12 @@
 import { useInfiniteQuery, useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query';
-import { conversationsApi } from '@/api/modules/conversations';
+import { chatApi } from '@/api/modules/chat';
 import type {
-  ConversationMessageRecord,
-  ConversationStatus,
-  CreateConversationRequest,
-  CreateConversationResponse,
-  GetConversationsResponse,
-  GetConversationMessagesResponse,
-  SendConversationMessageResponse,
-  UpdateConversationStatusResponse,
-} from '@/api/types/conversations';
+  ChatMessage,
+  CreateChatRequest,
+  CreateChatResponse,
+  GetMessagesResponse,
+  SendMessageResponse,
+} from '@/api/types/chat';
 
 const CONVERSATION_PAGE_SIZE = 25;
 const MESSAGE_PAGE_SIZE = 30;
@@ -18,7 +15,7 @@ export function useConversations() {
   return useInfiniteQuery({
     queryKey: ['conversations', 'list', CONVERSATION_PAGE_SIZE],
     queryFn: ({ pageParam }) =>
-      conversationsApi.getConversations({
+      chatApi.getChats({
         pageSize: CONVERSATION_PAGE_SIZE,
         pageToken: pageParam ?? undefined,
       }),
@@ -34,8 +31,8 @@ export function useConversationMessages(conversationId: string | null | undefine
     enabled: Boolean(conversationId),
     queryKey: ['conversations', conversationId ?? 'none', 'messages', MESSAGE_PAGE_SIZE],
     queryFn: ({ pageParam }) =>
-      conversationsApi.getMessages({
-        conversationId: conversationId as string,
+      chatApi.getMessages({
+        chatId: conversationId as string,
         pageSize: MESSAGE_PAGE_SIZE,
         pageToken: pageParam ?? undefined,
       }),
@@ -47,7 +44,7 @@ export function useConversationMessages(conversationId: string | null | undefine
 }
 
 type SendConversationMessageInput = {
-  conversationId: string;
+  chatId: string;
   body: string;
   senderId: string;
   fileIds?: string[];
@@ -55,31 +52,31 @@ type SendConversationMessageInput = {
 
 type SendConversationMessageContext = {
   queryKey: (string | number)[];
-  previous?: InfiniteData<GetConversationMessagesResponse>;
+  previous?: InfiniteData<GetMessagesResponse>;
   optimisticId: string;
 };
 
 export function useSendConversationMessage() {
   const queryClient = useQueryClient();
 
-  return useMutation<SendConversationMessageResponse, Error, SendConversationMessageInput, SendConversationMessageContext>({
-    mutationFn: ({ conversationId, body, fileIds, senderId }) =>
-      conversationsApi.sendMessage({ conversationId, body, fileIds, senderId }),
-    onMutate: async ({ conversationId, body, senderId, fileIds }) => {
-      const queryKey = ['conversations', conversationId, 'messages', MESSAGE_PAGE_SIZE];
+  return useMutation<SendMessageResponse, Error, SendConversationMessageInput, SendConversationMessageContext>({
+    mutationFn: ({ chatId, body, fileIds }) =>
+      chatApi.sendMessage({ chatId, body, fileIds }),
+    onMutate: async ({ chatId, body, senderId, fileIds }) => {
+      const queryKey = ['conversations', chatId, 'messages', MESSAGE_PAGE_SIZE];
       await queryClient.cancelQueries({ queryKey });
-      const previous = queryClient.getQueryData<InfiniteData<GetConversationMessagesResponse>>(queryKey);
+      const previous = queryClient.getQueryData<InfiniteData<GetMessagesResponse>>(queryKey);
       const optimisticId = `optimistic-${Date.now()}`;
-      const optimisticMessage: ConversationMessageRecord = {
+      const optimisticMessage: ChatMessage = {
         id: optimisticId,
-        conversationId,
+        chatId,
         senderId,
         body,
         fileIds: fileIds ?? [],
         createdAt: new Date().toISOString(),
       };
 
-      queryClient.setQueryData<InfiniteData<GetConversationMessagesResponse>>(queryKey, (current) => {
+      queryClient.setQueryData<InfiniteData<GetMessagesResponse>>(queryKey, (current) => {
         if (!current) {
           return {
             pageParams: [undefined],
@@ -87,7 +84,7 @@ export function useSendConversationMessage() {
           };
         }
         const [first, ...rest] = current.pages;
-        const updatedFirst: GetConversationMessagesResponse = {
+        const updatedFirst: GetMessagesResponse = {
           ...first,
           messages: [...first.messages, optimisticMessage],
         };
@@ -102,8 +99,8 @@ export function useSendConversationMessage() {
       }
     },
     onSuccess: (data, variables, context) => {
-      const queryKey = context?.queryKey ?? ['conversations', variables.conversationId, 'messages', MESSAGE_PAGE_SIZE];
-      queryClient.setQueryData<InfiniteData<GetConversationMessagesResponse>>(queryKey, (current) => {
+      const queryKey = context?.queryKey ?? ['conversations', variables.chatId, 'messages', MESSAGE_PAGE_SIZE];
+      queryClient.setQueryData<InfiniteData<GetMessagesResponse>>(queryKey, (current) => {
         if (!current) return current;
         return {
           ...current,
@@ -120,77 +117,11 @@ export function useSendConversationMessage() {
   });
 }
 
-type ToggleConversationStatusInput = {
-  conversationId: string;
-  status: ConversationStatus;
-};
-
-type ToggleConversationStatusContext = {
-  queryKey: (string | number)[];
-  previous?: InfiniteData<GetConversationsResponse>;
-};
-
-export function useToggleConversationStatus() {
-  const queryClient = useQueryClient();
-
-  return useMutation<UpdateConversationStatusResponse, Error, ToggleConversationStatusInput, ToggleConversationStatusContext>({
-    mutationFn: ({ conversationId, status }) => conversationsApi.updateStatus({ conversationId, status }),
-    onMutate: async ({ conversationId, status }) => {
-      const queryKey = ['conversations', 'list', CONVERSATION_PAGE_SIZE];
-      await queryClient.cancelQueries({ queryKey });
-      const previous = queryClient.getQueryData<InfiniteData<GetConversationsResponse>>(queryKey);
-      const now = new Date().toISOString();
-      queryClient.setQueryData<InfiniteData<GetConversationsResponse>>(queryKey, (current) => {
-        if (!current) return current;
-        return {
-          ...current,
-          pages: current.pages.map((page) => ({
-            ...page,
-            conversations: page.conversations.map((conversation) =>
-              conversation.id === conversationId
-                ? {
-                    ...conversation,
-                    status,
-                    updatedAt: now,
-                  }
-                : conversation,
-            ),
-          })),
-        };
-      });
-      return { queryKey, previous };
-    },
-    onError: (_error, _variables, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(context.queryKey, context.previous);
-      }
-    },
-    onSuccess: (data, _variables, context) => {
-      const queryKey = context?.queryKey ?? ['conversations', 'list', CONVERSATION_PAGE_SIZE];
-      queryClient.setQueryData<InfiniteData<GetConversationsResponse>>(queryKey, (current) => {
-        if (!current) return current;
-        return {
-          ...current,
-          pages: current.pages.map((page) => ({
-            ...page,
-            conversations: page.conversations.map((conversation) =>
-              conversation.id === data.conversation.id ? data.conversation : conversation,
-            ),
-          })),
-        };
-      });
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['conversations', 'list'] });
-    },
-  });
-}
-
 export function useCreateConversation() {
   const queryClient = useQueryClient();
 
-  return useMutation<CreateConversationResponse, Error, CreateConversationRequest>({
-    mutationFn: (req) => conversationsApi.createConversation(req),
+  return useMutation<CreateChatResponse, Error, CreateChatRequest>({
+    mutationFn: (req) => chatApi.createChat(req),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['conversations', 'list'] });
     },
@@ -201,7 +132,7 @@ export function useMarkConversationRead(conversationId: string | null | undefine
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (messageIds: string[]) =>
-      conversationsApi.markAsRead({ conversationId: conversationId as string, messageIds }),
+      chatApi.markAsRead({ chatId: conversationId as string, messageIds }),
     onSuccess: () => {
       if (conversationId) {
         queryClient.invalidateQueries({ queryKey: ['conversations', conversationId, 'messages'] });

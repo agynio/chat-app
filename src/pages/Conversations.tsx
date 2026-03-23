@@ -17,16 +17,15 @@ import {
   useCreateConversation,
   useSendConversationMessage,
   useMarkConversationRead,
-  useToggleConversationStatus,
 } from '@/api/hooks/conversations';
 import { useConversationRuns } from '@/api/hooks/runs';
 import {
   useConversationReminders,
   useConversationContainers,
 } from '@/api/hooks/conversation-resources';
-import { conversationResources } from '@/api/modules/conversation-resources';
-import type { ConversationMessageRecord, ConversationStatus, ConversationSummary } from '@/api/types/conversations';
-import type { ConversationReminder, RunMeta } from '@/api/types/conversation-resources';
+import { chatResources } from '@/api/modules/chat-resources';
+import type { ChatMessage, Chat } from '@/api/types/chat';
+import type { ChatReminder, RunMeta } from '@/api/types/chat-resources';
 import type { ContainerItem } from '@/api/modules/containers';
 import { stubUsers } from '@/data/stub-users';
 import { cancelReminder } from '@/features/reminders/api';
@@ -45,11 +44,8 @@ const DRAFT_PARTICIPANT_LABEL = '(select participants)';
 const UNKNOWN_PARTICIPANT_LABEL = '(unknown participant)';
 const EMPTY_PARTICIPANTS: DraftParticipant[] = [];
 const EMPTY_RUN_ITEMS: RunMeta[] = [];
-const EMPTY_REMINDERS: ConversationReminder[] = [];
+const EMPTY_REMINDERS: ChatReminder[] = [];
 const EMPTY_CONTAINERS: ContainerItem[] = [];
-
-const mapConversationIndicatorStatus = (status: ConversationStatus): ConversationListItem['status'] =>
-  status === 'open' ? 'pending' : 'finished';
 
 const mapRunStatus = (status: RunMeta['status']): Run['status'] => {
   if (status === 'terminated') return 'failed';
@@ -74,14 +70,14 @@ const mapContainers = (items: ContainerItem[]): { id: string; name: string; stat
     status: container.status === 'running' ? 'running' : 'finished',
   }));
 
-const mapReminders = (items: ConversationReminder[]): { id: string; title: string; time: string }[] =>
+const mapReminders = (items: ChatReminder[]): { id: string; title: string; time: string }[] =>
   items.map((reminder) => ({
     id: reminder.id,
     title: sanitizeSummary(reminder.note ?? null),
     time: formatDate(reminder.at),
   }));
 
-const mapReminderData = (items: ConversationReminder[]): ReminderData[] =>
+const mapReminderData = (items: ChatReminder[]): ReminderData[] =>
   items.map((reminder) => ({
     id: reminder.id,
     content: reminder.note ? <MarkdownContent content={reminder.note} /> : UNKNOWN_PARTICIPANT_LABEL,
@@ -130,7 +126,7 @@ function ConversationsContent({ user }: { user: User }) {
 
   const canFallbackToConversation = useCallback(
     (conversationId: string) => {
-      const items = conversationsQuery.data?.pages.flatMap((page) => page.conversations) ?? [];
+      const items = conversationsQuery.data?.pages.flatMap((page) => page.chats) ?? [];
       return items.some((conversation) => conversation.id === conversationId);
     },
     [conversationsQuery.data],
@@ -178,7 +174,7 @@ function ConversationsContent({ user }: { user: User }) {
   const participantLookup = useMemo(() => {
     const map = new Map<string, DraftParticipant>();
     for (const agent of agents) {
-      map.set(agent.id, { id: agent.id, name: agent.name, type: 'agent' });
+      map.set(agent.meta.id, { id: agent.meta.id, name: agent.name, type: 'agent' });
     }
     // TODO: Replace stub users with directory-backed identities.
     for (const stubUser of stubUsers) {
@@ -199,7 +195,7 @@ function ConversationsContent({ user }: { user: User }) {
       .filter((stubUser) => stubUser.id !== userEmail)
       .map((stubUser) => ({ value: stubUser.id, label: stubUser.name }));
     const options = [
-      ...agents.map((agent) => ({ value: agent.id, label: agent.name })),
+      ...agents.map((agent) => ({ value: agent.meta.id, label: agent.name })),
       ...userOptions,
     ];
     return options.filter((option) => !selectedParticipantIds.has(option.value));
@@ -227,12 +223,12 @@ function ConversationsContent({ user }: { user: User }) {
   );
 
   const conversationSummaries = useMemo(
-    () => conversationsQuery.data?.pages.flatMap((page) => page.conversations) ?? [],
+    () => conversationsQuery.data?.pages.flatMap((page) => page.chats) ?? [],
     [conversationsQuery.data],
   );
 
   const resolveConversationTitle = useCallback(
-    (participants: ConversationSummary['participants']) => {
+    (participants: Chat['participants']) => {
       const names = participants
         .filter((participant) => participant.id !== currentUserId)
         .map((participant) => resolveParticipantLabel(participant.id, participantLookup))
@@ -267,17 +263,15 @@ function ConversationsContent({ user }: { user: User }) {
   const conversationsForList = useMemo(() => {
     const fromDrafts = drafts.map(mapDraftToConversation);
     const fromData = conversationSummaries.map((conversation) => {
-      const status = conversation.status ?? 'open';
-      const isOpen = status === 'open';
       return {
         id: conversation.id,
         title: resolveConversationTitle(conversation.participants),
-        subtitle: sanitizeSummary(conversation.summary ?? null),
+        subtitle: undefined,
         createdAt: conversation.createdAt,
         updatedAt: conversation.updatedAt,
-        status: mapConversationIndicatorStatus(status),
-        isOpen,
-        unreadCount: conversation.unreadCount ?? 0,
+        status: 'pending',
+        isOpen: true,
+        unreadCount: 0,
       } satisfies ConversationListItem;
     });
     return [...fromDrafts, ...fromData];
@@ -316,7 +310,7 @@ function ConversationsContent({ user }: { user: User }) {
   const queuedMessagesQuery = useQuery({
     enabled: Boolean(selectedConversationId) && !effectiveDraftMode,
     queryKey: ['conversations', selectedConversationId, 'queued'],
-    queryFn: () => conversationResources.queuedMessages(selectedConversationId as string),
+    queryFn: () => chatResources.queuedMessages(selectedConversationId as string),
     staleTime: 5000,
     refetchOnWindowFocus: false,
   });
@@ -327,7 +321,6 @@ function ConversationsContent({ user }: { user: User }) {
 
   const sendConversationMessage = useSendConversationMessage();
   const createConversation = useCreateConversation();
-  const toggleConversationStatus = useToggleConversationStatus();
 
   const runItems = useMemo(() => runMetaQuery.data?.items ?? EMPTY_RUN_ITEMS, [runMetaQuery.data]);
   const runItemsSorted = useMemo(() => [...runItems].sort(compareRunMeta), [runItems]);
@@ -336,7 +329,7 @@ function ConversationsContent({ user }: { user: User }) {
   const conversationMessages = useMemo(() => {
     const pages = conversationMessagesQuery.data?.pages ?? [];
     const items = pages.flatMap((page) => page.messages);
-    const map = new Map<string, ConversationMessageRecord>();
+    const map = new Map<string, ChatMessage>();
     for (const message of items) {
       map.set(message.id, message);
     }
@@ -419,7 +412,7 @@ function ConversationsContent({ user }: { user: User }) {
     });
   }, [selectedConversationId, effectiveDraftMode, unreadMessageIds, markConversationRead]);
 
-  const agentIdSet = useMemo(() => new Set(agents.map((agent) => agent.id)), [agents]);
+  const agentIdSet = useMemo(() => new Set(agents.map((agent) => agent.meta.id)), [agents]);
   const unreadMessageIdSet = useMemo(() => new Set(unreadMessageIds), [unreadMessageIds]);
 
   const handleDeleteMessage = useCallback(
@@ -502,7 +495,7 @@ function ConversationsContent({ user }: { user: User }) {
   }, [queuedMessagesQuery.data, effectiveDraftMode]);
 
   const cancelQueuedMessagesMutation = useMutation({
-    mutationFn: async ({ conversationId }: { conversationId: string }) => conversationResources.clearQueuedMessages(conversationId),
+    mutationFn: async ({ conversationId }: { conversationId: string }) => chatResources.clearQueuedMessages(conversationId),
     onMutate: async ({ conversationId }) => {
       const queryKey = ['conversations', conversationId, 'queued'] as const;
       await queryClient.cancelQueries({ queryKey });
@@ -532,7 +525,7 @@ function ConversationsContent({ user }: { user: User }) {
         next.delete(reminderId);
         return next;
       });
-      void queryClient.invalidateQueries({ queryKey: ['conversations', result.conversationId, 'reminders'] });
+      void queryClient.invalidateQueries({ queryKey: ['conversations', result.chatId, 'reminders'] });
     },
     onError: (error, reminderId) => {
       setCancellingReminderIds((prev) => {
@@ -574,22 +567,6 @@ function ConversationsContent({ user }: { user: User }) {
       void conversationsQuery.fetchNextPage();
     }
   }, [conversationsQuery]);
-
-  const handleToggleConversationStatus = useCallback(
-    (conversationId: string, nextStatus: 'open' | 'closed') => {
-      if (isDraftConversationId(conversationId)) return;
-      if (toggleConversationStatus.isPending) return;
-      toggleConversationStatus.mutate(
-        { conversationId, status: nextStatus },
-        {
-          onError: (error) => {
-            notifyError(error instanceof Error ? error.message : 'Failed to update conversation status.');
-          },
-        },
-      );
-    },
-    [toggleConversationStatus],
-  );
 
   const handleToggleRunsInfoCollapsed = useCallback((collapsed: boolean) => {
     setRunsInfoCollapsed(collapsed);
@@ -635,7 +612,7 @@ function ConversationsContent({ user }: { user: User }) {
           { participantIds },
           {
             onSuccess: (data) => {
-              const newConversationId = data.conversation.id;
+              const newConversationId = data.chat.id;
               setDrafts((prev) => prev.filter((item) => item.id !== draftId));
               setSelectedConversationIdState(newConversationId);
               setInputValue('');
@@ -644,7 +621,7 @@ function ConversationsContent({ user }: { user: User }) {
               navigate(`/conversations/${encodeURIComponent(newConversationId)}`);
               sendConversationMessage.mutate(
                 {
-                  conversationId: newConversationId,
+                  chatId: newConversationId,
                   body: trimmed,
                   senderId: currentUserId,
                   fileIds,
@@ -670,7 +647,7 @@ function ConversationsContent({ user }: { user: User }) {
       persistDraftNow(conversationId, value);
       sendConversationMessage.mutate(
         {
-          conversationId,
+          chatId: conversationId,
           body: trimmed,
           senderId: currentUserId,
           fileIds,
@@ -756,8 +733,6 @@ function ConversationsContent({ user }: { user: User }) {
           onSendMessage={handleSendMessage}
           onConversationsLoadMore={handleConversationsLoadMore}
           onCreateDraft={handleCreateDraft}
-          onToggleConversationStatus={handleToggleConversationStatus}
-          isToggleConversationStatusPending={toggleConversationStatus.isPending}
           isSendMessagePending={sendConversationMessage.isPending || createConversation.isPending}
           onOpenContainerTerminal={handleOpenContainerTerminal}
           draftMode={effectiveDraftMode}

@@ -1,4 +1,4 @@
-import type { ConversationMessageRecord } from '../types/conversations';
+import type { ChatMessage } from '../types/chat';
 import { stubUsers } from '../../data/stub-users';
 import { agentAccountId, agentCampaignId, agentResearchId } from './agents';
 import { conversationOneId, conversationThreeId, conversationTwoId } from './conversations';
@@ -6,7 +6,7 @@ import { iso } from './time';
 
 type ConversationMessageSeed = {
   conversationId: string;
-  messages: ConversationMessageRecord[];
+  messages: ChatMessage[];
 };
 
 const [casey, alex, jamie] = stubUsers;
@@ -17,7 +17,7 @@ const conversationMessageSeeds: ConversationMessageSeed[] = [
     messages: [
       {
         id: 'conv-1-msg-1',
-        conversationId: conversationOneId,
+        chatId: conversationOneId,
         senderId: casey.id,
         body: 'Draft a Q2 marketing brief focused on the new launch.',
         fileIds: [],
@@ -25,7 +25,7 @@ const conversationMessageSeeds: ConversationMessageSeed[] = [
       },
       {
         id: 'conv-1-msg-2',
-        conversationId: conversationOneId,
+        chatId: conversationOneId,
         senderId: agentCampaignId,
         body: 'Here is a draft brief with positioning, goals, and launch phases.',
         fileIds: [],
@@ -33,7 +33,7 @@ const conversationMessageSeeds: ConversationMessageSeed[] = [
       },
       {
         id: 'conv-1-msg-3',
-        conversationId: conversationOneId,
+        chatId: conversationOneId,
         senderId: casey.id,
         body: 'Add a section on creative deliverables and internal review dates.',
         fileIds: [],
@@ -41,7 +41,7 @@ const conversationMessageSeeds: ConversationMessageSeed[] = [
       },
       {
         id: 'conv-1-msg-4',
-        conversationId: conversationOneId,
+        chatId: conversationOneId,
         senderId: agentCampaignId,
         body: 'Updated draft includes a deliverables checklist and review cadence.',
         fileIds: ['file-brief-1'],
@@ -54,7 +54,7 @@ const conversationMessageSeeds: ConversationMessageSeed[] = [
     messages: [
       {
         id: 'conv-2-msg-1',
-        conversationId: conversationTwoId,
+        chatId: conversationTwoId,
         senderId: alex.id,
         body: 'Draft a follow-up note for the ACME renewal.',
         fileIds: [],
@@ -62,7 +62,7 @@ const conversationMessageSeeds: ConversationMessageSeed[] = [
       },
       {
         id: 'conv-2-msg-2',
-        conversationId: conversationTwoId,
+        chatId: conversationTwoId,
         senderId: agentAccountId,
         body: 'Drafted a friendly renewal follow-up highlighting next steps.',
         fileIds: [],
@@ -70,7 +70,7 @@ const conversationMessageSeeds: ConversationMessageSeed[] = [
       },
       {
         id: 'conv-2-msg-3',
-        conversationId: conversationTwoId,
+        chatId: conversationTwoId,
         senderId: alex.id,
         body: 'Please include pricing highlights and the renewal deadline.',
         fileIds: ['file-acme-1'],
@@ -78,7 +78,7 @@ const conversationMessageSeeds: ConversationMessageSeed[] = [
       },
       {
         id: 'conv-2-msg-4',
-        conversationId: conversationTwoId,
+        chatId: conversationTwoId,
         senderId: agentAccountId,
         body: 'Added pricing details, renewal timeline, and next-step CTA.',
         fileIds: [],
@@ -91,7 +91,7 @@ const conversationMessageSeeds: ConversationMessageSeed[] = [
     messages: [
       {
         id: 'conv-3-msg-1',
-        conversationId: conversationThreeId,
+        chatId: conversationThreeId,
         senderId: jamie.id,
         body: 'Review edits and finalize the Q2 campaign outline.',
         fileIds: [],
@@ -99,7 +99,7 @@ const conversationMessageSeeds: ConversationMessageSeed[] = [
       },
       {
         id: 'conv-3-msg-2',
-        conversationId: conversationThreeId,
+        chatId: conversationThreeId,
         senderId: agentResearchId,
         body: 'Summarized competitive insights and top three growth channels.',
         fileIds: [],
@@ -107,7 +107,7 @@ const conversationMessageSeeds: ConversationMessageSeed[] = [
       },
       {
         id: 'conv-3-msg-3',
-        conversationId: conversationThreeId,
+        chatId: conversationThreeId,
         senderId: jamie.id,
         body: 'Can you add a short section on regional rollout considerations?',
         fileIds: [],
@@ -115,7 +115,7 @@ const conversationMessageSeeds: ConversationMessageSeed[] = [
       },
       {
         id: 'conv-3-msg-4',
-        conversationId: conversationThreeId,
+        chatId: conversationThreeId,
         senderId: agentResearchId,
         body: 'Added rollout considerations for NA, EMEA, and APAC regions.',
         fileIds: [],
@@ -131,7 +131,7 @@ const unreadMessageIdSeeds: Array<[string, string[]]> = [
   [conversationThreeId, ['conv-3-msg-4']],
 ];
 
-export function createConversationMessagesMap(): Map<string, ConversationMessageRecord[]> {
+export function createConversationMessagesMap(): Map<string, ChatMessage[]> {
   return new Map(
     conversationMessageSeeds.map((seed) => [
       seed.conversationId,

@@ -1,4 +1,4 @@
-import type { RunMessageItem } from '@/api/types/conversation-resources';
+import type { RunMessageItem } from '@/api/types/chat-resources';
 import { iso } from './time';
 import { runOneId, runTwoId, runThreeId } from './runs';
 import { conversationOneId, conversationThreeId, conversationTwoId } from './conversations';

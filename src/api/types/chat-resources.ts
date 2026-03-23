@@ -1,6 +1,6 @@
-export type ConversationReminder = {
+export type ChatReminder = {
   id: string;
-  conversationId: string;
+  chatId: string;
   note: string;
   at: string;
   createdAt: string;
@@ -10,16 +10,16 @@ export type ConversationReminder = {
   status?: 'scheduled' | 'executed' | 'cancelled';
 };
 
-export type ReminderItem = ConversationReminder;
+export type ReminderItem = ChatReminder;
 
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
 
-export type ConversationActivity = 'working' | 'waiting' | 'idle';
+export type ChatActivity = 'working' | 'waiting' | 'idle';
 
 export type RunMeta = {
   id: string;
-  conversationId: string;
+  chatId: string;
   status: 'running' | 'finished' | 'terminated';
   createdAt: string;
   updatedAt: string;

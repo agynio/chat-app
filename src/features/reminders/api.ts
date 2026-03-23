@@ -2,7 +2,7 @@ import { conversationReminders } from '@/api/mock-data/reminders';
 
 export interface CancelReminderResponse {
   ok: true;
-  conversationId: string;
+  chatId: string;
 }
 
 export function cancelReminder(reminderId: string): Promise<CancelReminderResponse> {
@@ -12,5 +12,5 @@ export function cancelReminder(reminderId: string): Promise<CancelReminderRespon
   }
   reminder.cancelledAt = new Date().toISOString();
   reminder.status = 'cancelled';
-  return Promise.resolve({ ok: true, conversationId: reminder.conversationId });
+  return Promise.resolve({ ok: true, chatId: reminder.chatId });
 }

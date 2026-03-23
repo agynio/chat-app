@@ -1,22 +1,22 @@
 import { useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { conversationResources } from '@/api/modules/conversation-resources';
+import { chatResources } from '@/api/modules/chat-resources';
 import { listContainers } from '@/api/modules/containers';
-import type { ConversationActivity, ConversationReminder } from '@/api/types/conversation-resources';
+import type { ChatActivity, ChatReminder } from '@/api/types/chat-resources';
 import type { ContainerItem } from '@/api/modules/containers';
 import { graphSocket } from '@/lib/graph/socket';
 import { UUID_REGEX } from '@/utils/validation';
 
-const DEFAULT_ACTIVITY: ConversationActivity = 'idle';
+const DEFAULT_ACTIVITY: ChatActivity = 'idle';
 
 export function useConversationActivity(conversationId: string | undefined) {
   const queryClient = useQueryClient();
   const queryKey = useMemo(() => ['conversations', conversationId, 'activity'] as const, [conversationId]);
   const isValidConversation = !!conversationId && UUID_REGEX.test(conversationId);
-  const q = useQuery<ConversationActivity>({
+  const q = useQuery<ChatActivity>({
     enabled: isValidConversation,
     queryKey,
-    queryFn: () => conversationResources.activity(conversationId as string),
+    queryFn: () => chatResources.activity(conversationId as string),
     staleTime: 5000,
   });
 
@@ -24,7 +24,7 @@ export function useConversationActivity(conversationId: string | undefined) {
     if (!conversationId || !isValidConversation) return;
     const offActivity = graphSocket.onConversationActivityChanged((payload) => {
       if (payload.conversationId !== conversationId) return;
-      queryClient.setQueryData<ConversationActivity>(queryKey, payload.activity);
+      queryClient.setQueryData<ChatActivity>(queryKey, payload.activity);
     });
     const offReconnect = graphSocket.onReconnected(() => {
       void queryClient.invalidateQueries({ queryKey });
@@ -45,10 +45,10 @@ export function useConversationReminders(conversationId: string | undefined, ena
   const queryClient = useQueryClient();
   const queryKey = useMemo(() => ['conversations', conversationId, 'reminders'] as const, [conversationId]);
   const isValidConversation = !!conversationId && UUID_REGEX.test(conversationId);
-  const q = useQuery<{ items: ConversationReminder[] }>({
+  const q = useQuery<{ items: ChatReminder[] }>({
     enabled: enabled && isValidConversation,
     queryKey,
-    queryFn: () => conversationResources.reminders(conversationId as string),
+    queryFn: () => chatResources.reminders(conversationId as string),
     staleTime: 1500,
   });
 
@@ -80,7 +80,7 @@ export function useConversationContainersCount(conversationId: string | undefine
         status: 'running',
         sortBy: 'lastUsedAt',
         sortDir: 'desc',
-        conversationId: conversationId as string,
+        chatId: conversationId as string,
       });
       return result.items.length;
     },
@@ -100,7 +100,7 @@ export function useConversationContainers(conversationId: string | undefined, en
     enabled: allowPolling,
     queryKey,
     queryFn: () =>
-      listContainers({ status: 'running', sortBy: 'lastUsedAt', sortDir: 'desc', conversationId: conversationId as string }),
+      listContainers({ status: 'running', sortBy: 'lastUsedAt', sortDir: 'desc', chatId: conversationId as string }),
     staleTime: 5000,
     refetchInterval: allowPolling ? 5000 : false,
     refetchIntervalInBackground: true,
