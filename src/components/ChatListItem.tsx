@@ -1,22 +1,22 @@
 import { formatDistanceToNow } from 'date-fns';
 import { StatusIndicator, type Status } from './StatusIndicator';
 
-export type ConversationStatus = 'running' | 'pending' | 'finished' | 'failed';
+export type ChatStatus = 'running' | 'pending' | 'finished' | 'failed';
 
-export interface ConversationListItem {
+export interface ChatListItem {
   id: string;
   title: string;
   subtitle?: string;
   createdAt: string;
   updatedAt: string;
-  status: ConversationStatus;
+  status: ChatStatus;
   isOpen: boolean;
   unreadCount?: number;
 }
 
-interface ConversationItemProps {
-  conversation: ConversationListItem;
-  onSelect?: (conversationId: string) => void;
+interface ChatListItemProps {
+  chat: ChatListItem;
+  onSelect?: (chatId: string) => void;
   isSelected?: boolean;
 }
 
@@ -33,29 +33,29 @@ const getAvatarColor = (label: string): string => {
   return colors[hash % colors.length];
 };
 
-export function ConversationItem({
-  conversation,
+export function ChatListItem({
+  chat,
   onSelect,
   isSelected = false,
-}: ConversationItemProps) {
-  const avatarColor = getAvatarColor(conversation.title);
+}: ChatListItemProps) {
+  const avatarColor = getAvatarColor(chat.title);
 
-  const updatedAtDate = new Date(conversation.updatedAt);
+  const updatedAtDate = new Date(chat.updatedAt);
   const updatedAtValid = Number.isFinite(updatedAtDate.getTime());
   const updatedAtRelative = updatedAtValid
     ? formatDistanceToNow(updatedAtDate, { addSuffix: true })
-    : conversation.updatedAt;
+    : chat.updatedAt;
   const updatedAtTitle = updatedAtValid ? updatedAtDate.toLocaleString() : undefined;
 
   const handleSelect = () => {
     if (onSelect) {
-      onSelect(conversation.id);
+      onSelect(chat.id);
     }
   };
 
   return (
     <div>
-      {/* Conversation Item */}
+      {/* Chat Item */}
       <div
         className={`group cursor-pointer transition-colors relative ${
           isSelected ? 'bg-[var(--agyn-blue)]/5' : ''
@@ -75,24 +75,24 @@ export function ConversationItem({
             className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm"
             style={{ backgroundColor: avatarColor }}
           >
-            {conversation.title.charAt(0).toUpperCase()}
+            {chat.title.charAt(0).toUpperCase()}
           </div>
 
           {/* Content */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-[var(--agyn-dark)]">{conversation.title}</span>
+              <span className="text-sm text-[var(--agyn-dark)]">{chat.title}</span>
               <span className="text-xs text-[var(--agyn-gray)]">•</span>
               <span className="text-xs text-[var(--agyn-gray)]" title={updatedAtTitle}>
                 {updatedAtRelative}
               </span>
-              {conversation.unreadCount && conversation.unreadCount > 0 ? (
+              {chat.unreadCount && chat.unreadCount > 0 ? (
                 <span className="ml-1 inline-flex items-center justify-center rounded-full bg-[var(--agyn-blue)] text-white text-[10px] px-1.5 py-0.5">
-                  {conversation.unreadCount}
+                  {chat.unreadCount}
                 </span>
               ) : null}
             </div>
-            {conversation.subtitle ? (
+            {chat.subtitle ? (
               <p
                 className="mt-1 text-sm text-[var(--agyn-dark)] overflow-hidden"
                 style={{
@@ -101,14 +101,14 @@ export function ConversationItem({
                   WebkitBoxOrient: 'vertical',
                 }}
               >
-                {conversation.subtitle}
+                {chat.subtitle}
               </p>
             ) : null}
           </div>
 
           {/* Status Indicator */}
           <div className="flex-shrink-0 flex items-center gap-2">
-            <StatusIndicator status={conversation.status as Status} size="sm" />
+            <StatusIndicator status={chat.status as Status} size="sm" />
           </div>
         </div>
         

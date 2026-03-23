@@ -1,6 +1,6 @@
-import { queuedMessagesByConversation } from '@/api/mock-data/messages';
-import { conversationReminders } from '@/api/mock-data/reminders';
-import { runsByConversation } from '@/api/mock-data/runs';
+import { queuedMessagesByChat } from '@/api/mock-data/messages';
+import { chatReminders } from '@/api/mock-data/reminders';
+import { runsByChat } from '@/api/mock-data/runs';
 import type { ChatActivity } from '@/api/types/chat-resources';
 import { UUID_REGEX } from '@/utils/validation';
 
@@ -11,17 +11,17 @@ const clampTake = (value: number | undefined, fallback = 200) => {
 };
 
 const resolveQueue = (chatId: string) => {
-  const existing = queuedMessagesByConversation.get(chatId);
+  const existing = queuedMessagesByChat.get(chatId);
   if (existing) return existing;
   const next: Array<{ id: string; text: string; enqueuedAt?: string }> = [];
-  queuedMessagesByConversation.set(chatId, next);
+  queuedMessagesByChat.set(chatId, next);
   return next;
 };
 
 const resolveActivity = (chatId: string): ChatActivity => {
-  const runs = runsByConversation.get(chatId) ?? [];
+  const runs = runsByChat.get(chatId) ?? [];
   if (runs.some((run) => run.status === 'running')) return 'working';
-  const queued = queuedMessagesByConversation.get(chatId) ?? [];
+  const queued = queuedMessagesByChat.get(chatId) ?? [];
   if (queued.length > 0) return 'waiting';
   return 'idle';
 };
@@ -38,7 +38,7 @@ export const chatResources = {
       throw new Error('Invalid chat identifier');
     }
     const limit = clampTake(take);
-    const items = conversationReminders
+    const items = chatReminders
       .filter((reminder) => reminder.chatId === chatId)
       .filter((reminder) => reminder.cancelledAt === null && reminder.completedAt === null)
       .slice(0, limit)

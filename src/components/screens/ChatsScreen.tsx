@@ -20,15 +20,15 @@ import {
 import { AutocompleteInput, type AutocompleteInputHandle, type AutocompleteOption } from '@/components/AutocompleteInput';
 import { Button } from '../Button';
 import { IconButton } from '../IconButton';
-import { ConversationsList } from '../ConversationsList';
-import type { ConversationListItem } from '../ConversationItem';
+import { ChatList } from '../ChatList';
+import type { ChatListItem } from '../ChatListItem';
 import { SegmentedControl } from '../SegmentedControl';
 import {
-  Conversation,
-  type Run,
-  type ReminderData as ConversationReminderData,
-  type QueuedMessageData as ConversationQueuedMessageData,
-} from '../Conversation';
+  Chat,
+  type ChatRun,
+  type ChatReminderData,
+  type ChatQueuedMessageData,
+} from '../Chat';
 import { Popover, PopoverTrigger, PopoverContent } from '../ui/popover';
 import { StatusIndicator } from '../StatusIndicator';
 import { MarkdownComposer } from '../MarkdownComposer';
@@ -44,17 +44,17 @@ import {
 } from '../ui/dropdown-menu';
 import { menuItemBaseClasses } from '../ui/menu-item-classes';
 import { cn } from '../ui/utils';
-import { CONVERSATION_MESSAGE_MAX_LENGTH } from '@/utils/draftStorage';
-import { useConversationSoundNotifications } from '@/hooks/useConversationSoundNotifications';
+import { CHAT_MESSAGE_MAX_LENGTH } from '@/utils/draftStorage';
+import { useChatSoundNotifications } from '@/hooks/useChatSoundNotifications';
 import type { Attachment } from '@/hooks/useFileAttachments';
-import type { DraftParticipant } from '@/types/conversations';
+import type { DraftParticipant } from '@/types/chats';
 import { useUser } from '@/user/user.runtime';
 import { oidcConfig } from '@/config';
 import { LogoutButton } from '@/auth/LogoutButton';
 
 const UNKNOWN_PARTICIPANT_LABEL = '(unknown participant)';
-const MESSAGE_LENGTH_LIMIT_LABEL = CONVERSATION_MESSAGE_MAX_LENGTH.toLocaleString();
-const NEAR_LIMIT_THRESHOLD = Math.floor(CONVERSATION_MESSAGE_MAX_LENGTH * 0.9);
+const MESSAGE_LENGTH_LIMIT_LABEL = CHAT_MESSAGE_MAX_LENGTH.toLocaleString();
+const NEAR_LIMIT_THRESHOLD = Math.floor(CHAT_MESSAGE_MAX_LENGTH * 0.9);
 
 function getInitials(name: string | null | undefined): string {
   const trimmed = name?.trim();
@@ -140,7 +140,7 @@ function UserMenu() {
   );
 }
 
-type ConversationDraftPanelProps = {
+type ChatDraftPanelProps = {
   draftParticipants: DraftParticipant[];
   draftFetchOptions?: (query: string) => Promise<AutocompleteOption[]>;
   onDraftParticipantAdd?: (participantId: string) => void;
@@ -148,13 +148,13 @@ type ConversationDraftPanelProps = {
   onDraftCancel?: () => void;
 };
 
-function ConversationDraftPanel({
+function ChatDraftPanel({
   draftParticipants,
   draftFetchOptions,
   onDraftParticipantAdd,
   onDraftParticipantRemove,
   onDraftCancel,
-}: ConversationDraftPanelProps) {
+}: ChatDraftPanelProps) {
   const [draftParticipantQuery, setDraftParticipantQuery] = useState('');
   const draftParticipantInputRef = useRef<AutocompleteInputHandle | null>(null);
 
@@ -229,7 +229,7 @@ function ConversationDraftPanel({
               ))}
             </div>
           ) : (
-            <p className="text-xs text-[var(--agyn-gray)]">Add participants to start a conversation.</p>
+            <p className="text-xs text-[var(--agyn-gray)]">Add participants to start a chat.</p>
           )}
           {onDraftCancel ? (
             <div className="flex justify-end">
@@ -241,19 +241,19 @@ function ConversationDraftPanel({
         </div>
       </div>
       <div className="flex flex-1 items-center justify-center px-4 text-center text-sm text-[var(--agyn-gray)]">
-        Start your new conversation by adding participants.
+        Start your new chat by adding participants.
       </div>
     </>
   );
 }
 
-type ConversationDetailHeaderProps = {
-  conversation: ConversationListItem;
+type ChatDetailHeaderProps = {
+  chat: ChatListItem;
   runsCount: number;
   containers: { id: string; name: string; status: 'running' | 'finished' }[];
   reminders: { id: string; title: string; time: string }[];
-  isToggleConversationStatusPending: boolean;
-  onToggleConversationStatus?: (conversationId: string, nextStatus: 'open' | 'closed') => void;
+  isToggleChatStatusPending: boolean;
+  onToggleChatStatus?: (chatId: string, nextStatus: 'open' | 'closed') => void;
   isRunsInfoCollapsed: boolean;
   onToggleRunsInfoCollapsed?: (isCollapsed: boolean) => void;
   onOpenContainerTerminal?: (containerId: string) => void;
@@ -261,19 +261,19 @@ type ConversationDetailHeaderProps = {
   cancellingReminderIds?: ReadonlySet<string>;
 };
 
-function ConversationDetailHeader({
-  conversation,
+function ChatDetailHeader({
+  chat,
   runsCount,
   containers,
   reminders,
-  isToggleConversationStatusPending,
-  onToggleConversationStatus,
+  isToggleChatStatusPending,
+  onToggleChatStatus,
   isRunsInfoCollapsed,
   onToggleRunsInfoCollapsed,
   onOpenContainerTerminal,
   onCancelReminder,
   cancellingReminderIds,
-}: ConversationDetailHeaderProps) {
+}: ChatDetailHeaderProps) {
   const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
   const [isContainersPopoverOpen, setIsContainersPopoverOpen] = useState(false);
   const [isRemindersPopoverOpen, setIsRemindersPopoverOpen] = useState(false);
@@ -288,12 +288,12 @@ function ConversationDetailHeader({
 
   useEffect(() => {
     setIsStatusMenuOpen(false);
-  }, [conversation.id]);
+  }, [chat.id]);
 
   useEffect(() => {
     setIsContainersPopoverOpen(false);
     setIsRemindersPopoverOpen(false);
-  }, [conversation.id]);
+  }, [chat.id]);
 
   useEffect(() => {
     if (!hasContainers) {
@@ -308,47 +308,47 @@ function ConversationDetailHeader({
   }, [hasReminders]);
 
   useEffect(() => {
-    if (isToggleConversationStatusPending) {
+    if (isToggleChatStatusPending) {
       setIsStatusMenuOpen(false);
     }
-  }, [isToggleConversationStatusPending]);
+  }, [isToggleChatStatusPending]);
 
-  const createdAtValue = conversation.createdAt ?? conversation.updatedAt;
+  const createdAtValue = chat.createdAt ?? chat.updatedAt;
   const createdAtDate = new Date(createdAtValue);
   const createdAtValid = Number.isFinite(createdAtDate.getTime());
   const createdAtRelative = createdAtValid
     ? formatDistanceToNow(createdAtDate, { addSuffix: true })
     : createdAtValue;
   const createdAtTitle = createdAtValid ? createdAtDate.toLocaleString() : undefined;
-  const currentStatusValue: 'open' | 'closed' = conversation.isOpen ? 'open' : 'closed';
-  const currentStatusLabel = conversation.isOpen ? 'Open' : 'Resolved';
-  const CurrentStatusIcon = conversation.isOpen ? Circle : CheckCircle;
-  const statusSelectionDisabled = !onToggleConversationStatus || isToggleConversationStatusPending;
+  const currentStatusValue: 'open' | 'closed' = chat.isOpen ? 'open' : 'closed';
+  const currentStatusLabel = chat.isOpen ? 'Open' : 'Resolved';
+  const CurrentStatusIcon = chat.isOpen ? Circle : CheckCircle;
+  const statusSelectionDisabled = !onToggleChatStatus || isToggleChatStatusPending;
 
   const handleStatusChange = (nextStatus: 'open' | 'closed') => {
-    if (!onToggleConversationStatus || isToggleConversationStatusPending) return;
+    if (!onToggleChatStatus || isToggleChatStatusPending) return;
     if (nextStatus === currentStatusValue) return;
     setIsStatusMenuOpen(false);
-    onToggleConversationStatus(conversation.id, nextStatus);
+    onToggleChatStatus(chat.id, nextStatus);
   };
 
-  const conversationTitle = conversation.title?.trim() || UNKNOWN_PARTICIPANT_LABEL;
-  const conversationSubtitle = conversation.subtitle?.trim();
+  const chatTitle = chat.title?.trim() || UNKNOWN_PARTICIPANT_LABEL;
+  const chatSubtitle = chat.subtitle?.trim();
 
   return (
     <div className="bg-white border-b border-[var(--agyn-border-subtle)] p-4">
       <div className="mb-3 flex items-start justify-between">
         <div className="flex-1">
           <div className="mb-1 flex items-center gap-2">
-            <StatusIndicator status={conversation.status} size="sm" showTooltip={false} />
-            <span className="text-xs text-[var(--agyn-gray)]">{conversationTitle}</span>
+            <StatusIndicator status={chat.status} size="sm" showTooltip={false} />
+            <span className="text-xs text-[var(--agyn-gray)]">{chatTitle}</span>
             <span className="text-xs text-[var(--agyn-gray)]">•</span>
             <span className="text-xs text-[var(--agyn-gray)]" title={createdAtTitle}>
               {createdAtRelative}
             </span>
           </div>
           <h3 className="mt-1 text-[var(--agyn-dark)]">
-            {conversationSubtitle || conversation.title}
+            {chatSubtitle || chat.title}
           </h3>
         </div>
       </div>
@@ -369,8 +369,8 @@ function ConversationDetailHeader({
               <button
                 type="button"
                 className="flex items-center gap-2 rounded-[6px] px-2 py-1 transition-colors hover:bg-[var(--agyn-bg-light)]"
-                aria-label={`Conversation status: ${currentStatusLabel}`}
-                aria-busy={isToggleConversationStatusPending || undefined}
+                aria-label={`Chat status: ${currentStatusLabel}`}
+                aria-busy={isToggleChatStatusPending || undefined}
                 aria-haspopup="menu"
                 aria-expanded={isStatusMenuOpen}
                 disabled={statusSelectionDisabled}
@@ -539,36 +539,36 @@ function ConversationDetailHeader({
   );
 }
 
-interface ConversationsScreenProps {
-  conversations: ConversationListItem[];
-  runs: Run[];
+interface ChatsScreenProps {
+  chats: ChatListItem[];
+  runs: ChatRun[];
   runsCount: number;
   containers: { id: string; name: string; status: 'running' | 'finished' }[];
   reminders: { id: string; title: string; time: string }[];
-  conversationQueuedMessages?: ConversationQueuedMessageData[];
-  conversationReminders?: ConversationReminderData[];
+  chatQueuedMessages?: ChatQueuedMessageData[];
+  chatReminders?: ChatReminderData[];
   filterMode: 'all' | 'open' | 'closed';
-  selectedConversationId: string | null;
-  selectedConversation?: ConversationListItem;
+  selectedChatId: string | null;
+  selectedChat?: ChatListItem;
   inputValue: string;
   isRunsInfoCollapsed: boolean;
-  conversationsHasMore?: boolean;
-  conversationsIsLoading?: boolean;
+  chatsHasMore?: boolean;
+  chatsIsLoading?: boolean;
   isLoading?: boolean;
   isEmpty?: boolean;
   listError?: ReactNode;
   detailError?: ReactNode;
-  conversationScrollRef?: Ref<HTMLDivElement>;
-  onConversationScroll?: (event: UIEvent<HTMLDivElement>) => void;
+  chatScrollRef?: Ref<HTMLDivElement>;
+  onChatScroll?: (event: UIEvent<HTMLDivElement>) => void;
   onFilterModeChange?: (mode: 'all' | 'open' | 'closed') => void;
-  onSelectConversation?: (conversationId: string) => void;
+  onSelectChat?: (chatId: string) => void;
   onToggleRunsInfoCollapsed?: (isCollapsed: boolean) => void;
   onInputValueChange?: (value: string) => void;
-  onSendMessage?: (value: string, context: { conversationId: string | null }) => void;
-  onConversationsLoadMore?: () => void;
+  onSendMessage?: (value: string, context: { chatId: string | null }) => void;
+  onChatsLoadMore?: () => void;
   onCreateDraft?: () => void;
-  onToggleConversationStatus?: (conversationId: string, nextStatus: 'open' | 'closed') => void;
-  isToggleConversationStatusPending?: boolean;
+  onToggleChatStatus?: (chatId: string, nextStatus: 'open' | 'closed') => void;
+  isToggleChatStatusPending?: boolean;
   isSendMessagePending?: boolean;
   onOpenContainerTerminal?: (containerId: string) => void;
   draftMode?: boolean;
@@ -589,34 +589,34 @@ interface ConversationsScreenProps {
   className?: string;
 }
 
-export default function ConversationsScreen({
-  conversations,
+export default function ChatsScreen({
+  chats,
   runs,
   runsCount,
   containers,
   reminders,
-  conversationQueuedMessages = [],
-  conversationReminders = [],
+  chatQueuedMessages = [],
+  chatReminders = [],
   filterMode,
-  selectedConversationId,
-  selectedConversation,
+  selectedChatId,
+  selectedChat,
   inputValue,
   isRunsInfoCollapsed,
-  conversationsHasMore = false,
-  conversationsIsLoading = false,
+  chatsHasMore = false,
+  chatsIsLoading = false,
   isLoading = false,
   isEmpty = false,
   listError,
   detailError,
   onFilterModeChange,
-  onSelectConversation,
+  onSelectChat,
   onToggleRunsInfoCollapsed,
   onInputValueChange,
   onSendMessage,
-  onConversationsLoadMore,
+  onChatsLoadMore,
   onCreateDraft,
-  onToggleConversationStatus,
-  isToggleConversationStatusPending = false,
+  onToggleChatStatus,
+  isToggleChatStatusPending = false,
   isSendMessagePending = false,
   onOpenContainerTerminal,
   draftMode = false,
@@ -635,26 +635,26 @@ export default function ConversationsScreen({
   onRetryAttachment,
   isUploading = false,
   className = '',
-  conversationScrollRef,
-  onConversationScroll,
-}: ConversationsScreenProps) {
-  const filteredConversations = conversations.filter((conversation) => {
+  chatScrollRef,
+  onChatScroll,
+}: ChatsScreenProps) {
+  const filteredChats = chats.filter((chat) => {
     if (filterMode === 'all') return true;
-    if (filterMode === 'open') return conversation.isOpen;
-    if (filterMode === 'closed') return !conversation.isOpen;
+    if (filterMode === 'open') return chat.isOpen;
+    if (filterMode === 'closed') return !chat.isOpen;
     return true;
   });
 
-  const notificationConversations = useMemo(
-    () => conversations.filter((conversation) => !conversation.id.startsWith('draft:')),
-    [conversations],
+  const notificationChats = useMemo(
+    () => chats.filter((chat) => !chat.id.startsWith('draft:')),
+    [chats],
   );
 
-  useConversationSoundNotifications({ conversations: notificationConversations });
+  useChatSoundNotifications({ chats: notificationChats });
 
-  const resolvedSelectedConversation = selectedConversation ?? conversations.find((conversation) => conversation.id === selectedConversationId);
+  const resolvedSelectedChat = selectedChat ?? chats.find((chat) => chat.id === selectedChatId);
 
-  const renderConversationsList = () => {
+  const renderChatList = () => {
     if (listError) {
       return (
         <div className="flex h-full items-center justify-center px-6 text-center text-sm text-[var(--agyn-status-failed)]">
@@ -664,17 +664,17 @@ export default function ConversationsScreen({
     }
 
     return (
-      <ConversationsList
-        conversations={filteredConversations}
-        selectedConversationId={selectedConversationId ?? undefined}
-        onSelectConversation={(conversationId) => onSelectConversation?.(conversationId)}
+      <ChatList
+        chats={filteredChats}
+        selectedChatId={selectedChatId ?? undefined}
+        onSelectChat={(chatId) => onSelectChat?.(chatId)}
         className="h-full rounded-none border-none"
-        hasMore={conversationsHasMore}
-        isLoading={conversationsIsLoading}
-        onLoadMore={onConversationsLoadMore}
+        hasMore={chatsHasMore}
+        isLoading={chatsIsLoading}
+        onLoadMore={onChatsLoadMore}
         emptyState={
           <span className="text-sm">
-            {isEmpty ? 'No conversations available yet' : 'No conversations match the current filter'}
+            {isEmpty ? 'No chats available yet' : 'No chats match the current filter'}
           </span>
         }
       />
@@ -682,7 +682,7 @@ export default function ConversationsScreen({
   };
 
   const renderComposer = ({ baseDisabled, trimmedLength }: { baseDisabled: boolean; trimmedLength: number }) => {
-    const lengthExceeded = trimmedLength > CONVERSATION_MESSAGE_MAX_LENGTH;
+    const lengthExceeded = trimmedLength > CHAT_MESSAGE_MAX_LENGTH;
     const nearLimit = trimmedLength >= NEAR_LIMIT_THRESHOLD && !lengthExceeded;
     const sendDisabled = baseDisabled || lengthExceeded || isUploading;
     const trimmedLabel = trimmedLength.toLocaleString();
@@ -698,7 +698,7 @@ export default function ConversationsScreen({
           maxLines={8}
           onSend={() => {
             if (!onSendMessage) return;
-            onSendMessage(inputValue, { conversationId: selectedConversationId ?? null });
+            onSendMessage(inputValue, { chatId: selectedChatId ?? null });
           }}
           sendDisabled={sendDisabled}
           isSending={isSendMessagePending}
@@ -739,7 +739,7 @@ export default function ConversationsScreen({
 
       return (
         <>
-          <ConversationDraftPanel
+          <ChatDraftPanel
             draftParticipants={draftParticipants}
             draftFetchOptions={draftFetchOptions}
             onDraftParticipantAdd={onDraftParticipantAdd}
@@ -754,30 +754,30 @@ export default function ConversationsScreen({
     if (isEmpty) {
       return (
         <div className="flex h-full items-center justify-center text-[var(--agyn-gray)]">
-          No conversations available. Start a new conversation to see it here.
+          No chats available. Start a new chat to see it here.
         </div>
       );
     }
 
-    if (!resolvedSelectedConversation) {
+    if (!resolvedSelectedChat) {
       return (
         <div className="flex h-full items-center justify-center text-[var(--agyn-gray)]">
-          Select a conversation to view details
+          Select a chat to view details
         </div>
       );
     }
 
-    const conversationTrimmedLength = inputValue.trim().length;
+    const chatTrimmedLength = inputValue.trim().length;
 
     return (
       <div className="relative flex min-h-0 flex-1 flex-col">
-        <ConversationDetailHeader
-          conversation={resolvedSelectedConversation}
+        <ChatDetailHeader
+          chat={resolvedSelectedChat}
           runsCount={runsCount}
           containers={containers}
           reminders={reminders}
-          isToggleConversationStatusPending={isToggleConversationStatusPending}
-          onToggleConversationStatus={onToggleConversationStatus}
+          isToggleChatStatusPending={isToggleChatStatusPending}
+          onToggleChatStatus={onToggleChatStatus}
           isRunsInfoCollapsed={isRunsInfoCollapsed}
           onToggleRunsInfoCollapsed={onToggleRunsInfoCollapsed}
           onOpenContainerTerminal={onOpenContainerTerminal}
@@ -786,14 +786,14 @@ export default function ConversationsScreen({
         />
 
         <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
-          <Conversation
+          <Chat
             runs={runs}
-            queuedMessages={conversationQueuedMessages}
-            reminders={conversationReminders}
+            queuedMessages={chatQueuedMessages}
+            reminders={chatReminders}
             className="h-full rounded-none border-none"
             collapsed={isRunsInfoCollapsed}
-            scrollRef={conversationScrollRef}
-            onScroll={onConversationScroll}
+            scrollRef={chatScrollRef}
+            onScroll={onChatScroll}
             onCancelQueuedMessage={onCancelQueuedMessage}
             onCancelReminder={onCancelReminder}
             isCancelQueuedMessagesPending={isCancelQueuedMessagesPending}
@@ -802,13 +802,13 @@ export default function ConversationsScreen({
         </div>
 
         {renderComposer({
-          baseDisabled: !onSendMessage || !selectedConversationId || isSendMessagePending,
-          trimmedLength: conversationTrimmedLength,
+          baseDisabled: !onSendMessage || !selectedChatId || isSendMessagePending,
+          trimmedLength: chatTrimmedLength,
         })}
         {isLoading ? (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80 backdrop-blur-sm">
             <Loader2 className="mr-2 h-4 w-4 animate-spin text-[var(--agyn-gray)]" />
-            <span className="text-sm text-[var(--agyn-gray)]">Loading conversation…</span>
+            <span className="text-sm text-[var(--agyn-gray)]">Loading chat…</span>
           </div>
         ) : null}
       </div>
@@ -838,14 +838,14 @@ export default function ConversationsScreen({
               icon={<MessageSquarePlus className="h-4 w-4" />}
               variant="ghost"
               size="sm"
-              title="New conversation"
+              title="New chat"
               onClick={onCreateDraft}
               disabled={!onCreateDraft}
             />
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-hidden">{renderConversationsList()}</div>
+        <div className="flex-1 min-h-0 overflow-hidden">{renderChatList()}</div>
       </div>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--agyn-bg-light)]">{renderDetailContent()}</div>

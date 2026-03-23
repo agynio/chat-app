@@ -17,21 +17,21 @@ export async function signInViaMockAuth(
   await page.goto('/');
 
   const loginUrlPattern = /mockauth\.dev\/r\/.*\/oidc/;
-  const conversationsList = page.getByTestId('conversations-list');
+  const chatList = page.getByTestId('chat-list');
 
   const initialRoute = await Promise.race([
     page
       .waitForURL(loginUrlPattern, { timeout: 10000 })
       .then(() => 'login')
       .catch(() => null),
-    conversationsList
+    chatList
       .waitFor({ timeout: 10000 })
       .then(() => 'app')
       .catch(() => null),
   ]);
 
   if (initialRoute === 'app') {
-    await expect(conversationsList).toBeVisible();
+    await expect(chatList).toBeVisible();
     return false;
   }
 
@@ -54,7 +54,7 @@ export async function signInViaMockAuth(
 
   await page.getByRole('button', { name: 'Continue' }).click();
 
-  await page.waitForURL(/\/conversations/);
-  await expect(conversationsList).toBeVisible();
+  await page.waitForURL(/\/chats/);
+  await expect(chatList).toBeVisible();
   return true;
 }

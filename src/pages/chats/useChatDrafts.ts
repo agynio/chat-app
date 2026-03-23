@@ -1,50 +1,50 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ConversationDraft, DraftParticipant } from '@/types/conversations';
+import type { ChatDraft, DraftParticipant } from '@/types/chats';
 import { clearDraft, readDraft, writeDraft } from '@/utils/draftStorage';
-import { createDraftId, isDraftConversationId } from './draftUtils';
+import { createDraftId, isDraftChatId } from './draftUtils';
 
-type UseConversationDraftsOptions = {
-  selectedConversationId: string | null;
-  routeConversationId?: string;
+type UseChatDraftsOptions = {
+  selectedChatId: string | null;
+  routeChatId?: string;
   userEmail: string | null;
-  setSelectedConversationIdState: (conversationId: string | null) => void;
+  setSelectedChatIdState: (chatId: string | null) => void;
   navigate: (path: string) => void;
-  canFallbackToConversation: (conversationId: string) => boolean;
+  canFallbackToChat: (chatId: string) => boolean;
 };
 
-export function useConversationDrafts({
-  selectedConversationId,
-  routeConversationId,
+export function useChatDrafts({
+  selectedChatId,
+  routeChatId,
   userEmail,
-  setSelectedConversationIdState,
+  setSelectedChatIdState,
   navigate,
-  canFallbackToConversation,
-}: UseConversationDraftsOptions) {
+  canFallbackToChat,
+}: UseChatDraftsOptions) {
   const [inputValue, setInputValue] = useState('');
-  const [drafts, setDrafts] = useState<ConversationDraft[]>([]);
+  const [drafts, setDrafts] = useState<ChatDraft[]>([]);
 
-  const draftsRef = useRef<ConversationDraft[]>([]);
+  const draftsRef = useRef<ChatDraft[]>([]);
   const lastSelectedIdRef = useRef<string | null>(null);
   const lastNonDraftIdRef = useRef<string | null>(null);
   const draftSaveTimerRef = useRef<number | null>(null);
   const latestInputValueRef = useRef<string>('');
   const lastPersistedTextRef = useRef<string>('');
-  const previousConversationIdRef = useRef<string | null>(selectedConversationId ?? null);
-  const activeConversationIdRef = useRef<string | null>(selectedConversationId ?? null);
+  const previousChatIdRef = useRef<string | null>(selectedChatId ?? null);
+  const activeChatIdRef = useRef<string | null>(selectedChatId ?? null);
 
-  const isDraftSelected = isDraftConversationId(selectedConversationId);
+  const isDraftSelected = isDraftChatId(selectedChatId);
   const activeDraft = useMemo(() => {
-    if (!isDraftSelected || !selectedConversationId) return undefined;
-    return drafts.find((draft) => draft.id === selectedConversationId);
-  }, [isDraftSelected, selectedConversationId, drafts]);
+    if (!isDraftSelected || !selectedChatId) return undefined;
+    return drafts.find((draft) => draft.id === selectedChatId);
+  }, [isDraftSelected, selectedChatId, drafts]);
 
   useEffect(() => {
     draftsRef.current = drafts;
   }, [drafts]);
 
   useEffect(() => {
-    activeConversationIdRef.current = selectedConversationId ?? null;
-  }, [selectedConversationId]);
+    activeChatIdRef.current = selectedChatId ?? null;
+  }, [selectedChatId]);
 
   const cancelDraftSave = useCallback(() => {
     if (typeof window === 'undefined') return;
@@ -55,28 +55,28 @@ export function useConversationDrafts({
   }, []);
 
   const persistDraftNow = useCallback(
-    (conversationId: string, value: string) => {
-      if (!conversationId || isDraftConversationId(conversationId)) return;
+    (chatId: string, value: string) => {
+      if (!chatId || isDraftChatId(chatId)) return;
       const trimmed = value.trim();
       if (trimmed.length === 0) {
-        clearDraft(conversationId, userEmail);
+        clearDraft(chatId, userEmail);
         lastPersistedTextRef.current = '';
         return;
       }
       if (value === lastPersistedTextRef.current) return;
-      writeDraft(conversationId, value, userEmail);
+      writeDraft(chatId, value, userEmail);
       lastPersistedTextRef.current = value;
     },
     [userEmail],
   );
 
   const scheduleDraftPersist = useCallback(
-    (conversationId: string, value: string) => {
+    (chatId: string, value: string) => {
       if (typeof window === 'undefined') return;
       cancelDraftSave();
       draftSaveTimerRef.current = window.setTimeout(() => {
         draftSaveTimerRef.current = null;
-        persistDraftNow(conversationId, value);
+        persistDraftNow(chatId, value);
       }, 250);
     },
     [cancelDraftSave, persistDraftNow],
@@ -84,7 +84,7 @@ export function useConversationDrafts({
 
   useEffect(() => {
     const prevSelectedId = lastSelectedIdRef.current;
-    if (prevSelectedId && prevSelectedId !== selectedConversationId && isDraftConversationId(prevSelectedId)) {
+    if (prevSelectedId && prevSelectedId !== selectedChatId && isDraftChatId(prevSelectedId)) {
       setDrafts((prev) => {
         const draft = prev.find((item) => item.id === prevSelectedId);
         if (!draft) return prev;
@@ -94,37 +94,37 @@ export function useConversationDrafts({
       });
     }
 
-    lastSelectedIdRef.current = selectedConversationId ?? null;
-    if (selectedConversationId && !isDraftSelected) {
-      lastNonDraftIdRef.current = selectedConversationId;
+    lastSelectedIdRef.current = selectedChatId ?? null;
+    if (selectedChatId && !isDraftSelected) {
+      lastNonDraftIdRef.current = selectedChatId;
     }
-  }, [selectedConversationId, isDraftSelected]);
+  }, [selectedChatId, isDraftSelected]);
 
   useEffect(() => {
-    const prevConversationId = previousConversationIdRef.current;
-    const nextConversationId = selectedConversationId ?? null;
+    const prevChatId = previousChatIdRef.current;
+    const nextChatId = selectedChatId ?? null;
 
-    if (prevConversationId && prevConversationId !== nextConversationId) {
+    if (prevChatId && prevChatId !== nextChatId) {
       cancelDraftSave();
-      persistDraftNow(prevConversationId, latestInputValueRef.current);
+      persistDraftNow(prevChatId, latestInputValueRef.current);
     }
 
-    previousConversationIdRef.current = nextConversationId;
+    previousChatIdRef.current = nextChatId;
 
-    if (!nextConversationId || isDraftConversationId(nextConversationId)) {
+    if (!nextChatId || isDraftChatId(nextChatId)) {
       cancelDraftSave();
       lastPersistedTextRef.current = '';
       return;
     }
 
     const previousValue = latestInputValueRef.current;
-    const stored = readDraft(nextConversationId, userEmail);
+    const stored = readDraft(nextChatId, userEmail);
     const nextValue = stored?.text ?? '';
     lastPersistedTextRef.current = nextValue;
     latestInputValueRef.current = nextValue;
     if (nextValue === previousValue) return;
     setInputValue(nextValue);
-  }, [selectedConversationId, userEmail, cancelDraftSave, persistDraftNow]);
+  }, [selectedChatId, userEmail, cancelDraftSave, persistDraftNow]);
 
   useEffect(() => {
     latestInputValueRef.current = inputValue;
@@ -133,9 +133,9 @@ export function useConversationDrafts({
   useEffect(() => {
     return () => {
       cancelDraftSave();
-      const currentConversationId = activeConversationIdRef.current;
-      if (currentConversationId) {
-        persistDraftNow(currentConversationId, latestInputValueRef.current);
+      const currentChatId = activeChatIdRef.current;
+      if (currentChatId) {
+        persistDraftNow(currentChatId, latestInputValueRef.current);
       }
     };
   }, [cancelDraftSave, persistDraftNow]);
@@ -145,16 +145,16 @@ export function useConversationDrafts({
       (draft) => draft.inputValue.trim().length > 0 || draft.participants.length > 0,
     );
     if (existingWithContent) {
-      setSelectedConversationIdState(existingWithContent.id);
+      setSelectedChatIdState(existingWithContent.id);
       setInputValue(existingWithContent.inputValue);
-      if (routeConversationId) {
-        navigate('/conversations');
+      if (routeChatId) {
+        navigate('/chats');
       }
       return;
     }
 
     const draftId = createDraftId();
-    const newDraft: ConversationDraft = {
+    const newDraft: ChatDraft = {
       id: draftId,
       inputValue: '',
       participants: [],
@@ -162,31 +162,31 @@ export function useConversationDrafts({
     };
 
     setDrafts((prev) => [newDraft, ...prev]);
-    setSelectedConversationIdState(draftId);
+    setSelectedChatIdState(draftId);
     setInputValue('');
-    if (routeConversationId) {
-      navigate('/conversations');
+    if (routeChatId) {
+      navigate('/chats');
     }
-  }, [navigate, routeConversationId, setSelectedConversationIdState]);
+  }, [navigate, routeChatId, setSelectedChatIdState]);
 
   const handleInputValueChange = useCallback(
     (value: string) => {
       setInputValue(value);
-      if (selectedConversationId && !isDraftConversationId(selectedConversationId)) {
+      if (selectedChatId && !isDraftChatId(selectedChatId)) {
         const trimmed = value.trim();
         if (trimmed.length === 0) {
           cancelDraftSave();
-          persistDraftNow(selectedConversationId, value);
+          persistDraftNow(selectedChatId, value);
         } else {
-          scheduleDraftPersist(selectedConversationId, value);
+          scheduleDraftPersist(selectedChatId, value);
         }
         return;
       }
       setDrafts((prev) => {
-        if (!selectedConversationId || !isDraftConversationId(selectedConversationId)) return prev;
+        if (!selectedChatId || !isDraftChatId(selectedChatId)) return prev;
         let mutated = false;
         const next = prev.map((draft) => {
-          if (draft.id !== selectedConversationId) return draft;
+          if (draft.id !== selectedChatId) return draft;
           if (draft.inputValue === value) return draft;
           mutated = true;
           return { ...draft, inputValue: value };
@@ -194,16 +194,16 @@ export function useConversationDrafts({
         return mutated ? next : prev;
       });
     },
-    [selectedConversationId, scheduleDraftPersist, cancelDraftSave, persistDraftNow],
+    [selectedChatId, scheduleDraftPersist, cancelDraftSave, persistDraftNow],
   );
 
   const handleDraftParticipantAdd = useCallback(
     (participant: DraftParticipant) => {
-      if (!selectedConversationId || !isDraftConversationId(selectedConversationId)) return;
+      if (!selectedChatId || !isDraftChatId(selectedChatId)) return;
       setDrafts((prev) => {
         let mutated = false;
         const next = prev.map((draft) => {
-          if (draft.id !== selectedConversationId) return draft;
+          if (draft.id !== selectedChatId) return draft;
           if (draft.participants.some((item) => item.id === participant.id)) return draft;
           mutated = true;
           return { ...draft, participants: [...draft.participants, participant] };
@@ -211,16 +211,16 @@ export function useConversationDrafts({
         return mutated ? next : prev;
       });
     },
-    [selectedConversationId],
+    [selectedChatId],
   );
 
   const handleDraftParticipantRemove = useCallback(
     (participantId: string) => {
-      if (!selectedConversationId || !isDraftConversationId(selectedConversationId)) return;
+      if (!selectedChatId || !isDraftChatId(selectedChatId)) return;
       setDrafts((prev) => {
         let mutated = false;
         const next = prev.map((draft) => {
-          if (draft.id !== selectedConversationId) return draft;
+          if (draft.id !== selectedChatId) return draft;
           if (!draft.participants.some((item) => item.id === participantId)) return draft;
           mutated = true;
           return { ...draft, participants: draft.participants.filter((item) => item.id !== participantId) };
@@ -228,45 +228,45 @@ export function useConversationDrafts({
         return mutated ? next : prev;
       });
     },
-    [selectedConversationId],
+    [selectedChatId],
   );
 
   const handleDraftCancel = useCallback(() => {
-    if (!selectedConversationId || !isDraftConversationId(selectedConversationId)) return;
-    setDrafts((prev) => prev.filter((draft) => draft.id !== selectedConversationId));
+    if (!selectedChatId || !isDraftChatId(selectedChatId)) return;
+    setDrafts((prev) => prev.filter((draft) => draft.id !== selectedChatId));
     setInputValue('');
 
     const fallbackId = lastNonDraftIdRef.current;
-    const hasFallback = fallbackId ? canFallbackToConversation(fallbackId) : false;
+    const hasFallback = fallbackId ? canFallbackToChat(fallbackId) : false;
 
     if (fallbackId && hasFallback) {
-      setSelectedConversationIdState(fallbackId);
-      navigate(`/conversations/${encodeURIComponent(fallbackId)}`);
+      setSelectedChatIdState(fallbackId);
+      navigate(`/chats/${encodeURIComponent(fallbackId)}`);
       return;
     }
 
-    setSelectedConversationIdState(null);
-    navigate('/conversations');
-  }, [selectedConversationId, navigate, canFallbackToConversation, setSelectedConversationIdState]);
+    setSelectedChatIdState(null);
+    navigate('/chats');
+  }, [selectedChatId, navigate, canFallbackToChat, setSelectedChatIdState]);
 
-  const handleSelectConversation = useCallback(
-    (conversationId: string) => {
-      if (isDraftConversationId(conversationId)) {
-        setSelectedConversationIdState(conversationId);
-        const draft = draftsRef.current.find((item) => item.id === conversationId);
+  const handleSelectChat = useCallback(
+    (chatId: string) => {
+      if (isDraftChatId(chatId)) {
+        setSelectedChatIdState(chatId);
+        const draft = draftsRef.current.find((item) => item.id === chatId);
         setInputValue(draft?.inputValue ?? '');
-        if (routeConversationId) {
-          navigate('/conversations');
+        if (routeChatId) {
+          navigate('/chats');
         }
         return;
       }
 
-      setSelectedConversationIdState(conversationId);
+      setSelectedChatIdState(chatId);
       setInputValue('');
-      lastNonDraftIdRef.current = conversationId;
-      navigate(`/conversations/${encodeURIComponent(conversationId)}`);
+      lastNonDraftIdRef.current = chatId;
+      navigate(`/chats/${encodeURIComponent(chatId)}`);
     },
-    [navigate, routeConversationId, setSelectedConversationIdState],
+    [navigate, routeChatId, setSelectedChatIdState],
   );
 
   return {
@@ -288,6 +288,6 @@ export function useConversationDrafts({
     handleDraftParticipantAdd,
     handleDraftParticipantRemove,
     handleDraftCancel,
-    handleSelectConversation,
+    handleSelectChat,
   };
 }

@@ -1,12 +1,12 @@
 import type { ChatReminder } from '@/api/types/chat-resources';
 import { iso } from './time';
 import { runTwoId } from './runs';
-import { conversationOneId } from './conversations';
+import { chatOneId } from './chats';
 
-export const conversationReminders: ChatReminder[] = [
+export const chatReminders: ChatReminder[] = [
   {
     id: 'reminder-1',
-    chatId: conversationOneId,
+    chatId: chatOneId,
     note: 'Send the draft to marketing by EOD.',
     at: iso(240),
     createdAt: iso(-120),

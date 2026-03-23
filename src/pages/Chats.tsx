@@ -1,45 +1,45 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type UIEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ConversationListItem } from '@/components/ConversationItem';
-import type { ConversationMessage, QueuedMessageData, ReminderData, Run } from '@/components/Conversation';
+import type { ChatListItem } from '@/components/ChatListItem';
+import type { ChatMessage, ChatQueuedMessageData, ChatReminderData, ChatRun } from '@/components/Chat';
 import { ContainerTerminalDialog } from '@/components/monitoring/ContainerTerminalDialog';
 import { MarkdownContent } from '@/components/MarkdownContent';
 import { formatDuration } from '@/components/agents/runTimelineFormatting';
-import ConversationsScreen from '@/components/screens/ConversationsScreen';
+import ChatsScreen from '@/components/screens/ChatsScreen';
 import { notifyError } from '@/lib/notify';
 import { useUser } from '@/user/user.runtime';
 import { useFileAttachments } from '@/hooks/useFileAttachments';
 import { useAgentsList } from '@/api/hooks/agents';
 import {
-  useConversations,
-  useConversationMessages,
-  useCreateConversation,
-  useSendConversationMessage,
-  useMarkConversationRead,
-} from '@/api/hooks/conversations';
-import { useConversationRuns } from '@/api/hooks/runs';
+  useChats,
+  useChatMessages,
+  useCreateChat,
+  useSendMessage,
+  useMarkAsRead,
+} from '@/api/hooks/chat';
+import { useChatRuns } from '@/api/hooks/runs';
 import {
-  useConversationReminders,
-  useConversationContainers,
-} from '@/api/hooks/conversation-resources';
+  useChatReminders,
+  useChatContainers,
+} from '@/api/hooks/chat-resources';
 import { chatResources } from '@/api/modules/chat-resources';
-import type { ChatMessage, Chat } from '@/api/types/chat';
+import type { ChatMessage as ChatMessageRecord, Chat } from '@/api/types/chat';
 import type { ChatReminder, RunMeta } from '@/api/types/chat-resources';
 import type { ContainerItem } from '@/api/modules/containers';
 import { stubUsers } from '@/data/stub-users';
 import { cancelReminder } from '@/features/reminders/api';
-import { clearDraft, CONVERSATION_MESSAGE_MAX_LENGTH } from '@/utils/draftStorage';
-import type { DraftParticipant } from '@/types/conversations';
+import { clearDraft, CHAT_MESSAGE_MAX_LENGTH } from '@/utils/draftStorage';
+import type { DraftParticipant } from '@/types/chats';
 import type { User } from '@/user/user-types';
-import { isDraftConversationId } from './conversations/draftUtils';
-import { compareRunMeta } from './conversations/comparators';
-import { formatDate, formatReminderDate, formatReminderScheduledTime, sanitizeSummary } from './conversations/formatters';
-import { useConversationDrafts } from './conversations/useConversationDrafts';
+import { isDraftChatId } from './chats/draftUtils';
+import { compareRunMeta } from './chats/comparators';
+import { formatDate, formatReminderDate, formatReminderScheduledTime, sanitizeSummary } from './chats/formatters';
+import { useChatDrafts } from './chats/useChatDrafts';
 
-const MESSAGE_LENGTH_LIMIT_LABEL = CONVERSATION_MESSAGE_MAX_LENGTH.toLocaleString();
-const MESSAGE_LENGTH_LIMIT_NOTIFICATION = `Messages cannot exceed ${MESSAGE_LENGTH_LIMIT_LABEL} characters.`;
-const DRAFT_SUMMARY_LABEL = '(new conversation)';
+const MESSAGE_LENGTH_LIMIT_LABEL = CHAT_MESSAGE_MAX_LENGTH.toLocaleString();
+const MESSAGE_LENGTH_LIMIT_NOTIFICATION = `Chat messages cannot exceed ${MESSAGE_LENGTH_LIMIT_LABEL} characters.`;
+const DRAFT_SUMMARY_LABEL = '(new chat)';
 const DRAFT_PARTICIPANT_LABEL = '(select participants)';
 const UNKNOWN_PARTICIPANT_LABEL = '(unknown participant)';
 const EMPTY_PARTICIPANTS: DraftParticipant[] = [];
@@ -47,7 +47,7 @@ const EMPTY_RUN_ITEMS: RunMeta[] = [];
 const EMPTY_REMINDERS: ChatReminder[] = [];
 const EMPTY_CONTAINERS: ContainerItem[] = [];
 
-const mapRunStatus = (status: RunMeta['status']): Run['status'] => {
+const mapRunStatus = (status: RunMeta['status']): ChatRun['status'] => {
   if (status === 'terminated') return 'failed';
   if (status === 'finished') return 'finished';
   return 'running';
@@ -77,7 +77,7 @@ const mapReminders = (items: ChatReminder[]): { id: string; title: string; time:
     time: formatDate(reminder.at),
   }));
 
-const mapReminderData = (items: ChatReminder[]): ReminderData[] =>
+const mapReminderData = (items: ChatReminder[]): ChatReminderData[] =>
   items.map((reminder) => ({
     id: reminder.id,
     content: reminder.note ? <MarkdownContent content={reminder.note} /> : UNKNOWN_PARTICIPANT_LABEL,
@@ -89,27 +89,27 @@ const resolveParticipantLabel = (participantId: string, lookup: Map<string, Draf
   return lookup.get(participantId)?.name ?? UNKNOWN_PARTICIPANT_LABEL;
 };
 
-function ConversationsContent({ user }: { user: User }) {
-  const params = useParams<{ conversationId?: string }>();
+function ChatsContent({ user }: { user: User }) {
+  const params = useParams<{ chatId?: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const userEmail = user.email;
   const currentUserId = userEmail;
 
   const [filterMode, setFilterMode] = useState<'open' | 'closed' | 'all'>('open');
-  const [selectedConversationIdState, setSelectedConversationIdState] = useState<string | null>(params.conversationId ?? null);
+  const [selectedChatIdState, setSelectedChatIdState] = useState<string | null>(params.chatId ?? null);
   const [cancellingReminderIds, setCancellingReminderIds] = useState<ReadonlySet<string>>(() => new Set());
   const [isRunsInfoCollapsed, setRunsInfoCollapsed] = useState(false);
   const [selectedContainerId, setSelectedContainerId] = useState<string | null>(null);
   const [deletedMessageIds, setDeletedMessageIds] = useState<ReadonlySet<string>>(() => new Set());
 
-  const selectedConversationId = params.conversationId ?? selectedConversationIdState;
+  const selectedChatId = params.chatId ?? selectedChatIdState;
 
   useEffect(() => {
-    if (params.conversationId) {
-      setSelectedConversationIdState(params.conversationId);
+    if (params.chatId) {
+      setSelectedChatIdState(params.chatId);
     }
-  }, [params.conversationId]);
+  }, [params.chatId]);
 
   const {
     attachments,
@@ -121,15 +121,15 @@ function ConversationsContent({ user }: { user: User }) {
     clearAll: clearAttachments,
   } = useFileAttachments();
 
-  const conversationsQuery = useConversations();
+  const chatsQuery = useChats();
   const agentsQuery = useAgentsList();
 
-  const canFallbackToConversation = useCallback(
-    (conversationId: string) => {
-      const items = conversationsQuery.data?.pages.flatMap((page) => page.chats) ?? [];
-      return items.some((conversation) => conversation.id === conversationId);
+  const canFallbackToChat = useCallback(
+    (chatId: string) => {
+      const items = chatsQuery.data?.pages.flatMap((page) => page.chats) ?? [];
+      return items.some((chat) => chat.id === chatId);
     },
-    [conversationsQuery.data],
+    [chatsQuery.data],
   );
 
   const {
@@ -150,25 +150,25 @@ function ConversationsContent({ user }: { user: User }) {
     handleDraftParticipantAdd,
     handleDraftParticipantRemove,
     handleDraftCancel,
-    handleSelectConversation,
-  } = useConversationDrafts({
-    selectedConversationId,
-    routeConversationId: params.conversationId,
+    handleSelectChat,
+  } = useChatDrafts({
+    selectedChatId,
+    routeChatId: params.chatId,
     userEmail,
-    setSelectedConversationIdState,
+    setSelectedChatIdState,
     navigate,
-    canFallbackToConversation,
+    canFallbackToChat,
   });
 
   const effectiveDraftMode = isDraftSelectedState;
 
   useEffect(() => {
     clearAttachments();
-  }, [clearAttachments, selectedConversationId]);
+  }, [clearAttachments, selectedChatId]);
 
   useEffect(() => {
     setDeletedMessageIds(new Set());
-  }, [selectedConversationId]);
+  }, [selectedChatId]);
 
   const agents = useMemo(() => agentsQuery.data?.agents ?? [], [agentsQuery.data]);
   const participantLookup = useMemo(() => {
@@ -222,12 +222,12 @@ function ConversationsContent({ user }: { user: User }) {
     [participantLookup, handleDraftParticipantAdd],
   );
 
-  const conversationSummaries = useMemo(
-    () => conversationsQuery.data?.pages.flatMap((page) => page.chats) ?? [],
-    [conversationsQuery.data],
+  const chatSummaries = useMemo(
+    () => chatsQuery.data?.pages.flatMap((page) => page.chats) ?? [],
+    [chatsQuery.data],
   );
 
-  const resolveConversationTitle = useCallback(
+  const resolveChatTitle = useCallback(
     (participants: Chat['participants']) => {
       const names = participants
         .filter((participant) => participant.id !== currentUserId)
@@ -241,8 +241,8 @@ function ConversationsContent({ user }: { user: User }) {
     [currentUserId, participantLookup],
   );
 
-  const mapDraftToConversation = useCallback(
-    (draft: (typeof drafts)[number]): ConversationListItem => {
+  const mapDraftToChat = useCallback(
+    (draft: (typeof drafts)[number]): ChatListItem => {
       const participantsLabel = draft.participants.length > 0
         ? draft.participants.map((participant) => participant.name || UNKNOWN_PARTICIPANT_LABEL).join(', ')
         : DRAFT_PARTICIPANT_LABEL;
@@ -260,76 +260,76 @@ function ConversationsContent({ user }: { user: User }) {
     [],
   );
 
-  const conversationsForList = useMemo(() => {
-    const fromDrafts = drafts.map(mapDraftToConversation);
-    const fromData = conversationSummaries.map((conversation) => {
+  const chatsForList = useMemo(() => {
+    const fromDrafts = drafts.map(mapDraftToChat);
+    const fromData = chatSummaries.map((chat) => {
       return {
-        id: conversation.id,
-        title: resolveConversationTitle(conversation.participants),
+        id: chat.id,
+        title: resolveChatTitle(chat.participants),
         subtitle: undefined,
-        createdAt: conversation.createdAt,
-        updatedAt: conversation.updatedAt,
+        createdAt: chat.createdAt,
+        updatedAt: chat.updatedAt,
         status: 'pending',
         isOpen: true,
         unreadCount: 0,
-      } satisfies ConversationListItem;
+      } satisfies ChatListItem;
     });
     return [...fromDrafts, ...fromData];
-  }, [drafts, mapDraftToConversation, conversationSummaries, resolveConversationTitle]);
+  }, [drafts, mapDraftToChat, chatSummaries, resolveChatTitle]);
 
-  const selectedConversation = useMemo(
-    () => conversationsForList.find((conversation) => conversation.id === selectedConversationId),
-    [conversationsForList, selectedConversationId],
+  const selectedChat = useMemo(
+    () => chatsForList.find((chat) => chat.id === selectedChatId),
+    [chatsForList, selectedChatId],
   );
 
-  const isConversationsEmpty = !conversationsQuery.isLoading && conversationsForList.length === 0;
+  const isChatsEmpty = !chatsQuery.isLoading && chatsForList.length === 0;
 
-  const conversationMessagesQuery = useConversationMessages(
-    effectiveDraftMode || !selectedConversationId ? null : selectedConversationId,
+  const chatMessagesQuery = useChatMessages(
+    effectiveDraftMode || !selectedChatId ? null : selectedChatId,
   );
   const {
     hasNextPage: hasNextMessagesPage,
     isFetchingNextPage: isFetchingMessagesNextPage,
     fetchNextPage: fetchNextMessagesPage,
-  } = conversationMessagesQuery;
+  } = chatMessagesQuery;
 
-  const runMetaQuery = useConversationRuns(
-    effectiveDraftMode ? undefined : selectedConversationId ?? undefined,
+  const runMetaQuery = useChatRuns(
+    effectiveDraftMode ? undefined : selectedChatId ?? undefined,
   );
 
-  const remindersQuery = useConversationReminders(
-    effectiveDraftMode ? undefined : selectedConversationId ?? undefined,
+  const remindersQuery = useChatReminders(
+    effectiveDraftMode ? undefined : selectedChatId ?? undefined,
     !effectiveDraftMode,
   );
 
-  const containersQuery = useConversationContainers(
-    effectiveDraftMode ? undefined : selectedConversationId ?? undefined,
+  const containersQuery = useChatContainers(
+    effectiveDraftMode ? undefined : selectedChatId ?? undefined,
     !effectiveDraftMode,
   );
 
   const queuedMessagesQuery = useQuery({
-    enabled: Boolean(selectedConversationId) && !effectiveDraftMode,
-    queryKey: ['conversations', selectedConversationId, 'queued'],
-    queryFn: () => chatResources.queuedMessages(selectedConversationId as string),
+    enabled: Boolean(selectedChatId) && !effectiveDraftMode,
+    queryKey: ['chats', selectedChatId, 'queued'],
+    queryFn: () => chatResources.queuedMessages(selectedChatId as string),
     staleTime: 5000,
     refetchOnWindowFocus: false,
   });
 
-  const markConversationRead = useMarkConversationRead(
-    effectiveDraftMode ? null : selectedConversationId,
+  const markAsRead = useMarkAsRead(
+    effectiveDraftMode ? null : selectedChatId,
   );
 
-  const sendConversationMessage = useSendConversationMessage();
-  const createConversation = useCreateConversation();
+  const sendMessage = useSendMessage();
+  const createChat = useCreateChat();
 
   const runItems = useMemo(() => runMetaQuery.data?.items ?? EMPTY_RUN_ITEMS, [runMetaQuery.data]);
   const runItemsSorted = useMemo(() => [...runItems].sort(compareRunMeta), [runItems]);
   const latestRun = runItemsSorted[runItemsSorted.length - 1];
 
-  const conversationMessages = useMemo(() => {
-    const pages = conversationMessagesQuery.data?.pages ?? [];
+  const chatMessages = useMemo(() => {
+    const pages = chatMessagesQuery.data?.pages ?? [];
     const items = pages.flatMap((page) => page.messages);
-    const map = new Map<string, ChatMessage>();
+    const map = new Map<string, ChatMessageRecord>();
     for (const message of items) {
       map.set(message.id, message);
     }
@@ -340,36 +340,36 @@ function ConversationsContent({ user }: { user: User }) {
       const bValue = Number.isFinite(bTime) ? bTime : 0;
       return aValue - bValue;
     });
-  }, [conversationMessagesQuery.data]);
+  }, [chatMessagesQuery.data]);
 
-  const filteredConversationMessages = useMemo(
-    () => conversationMessages.filter((message) => !deletedMessageIds.has(message.id)),
-    [conversationMessages, deletedMessageIds],
+  const filteredChatMessages = useMemo(
+    () => chatMessages.filter((message) => !deletedMessageIds.has(message.id)),
+    [chatMessages, deletedMessageIds],
   );
 
-  const unreadCount = conversationMessagesQuery.data?.pages?.[0]?.unreadCount ?? 0;
+  const unreadCount = chatMessagesQuery.data?.pages?.[0]?.unreadCount ?? 0;
   const unreadMessageIds = useMemo(() => {
     if (!unreadCount) return [] as string[];
-    const sliceStart = Math.max(0, filteredConversationMessages.length - unreadCount);
-    return filteredConversationMessages.slice(sliceStart).map((message) => message.id);
-  }, [filteredConversationMessages, unreadCount]);
+    const sliceStart = Math.max(0, filteredChatMessages.length - unreadCount);
+    return filteredChatMessages.slice(sliceStart).map((message) => message.id);
+  }, [filteredChatMessages, unreadCount]);
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const pendingScrollHeightRef = useRef<number | null>(null);
   const isAtBottomRef = useRef(true);
 
-  const handleConversationScroll = useCallback(
+  const handleChatScroll = useCallback(
     (event: UIEvent<HTMLDivElement>) => {
       const container = event.currentTarget;
       const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
       isAtBottomRef.current = distanceFromBottom < 80;
-      if (!selectedConversationId || effectiveDraftMode) return;
+      if (!selectedChatId || effectiveDraftMode) return;
       if (container.scrollTop <= 120 && hasNextMessagesPage && !isFetchingMessagesNextPage) {
         pendingScrollHeightRef.current = container.scrollHeight;
         void fetchNextMessagesPage();
       }
     },
-    [hasNextMessagesPage, isFetchingMessagesNextPage, fetchNextMessagesPage, selectedConversationId, effectiveDraftMode],
+    [hasNextMessagesPage, isFetchingMessagesNextPage, fetchNextMessagesPage, selectedChatId, effectiveDraftMode],
   );
 
   useEffect(() => {
@@ -385,7 +385,7 @@ function ConversationsContent({ user }: { user: User }) {
     if (isAtBottomRef.current) {
       container.scrollTop = container.scrollHeight;
     }
-  }, [filteredConversationMessages.length]);
+  }, [filteredChatMessages.length]);
 
   useEffect(() => {
     pendingScrollHeightRef.current = null;
@@ -393,31 +393,31 @@ function ConversationsContent({ user }: { user: User }) {
     const container = scrollContainerRef.current;
     if (!container) return;
     container.scrollTop = container.scrollHeight;
-  }, [selectedConversationId]);
+  }, [selectedChatId]);
 
   const unreadMessageIdsRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!selectedConversationId || effectiveDraftMode) return;
+    if (!selectedChatId || effectiveDraftMode) return;
     if (unreadMessageIds.length === 0) return;
-    if (markConversationRead.isPending) return;
-    const key = `${selectedConversationId}:${unreadMessageIds.join(',')}`;
+    if (markAsRead.isPending) return;
+    const key = `${selectedChatId}:${unreadMessageIds.join(',')}`;
     if (unreadMessageIdsRef.current === key) return;
     unreadMessageIdsRef.current = key;
-    markConversationRead.mutate(unreadMessageIds, {
+    markAsRead.mutate(unreadMessageIds, {
       onError: (error) => {
         unreadMessageIdsRef.current = null;
         notifyError(error instanceof Error ? error.message : 'Failed to mark messages as read.');
       },
     });
-  }, [selectedConversationId, effectiveDraftMode, unreadMessageIds, markConversationRead]);
+  }, [selectedChatId, effectiveDraftMode, unreadMessageIds, markAsRead]);
 
   const agentIdSet = useMemo(() => new Set(agents.map((agent) => agent.meta.id)), [agents]);
   const unreadMessageIdSet = useMemo(() => new Set(unreadMessageIds), [unreadMessageIds]);
 
   const handleDeleteMessage = useCallback(
     (messageId: string) => {
-      if (!selectedConversationId || effectiveDraftMode) return;
+      if (!selectedChatId || effectiveDraftMode) return;
       setDeletedMessageIds((prev) => {
         if (prev.has(messageId)) return prev;
         const next = new Set(prev);
@@ -426,12 +426,12 @@ function ConversationsContent({ user }: { user: User }) {
       });
       // TODO: Wire up message deletion API + rollback once available.
     },
-    [selectedConversationId, effectiveDraftMode],
+    [selectedChatId, effectiveDraftMode],
   );
 
-  const conversationMessagesForDisplay = useMemo<ConversationMessage[]>(
+  const chatMessagesForDisplay = useMemo<ChatMessage[]>(
     () =>
-      filteredConversationMessages.map((message) => {
+      filteredChatMessages.map((message) => {
         const senderLabel = message.senderId === currentUserId
           ? 'You'
           : resolveParticipantLabel(message.senderId, participantLookup);
@@ -460,27 +460,27 @@ function ConversationsContent({ user }: { user: User }) {
           isUnread: unreadMessageIdSet.has(message.id),
           showDelete: role === 'user',
           onDelete: role === 'user' ? () => handleDeleteMessage(message.id) : undefined,
-        } satisfies ConversationMessage;
+        } satisfies ChatMessage;
       }),
-    [filteredConversationMessages, currentUserId, participantLookup, agentIdSet, unreadMessageIdSet, handleDeleteMessage],
+    [filteredChatMessages, currentUserId, participantLookup, agentIdSet, unreadMessageIdSet, handleDeleteMessage],
   );
 
-  const conversationRuns = useMemo<Run[]>(() => {
-    if (!selectedConversationId || effectiveDraftMode) return [];
+  const chatRuns = useMemo<ChatRun[]>(() => {
+    if (!selectedChatId || effectiveDraftMode) return [];
     const status = latestRun ? mapRunStatus(latestRun.status) : 'finished';
     return [
       {
-        id: selectedConversationId,
-        messages: conversationMessagesForDisplay,
+        id: selectedChatId,
+        messages: chatMessagesForDisplay,
         status,
         duration: latestRun ? computeRunDuration(latestRun) : undefined,
       },
     ];
-  }, [selectedConversationId, effectiveDraftMode, conversationMessagesForDisplay, latestRun]);
+  }, [selectedChatId, effectiveDraftMode, chatMessagesForDisplay, latestRun]);
 
   const reminders = useMemo(() => remindersQuery.data?.items ?? EMPTY_REMINDERS, [remindersQuery.data]);
   const remindersForScreen = useMemo(() => (effectiveDraftMode ? [] : mapReminders(reminders)), [reminders, effectiveDraftMode]);
-  const conversationReminders = useMemo(() => (effectiveDraftMode ? [] : mapReminderData(reminders)), [reminders, effectiveDraftMode]);
+  const chatReminders = useMemo(() => (effectiveDraftMode ? [] : mapReminderData(reminders)), [reminders, effectiveDraftMode]);
 
   const containerItems = useMemo(() => containersQuery.data?.items ?? EMPTY_CONTAINERS, [containersQuery.data]);
   const containersForScreen = useMemo(() => (effectiveDraftMode ? [] : mapContainers(containerItems)), [containerItems, effectiveDraftMode]);
@@ -489,28 +489,28 @@ function ConversationsContent({ user }: { user: User }) {
     [containerItems, selectedContainerId],
   );
 
-  const queuedMessages = useMemo<QueuedMessageData[]>(() => {
+  const queuedMessages = useMemo<ChatQueuedMessageData[]>(() => {
     if (effectiveDraftMode) return [];
     return queuedMessagesQuery.data?.items.map((item) => ({ id: item.id, content: item.text })) ?? [];
   }, [queuedMessagesQuery.data, effectiveDraftMode]);
 
   const cancelQueuedMessagesMutation = useMutation({
-    mutationFn: async ({ conversationId }: { conversationId: string }) => chatResources.clearQueuedMessages(conversationId),
-    onMutate: async ({ conversationId }) => {
-      const queryKey = ['conversations', conversationId, 'queued'] as const;
+    mutationFn: async ({ chatId }: { chatId: string }) => chatResources.clearQueuedMessages(chatId),
+    onMutate: async ({ chatId }) => {
+      const queryKey = ['chats', chatId, 'queued'] as const;
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData<{ items: { id: string; text: string; enqueuedAt?: string }[] }>(queryKey);
       queryClient.setQueryData(queryKey, { items: [] });
-      return { conversationId, previous };
+      return { chatId, previous };
     },
     onError: (error, _variables, context) => {
       if (context?.previous) {
-        queryClient.setQueryData(['conversations', context.conversationId, 'queued'], context.previous);
+        queryClient.setQueryData(['chats', context.chatId, 'queued'], context.previous);
       }
       notifyError(error instanceof Error ? error.message : 'Failed to clear queued messages.');
     },
-    onSuccess: (_result, { conversationId }) => {
-      void queryClient.invalidateQueries({ queryKey: ['conversations', conversationId, 'queued'] });
+    onSuccess: (_result, { chatId }) => {
+      void queryClient.invalidateQueries({ queryKey: ['chats', chatId, 'queued'] });
     },
   });
 
@@ -525,7 +525,7 @@ function ConversationsContent({ user }: { user: User }) {
         next.delete(reminderId);
         return next;
       });
-      void queryClient.invalidateQueries({ queryKey: ['conversations', result.chatId, 'reminders'] });
+      void queryClient.invalidateQueries({ queryKey: ['chats', result.chatId, 'reminders'] });
     },
     onError: (error, reminderId) => {
       setCancellingReminderIds((prev) => {
@@ -562,11 +562,11 @@ function ConversationsContent({ user }: { user: User }) {
     setFilterMode(mode);
   }, [filterMode]);
 
-  const handleConversationsLoadMore = useCallback(() => {
-    if (conversationsQuery.hasNextPage && !conversationsQuery.isFetchingNextPage) {
-      void conversationsQuery.fetchNextPage();
+  const handleChatsLoadMore = useCallback(() => {
+    if (chatsQuery.hasNextPage && !chatsQuery.isFetchingNextPage) {
+      void chatsQuery.fetchNextPage();
     }
-  }, [conversationsQuery]);
+  }, [chatsQuery]);
 
   const handleToggleRunsInfoCollapsed = useCallback((collapsed: boolean) => {
     setRunsInfoCollapsed(collapsed);
@@ -574,17 +574,17 @@ function ConversationsContent({ user }: { user: User }) {
 
   const handleCancelQueuedMessage = useCallback(
     (_queuedMessageId: string) => {
-      if (!selectedConversationId || effectiveDraftMode) return;
+      if (!selectedChatId || effectiveDraftMode) return;
       if (cancelQueuedMessagesMutation.isPending) return;
-      cancelQueuedMessagesMutation.mutate({ conversationId: selectedConversationId });
+      cancelQueuedMessagesMutation.mutate({ chatId: selectedChatId });
     },
-    [selectedConversationId, effectiveDraftMode, cancelQueuedMessagesMutation],
+    [selectedChatId, effectiveDraftMode, cancelQueuedMessagesMutation],
   );
 
   const handleSendMessage = useCallback(
-    (value: string, context: { conversationId: string | null }) => {
-      const conversationId = context.conversationId;
-      if (!conversationId) return;
+    (value: string, context: { chatId: string | null }) => {
+      const chatId = context.chatId;
+      if (!chatId) return;
 
       const trimmed = value.trim();
       const fileIds = completedFileIds;
@@ -592,36 +592,36 @@ function ConversationsContent({ user }: { user: User }) {
         notifyError('Enter a message before sending.');
         return;
       }
-      if (trimmed.length > CONVERSATION_MESSAGE_MAX_LENGTH) {
+      if (trimmed.length > CHAT_MESSAGE_MAX_LENGTH) {
         notifyError(MESSAGE_LENGTH_LIMIT_NOTIFICATION);
         return;
       }
 
-      if (isDraftConversationId(conversationId)) {
-        if (createConversation.isPending) return;
-        const draft = draftsRef.current.find((item) => item.id === conversationId);
+      if (isDraftChatId(chatId)) {
+        if (createChat.isPending) return;
+        const draft = draftsRef.current.find((item) => item.id === chatId);
         if (!draft) return;
         if (draft.participants.length === 0) {
           notifyError('Select participants before sending.');
           return;
         }
         const participantIds = draft.participants.map((participant) => participant.id);
-        const draftId = conversationId;
+        const draftId = chatId;
         clearAttachments();
-        createConversation.mutate(
+        createChat.mutate(
           { participantIds },
           {
             onSuccess: (data) => {
-              const newConversationId = data.chat.id;
+              const newChatId = data.chat.id;
               setDrafts((prev) => prev.filter((item) => item.id !== draftId));
-              setSelectedConversationIdState(newConversationId);
+              setSelectedChatIdState(newChatId);
               setInputValue('');
-              lastNonDraftIdRef.current = newConversationId;
-              void queryClient.invalidateQueries({ queryKey: ['conversations', 'list'] });
-              navigate(`/conversations/${encodeURIComponent(newConversationId)}`);
-              sendConversationMessage.mutate(
+              lastNonDraftIdRef.current = newChatId;
+              void queryClient.invalidateQueries({ queryKey: ['chats', 'list'] });
+              navigate(`/chats/${encodeURIComponent(newChatId)}`);
+              sendMessage.mutate(
                 {
-                  chatId: newConversationId,
+                  chatId: newChatId,
                   body: trimmed,
                   senderId: currentUserId,
                   fileIds,
@@ -634,20 +634,20 @@ function ConversationsContent({ user }: { user: User }) {
               );
             },
             onError: (error) => {
-              notifyError(error instanceof Error ? error.message : 'Failed to create conversation.');
+              notifyError(error instanceof Error ? error.message : 'Failed to create chat.');
             },
           },
         );
         return;
       }
 
-      if (sendConversationMessage.isPending || createConversation.isPending) return;
+      if (sendMessage.isPending || createChat.isPending) return;
       clearAttachments();
       cancelDraftSave();
-      persistDraftNow(conversationId, value);
-      sendConversationMessage.mutate(
+      persistDraftNow(chatId, value);
+      sendMessage.mutate(
         {
-          chatId: conversationId,
+          chatId,
           body: trimmed,
           senderId: currentUserId,
           fileIds,
@@ -656,10 +656,10 @@ function ConversationsContent({ user }: { user: User }) {
           onSuccess: () => {
             cancelDraftSave();
             setInputValue('');
-            clearDraft(conversationId, userEmail);
+            clearDraft(chatId, userEmail);
             lastPersistedTextRef.current = '';
             latestInputValueRef.current = '';
-            void queryClient.invalidateQueries({ queryKey: ['conversations', conversationId, 'queued'] });
+            void queryClient.invalidateQueries({ queryKey: ['chats', chatId, 'queued'] });
           },
           onError: (error) => {
             notifyError(error instanceof Error ? error.message : 'Failed to send message.');
@@ -669,9 +669,9 @@ function ConversationsContent({ user }: { user: User }) {
     },
     [
       clearAttachments,
-      createConversation,
+      createChat,
       draftsRef,
-      sendConversationMessage,
+      sendMessage,
       cancelDraftSave,
       persistDraftNow,
       completedFileIds,
@@ -687,16 +687,16 @@ function ConversationsContent({ user }: { user: User }) {
     ],
   );
 
-  const listErrorMessage = conversationsQuery.error instanceof Error
-    ? conversationsQuery.error.message
-    : conversationsQuery.error
-      ? 'Unable to load conversations.'
+  const listErrorMessage = chatsQuery.error instanceof Error
+    ? chatsQuery.error.message
+    : chatsQuery.error
+      ? 'Unable to load chats.'
       : null;
 
-  const detailErrorMessage = conversationMessagesQuery.error instanceof Error
-    ? conversationMessagesQuery.error.message
-    : conversationMessagesQuery.error
-      ? 'Unable to load conversation.'
+  const detailErrorMessage = chatMessagesQuery.error instanceof Error
+    ? chatMessagesQuery.error.message
+    : chatMessagesQuery.error
+      ? 'Unable to load chat.'
       : null;
 
   const listErrorNode = listErrorMessage ? <span>{listErrorMessage}</span> : undefined;
@@ -705,35 +705,35 @@ function ConversationsContent({ user }: { user: User }) {
   return (
     <div className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden">
       <div className="flex min-h-0 flex-1 flex-col">
-        <ConversationsScreen
-          conversations={conversationsForList}
-          runs={conversationRuns}
+        <ChatsScreen
+          chats={chatsForList}
+          runs={chatRuns}
           runsCount={runItems.length}
           containers={containersForScreen}
           reminders={remindersForScreen}
-          conversationQueuedMessages={queuedMessages}
-          conversationReminders={conversationReminders}
+          chatQueuedMessages={queuedMessages}
+          chatReminders={chatReminders}
           filterMode={filterMode}
-          selectedConversationId={selectedConversationId ?? null}
-          selectedConversation={selectedConversation}
+          selectedChatId={selectedChatId ?? null}
+          selectedChat={selectedChat}
           inputValue={inputValue}
           isRunsInfoCollapsed={isRunsInfoCollapsed}
-          conversationsHasMore={conversationsQuery.hasNextPage ?? false}
-          conversationsIsLoading={conversationsQuery.isFetching}
-          isLoading={conversationMessagesQuery.isLoading}
-          isEmpty={isConversationsEmpty}
+          chatsHasMore={chatsQuery.hasNextPage ?? false}
+          chatsIsLoading={chatsQuery.isFetching}
+          isLoading={chatMessagesQuery.isLoading}
+          isEmpty={isChatsEmpty}
           listError={listErrorNode}
           detailError={detailErrorNode}
-          conversationScrollRef={scrollContainerRef}
-          onConversationScroll={handleConversationScroll}
+          chatScrollRef={scrollContainerRef}
+          onChatScroll={handleChatScroll}
           onFilterModeChange={handleFilterChange}
-          onSelectConversation={handleSelectConversation}
+          onSelectChat={handleSelectChat}
           onToggleRunsInfoCollapsed={handleToggleRunsInfoCollapsed}
           onInputValueChange={handleInputValueChange}
           onSendMessage={handleSendMessage}
-          onConversationsLoadMore={handleConversationsLoadMore}
+          onChatsLoadMore={handleChatsLoadMore}
           onCreateDraft={handleCreateDraft}
-          isSendMessagePending={sendConversationMessage.isPending || createConversation.isPending}
+          isSendMessagePending={sendMessage.isPending || createChat.isPending}
           onOpenContainerTerminal={handleOpenContainerTerminal}
           draftMode={effectiveDraftMode}
           draftParticipants={draftParticipants}
@@ -762,7 +762,7 @@ function ConversationsContent({ user }: { user: User }) {
   );
 }
 
-export function Conversations() {
+export function Chats() {
   const { user } = useUser();
 
   if (!user?.email) {
@@ -773,5 +773,5 @@ export function Conversations() {
     );
   }
 
-  return <ConversationsContent user={user} />;
+  return <ChatsContent user={user} />;
 }

@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ConversationListItem } from '@/components/ConversationItem';
+import type { ChatListItem } from '@/components/ChatListItem';
 import { graphSocket } from '@/lib/graph/socket';
-import { ConversationSoundController } from '@/features/conversations/ConversationSoundController';
+import { ChatSoundController } from '@/features/chats/ChatSoundController';
 
-type UseConversationSoundNotificationsOptions = {
-  conversations: ConversationListItem[];
+type UseChatSoundNotificationsOptions = {
+  chats: ChatListItem[];
   delayMs?: number;
 };
 
@@ -15,10 +15,10 @@ const SOUND_PATHS = {
   finished: '/sounds/finished.mp3',
 } as const;
 
-export function useConversationSoundNotifications({
-  conversations,
+export function useChatSoundNotifications({
+  chats,
   delayMs = DEFAULT_DELAY_MS,
-}: UseConversationSoundNotificationsOptions) {
+}: UseChatSoundNotificationsOptions) {
   const isBrowser = typeof window !== 'undefined' && typeof window.Audio === 'function';
 
   const audioRefs = useRef<{ newMessage?: HTMLAudioElement; finished?: HTMLAudioElement }>({});
@@ -50,10 +50,10 @@ export function useConversationSoundNotifications({
   const rootIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    rootIdsRef.current = new Set(conversations.map((conversation) => conversation.id));
-  }, [conversations]);
+    rootIdsRef.current = new Set(chats.map((chat) => chat.id));
+  }, [chats]);
 
-  const controllerRef = useRef<ConversationSoundController | null>(null);
+  const controllerRef = useRef<ChatSoundController | null>(null);
 
   const playSound = useMemo(() => {
     const play = (audio: HTMLAudioElement | undefined) => {
@@ -82,11 +82,11 @@ export function useConversationSoundNotifications({
   useEffect(() => {
     if (!audioReady) return;
 
-    const controller = new ConversationSoundController({
+    const controller = new ChatSoundController({
       delayMs,
       playNewMessage: playSound.newMessage,
       playFinished: playSound.finished,
-      isRootConversation: (conversationId) => rootIdsRef.current.has(conversationId),
+      isRootChat: (chatId) => rootIdsRef.current.has(chatId),
     });
 
     controllerRef.current = controller;
@@ -102,9 +102,9 @@ export function useConversationSoundNotifications({
     const controller = controllerRef.current;
     if (!controller) return;
 
-    const unsubscribe = graphSocket.onMessageCreated(({ conversationId, message }) => {
+    const unsubscribe = graphSocket.onChatMessageCreated(({ chatId, message }) => {
       if (message.kind === 'user') return;
-      controller.handleMessageCreated(conversationId);
+      controller.handleMessageCreated(chatId);
     });
 
     return () => {
@@ -112,7 +112,7 @@ export function useConversationSoundNotifications({
     };
   }, [audioReady]);
 
-  const previousStatusesRef = useRef<Map<string, ConversationListItem['status']>>(new Map());
+  const previousStatusesRef = useRef<Map<string, ChatListItem['status']>>(new Map());
   const statusesInitializedRef = useRef(false);
 
   useEffect(() => {
@@ -122,12 +122,12 @@ export function useConversationSoundNotifications({
 
     const previous = previousStatusesRef.current;
     const isInitialized = statusesInitializedRef.current;
-    for (const conversation of conversations) {
-      const prevStatus = previous.get(conversation.id);
-      if (isInitialized && prevStatus !== undefined && conversation.status === 'finished' && prevStatus !== 'finished') {
-        controller.handleConversationFinished(conversation.id);
+    for (const chat of chats) {
+      const prevStatus = previous.get(chat.id);
+      if (isInitialized && prevStatus !== undefined && chat.status === 'finished' && prevStatus !== 'finished') {
+        controller.handleChatFinished(chat.id);
       }
-      previous.set(conversation.id, conversation.status);
+      previous.set(chat.id, chat.status);
     }
 
     for (const key of Array.from(previous.keys())) {
@@ -136,5 +136,5 @@ export function useConversationSoundNotifications({
       }
     }
     statusesInitializedRef.current = true;
-  }, [conversations, audioReady]);
+  }, [chats, audioReady]);
 }

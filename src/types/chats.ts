@@ -4,7 +4,7 @@ export type DraftParticipant = {
   type: 'agent' | 'user';
 };
 
-export type ConversationDraft = {
+export type ChatDraft = {
   id: string;
   participants: DraftParticipant[];
   inputValue: string;

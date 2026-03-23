@@ -1,6 +1,6 @@
-const STORAGE_PREFIX = 'ui.draft.conversations';
+const STORAGE_PREFIX = 'ui.draft.chats';
 const STORAGE_VERSION = 1;
-export const CONVERSATION_MESSAGE_MAX_LENGTH = 100000;
+export const CHAT_MESSAGE_MAX_LENGTH = 100000;
 
 type DraftRecord = {
   version: number;
@@ -18,19 +18,19 @@ function resolveStorage(): Storage | null {
   }
 }
 
-export function makeDraftKey(conversationId: string, userEmail?: string | null): string {
-  const normalizedId = conversationId ?? '';
+export function makeDraftKey(chatId: string, userEmail?: string | null): string {
+  const normalizedId = chatId ?? '';
   const normalizedEmail = typeof userEmail === 'string' && userEmail.trim().length > 0 ? userEmail : null;
   const base = `${STORAGE_PREFIX}.${normalizedId}`;
   return normalizedEmail ? `${base}::user::${normalizedEmail}` : base;
 }
 
-export function readDraft(conversationId: string, userEmail?: string | null): { text: string; updatedAt: string; userEmail: string | null } | null {
-  if (!conversationId) return null;
+export function readDraft(chatId: string, userEmail?: string | null): { text: string; updatedAt: string; userEmail: string | null } | null {
+  if (!chatId) return null;
   const storage = resolveStorage();
   if (!storage) return null;
   try {
-    const raw = storage.getItem(makeDraftKey(conversationId, userEmail));
+    const raw = storage.getItem(makeDraftKey(chatId, userEmail));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as DraftRecord | null;
     if (!parsed || typeof parsed !== 'object') return null;
@@ -47,13 +47,13 @@ export function readDraft(conversationId: string, userEmail?: string | null): { 
   }
 }
 
-export function writeDraft(conversationId: string, text: string, userEmail?: string | null): void {
-  if (!conversationId) return;
+export function writeDraft(chatId: string, text: string, userEmail?: string | null): void {
+  if (!chatId) return;
   const storage = resolveStorage();
   if (!storage) return;
   const trimmed = text.trim();
   if (trimmed.length === 0) {
-    clearDraft(conversationId, userEmail);
+    clearDraft(chatId, userEmail);
     return;
   }
   const payload: DraftRecord = {
@@ -63,18 +63,18 @@ export function writeDraft(conversationId: string, text: string, userEmail?: str
     userEmail: typeof userEmail === 'string' && userEmail.trim().length > 0 ? userEmail : null,
   };
   try {
-    storage.setItem(makeDraftKey(conversationId, userEmail), JSON.stringify(payload));
+    storage.setItem(makeDraftKey(chatId, userEmail), JSON.stringify(payload));
   } catch (_error) {
     // Swallow storage errors (quota, permissions, etc.)
   }
 }
 
-export function clearDraft(conversationId: string, userEmail?: string | null): void {
-  if (!conversationId) return;
+export function clearDraft(chatId: string, userEmail?: string | null): void {
+  if (!chatId) return;
   const storage = resolveStorage();
   if (!storage) return;
   try {
-    storage.removeItem(makeDraftKey(conversationId, userEmail));
+    storage.removeItem(makeDraftKey(chatId, userEmail));
   } catch (_error) {
     // Ignore storage errors
   }

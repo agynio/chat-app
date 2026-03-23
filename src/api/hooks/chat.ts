@@ -8,15 +8,15 @@ import type {
   SendMessageResponse,
 } from '@/api/types/chat';
 
-const CONVERSATION_PAGE_SIZE = 25;
+const CHAT_PAGE_SIZE = 25;
 const MESSAGE_PAGE_SIZE = 30;
 
-export function useConversations() {
+export function useChats() {
   return useInfiniteQuery({
-    queryKey: ['conversations', 'list', CONVERSATION_PAGE_SIZE],
+    queryKey: ['chats', 'list', CHAT_PAGE_SIZE],
     queryFn: ({ pageParam }) =>
       chatApi.getChats({
-        pageSize: CONVERSATION_PAGE_SIZE,
+        pageSize: CHAT_PAGE_SIZE,
         pageToken: pageParam ?? undefined,
       }),
     initialPageParam: undefined as string | undefined,
@@ -26,13 +26,13 @@ export function useConversations() {
   });
 }
 
-export function useConversationMessages(conversationId: string | null | undefined) {
+export function useChatMessages(chatId: string | null | undefined) {
   return useInfiniteQuery({
-    enabled: Boolean(conversationId),
-    queryKey: ['conversations', conversationId ?? 'none', 'messages', MESSAGE_PAGE_SIZE],
+    enabled: Boolean(chatId),
+    queryKey: ['chats', chatId ?? 'none', 'messages', MESSAGE_PAGE_SIZE],
     queryFn: ({ pageParam }) =>
       chatApi.getMessages({
-        chatId: conversationId as string,
+        chatId: chatId as string,
         pageSize: MESSAGE_PAGE_SIZE,
         pageToken: pageParam ?? undefined,
       }),
@@ -43,27 +43,27 @@ export function useConversationMessages(conversationId: string | null | undefine
   });
 }
 
-type SendConversationMessageInput = {
+type SendMessageInput = {
   chatId: string;
   body: string;
   senderId: string;
   fileIds?: string[];
 };
 
-type SendConversationMessageContext = {
+type SendMessageContext = {
   queryKey: (string | number)[];
   previous?: InfiniteData<GetMessagesResponse>;
   optimisticId: string;
 };
 
-export function useSendConversationMessage() {
+export function useSendMessage() {
   const queryClient = useQueryClient();
 
-  return useMutation<SendMessageResponse, Error, SendConversationMessageInput, SendConversationMessageContext>({
+  return useMutation<SendMessageResponse, Error, SendMessageInput, SendMessageContext>({
     mutationFn: ({ chatId, body, fileIds }) =>
       chatApi.sendMessage({ chatId, body, fileIds }),
     onMutate: async ({ chatId, body, senderId, fileIds }) => {
-      const queryKey = ['conversations', chatId, 'messages', MESSAGE_PAGE_SIZE];
+      const queryKey = ['chats', chatId, 'messages', MESSAGE_PAGE_SIZE];
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData<InfiniteData<GetMessagesResponse>>(queryKey);
       const optimisticId = `optimistic-${Date.now()}`;
@@ -99,7 +99,7 @@ export function useSendConversationMessage() {
       }
     },
     onSuccess: (data, variables, context) => {
-      const queryKey = context?.queryKey ?? ['conversations', variables.chatId, 'messages', MESSAGE_PAGE_SIZE];
+      const queryKey = context?.queryKey ?? ['chats', variables.chatId, 'messages', MESSAGE_PAGE_SIZE];
       queryClient.setQueryData<InfiniteData<GetMessagesResponse>>(queryKey, (current) => {
         if (!current) return current;
         return {
@@ -112,31 +112,31 @@ export function useSendConversationMessage() {
           })),
         };
       });
-      queryClient.invalidateQueries({ queryKey: ['conversations', 'list'] });
+      queryClient.invalidateQueries({ queryKey: ['chats', 'list'] });
     },
   });
 }
 
-export function useCreateConversation() {
+export function useCreateChat() {
   const queryClient = useQueryClient();
 
   return useMutation<CreateChatResponse, Error, CreateChatRequest>({
     mutationFn: (req) => chatApi.createChat(req),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['conversations', 'list'] });
+      queryClient.invalidateQueries({ queryKey: ['chats', 'list'] });
     },
   });
 }
 
-export function useMarkConversationRead(conversationId: string | null | undefined) {
+export function useMarkAsRead(chatId: string | null | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (messageIds: string[]) =>
-      chatApi.markAsRead({ chatId: conversationId as string, messageIds }),
+      chatApi.markAsRead({ chatId: chatId as string, messageIds }),
     onSuccess: () => {
-      if (conversationId) {
-        queryClient.invalidateQueries({ queryKey: ['conversations', conversationId, 'messages'] });
-        queryClient.invalidateQueries({ queryKey: ['conversations', 'list'] });
+      if (chatId) {
+        queryClient.invalidateQueries({ queryKey: ['chats', chatId, 'messages'] });
+        queryClient.invalidateQueries({ queryKey: ['chats', 'list'] });
       }
     },
   });

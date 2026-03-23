@@ -5,7 +5,7 @@ import { QueuedMessage } from './QueuedMessage';
 import { Reminder } from './Reminder';
 import { StatusIndicator, type Status } from './StatusIndicator';
 
-export interface ConversationMessage {
+export interface ChatMessage {
   id: string;
   role: MessageRole;
   content: ReactNode;
@@ -16,9 +16,9 @@ export interface ConversationMessage {
   onDelete?: () => void;
 }
 
-export interface Run {
+export interface ChatRun {
   id: string;
-  messages: ConversationMessage[];
+  messages: ChatMessage[];
   status: 'finished' | 'running' | 'failed' | 'pending';
   duration?: string;
   tokens?: number;
@@ -27,22 +27,22 @@ export interface Run {
   onViewRun?: (runId: string) => void;
 }
 
-export interface QueuedMessageData {
+export interface ChatQueuedMessageData {
   id: string;
   content: ReactNode;
 }
 
-export interface ReminderData {
+export interface ChatReminderData {
   id: string;
   content: ReactNode;
   scheduledTime: string;
   date?: string;
 }
 
-interface ConversationProps {
-  runs: Run[];
-  queuedMessages?: QueuedMessageData[];
-  reminders?: ReminderData[];
+interface ChatProps {
+  runs: ChatRun[];
+  queuedMessages?: ChatQueuedMessageData[];
+  reminders?: ChatReminderData[];
   header?: ReactNode;
   footer?: ReactNode;
   className?: string;
@@ -56,13 +56,13 @@ interface ConversationProps {
   cancellingReminderIds?: ReadonlySet<string>;
 }
 
-const EMPTY_QUEUED_MESSAGES: QueuedMessageData[] = [];
-const EMPTY_REMINDERS: ReminderData[] = [];
+const EMPTY_QUEUED_MESSAGES: ChatQueuedMessageData[] = [];
+const EMPTY_REMINDERS: ChatReminderData[] = [];
 const EMPTY_HEADER: ReactNode = null;
 const EMPTY_FOOTER: ReactNode = null;
 const EMPTY_REMINDER_IDS: ReadonlySet<string> = new Set();
 
-function ConversationImpl({
+function ChatImpl({
   runs,
   queuedMessages = EMPTY_QUEUED_MESSAGES,
   reminders = EMPTY_REMINDERS,
@@ -77,7 +77,7 @@ function ConversationImpl({
   onCancelReminder,
   isCancelQueuedMessagesPending = false,
   cancellingReminderIds = EMPTY_REMINDER_IDS,
-}: ConversationProps) {
+}: ChatProps) {
   const messagesRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const [runHeights, setRunHeights] = useState<Map<string, number>>(new Map());
 
@@ -101,7 +101,7 @@ function ConversationImpl({
   return (
     <div
       className={`flex flex-col h-full bg-white rounded-[10px] border border-[var(--agyn-border-subtle)] overflow-hidden ${className}`}
-      data-testid="conversation"
+      data-testid="chat"
     >
       {/* Header */}
       {header && (
@@ -115,7 +115,7 @@ function ConversationImpl({
         className="flex-1 min-w-0 overflow-y-auto flex flex-col"
         ref={scrollRef ?? undefined}
         onScroll={onScroll}
-        data-testid="conversation-scroll"
+        data-testid="chat-scroll"
       >
         {/* Runs Container */}
         <div className="flex flex-col flex-1 min-w-0">
@@ -248,7 +248,7 @@ function ConversationImpl({
   );
 }
 
-function areEqual(prev: ConversationProps, next: ConversationProps): boolean {
+function areEqual(prev: ChatProps, next: ChatProps): boolean {
   return (
     prev.runs === next.runs &&
     prev.queuedMessages === next.queuedMessages &&
@@ -267,4 +267,4 @@ function areEqual(prev: ConversationProps, next: ConversationProps): boolean {
   );
 }
 
-export const Conversation = memo(ConversationImpl, areEqual);
+export const Chat = memo(ChatImpl, areEqual);

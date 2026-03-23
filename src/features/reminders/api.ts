@@ -1,4 +1,4 @@
-import { conversationReminders } from '@/api/mock-data/reminders';
+import { chatReminders } from '@/api/mock-data/reminders';
 
 export interface CancelReminderResponse {
   ok: true;
@@ -6,7 +6,7 @@ export interface CancelReminderResponse {
 }
 
 export function cancelReminder(reminderId: string): Promise<CancelReminderResponse> {
-  const reminder = conversationReminders.find((item) => item.id === reminderId);
+  const reminder = chatReminders.find((item) => item.id === reminderId);
   if (!reminder) {
     return Promise.reject(new Error('Reminder not found'));
   }

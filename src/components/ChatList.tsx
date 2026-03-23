@@ -1,28 +1,28 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ConversationItem, type ConversationListItem } from './ConversationItem';
+import { ChatListItem, type ChatListItem as ChatListItemType } from './ChatListItem';
 import { Loader2 } from 'lucide-react';
 
-interface ConversationsListProps {
-  conversations: ConversationListItem[];
+interface ChatListProps {
+  chats: ChatListItemType[];
   onLoadMore?: () => void;
   hasMore?: boolean;
   isLoading?: boolean;
-  onSelectConversation?: (conversationId: string) => void;
-  selectedConversationId?: string;
+  onSelectChat?: (chatId: string) => void;
+  selectedChatId?: string;
   className?: string;
   emptyState?: ReactNode;
 }
 
-export function ConversationsList({
-  conversations,
+export function ChatList({
+  chats,
   onLoadMore,
   hasMore = false,
   isLoading = false,
-  onSelectConversation,
-  selectedConversationId,
+  onSelectChat,
+  selectedChatId,
   className = '',
   emptyState,
-}: ConversationsListProps) {
+}: ChatListProps) {
   const [hasLoadedMore, setHasLoadedMore] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -67,13 +67,13 @@ export function ConversationsList({
     return () => {
       observer.disconnect();
     };
-  }, [onLoadMore, hasMore, isLoading, conversations.length]);
+  }, [onLoadMore, hasMore, isLoading, chats.length]);
 
-  if (conversations.length === 0 && !isLoading) {
+  if (chats.length === 0 && !isLoading) {
     return (
       <div className={`flex min-h-0 flex-col bg-white rounded-[10px] border border-[var(--agyn-border-subtle)] overflow-hidden ${className}`}>
         <div className="flex items-center justify-center py-12 text-[var(--agyn-gray)]">
-          {emptyState || <p>No conversations found</p>}
+          {emptyState || <p>No chats found</p>}
         </div>
       </div>
     );
@@ -82,16 +82,16 @@ export function ConversationsList({
   return (
     <div
       className={`flex min-h-0 flex-col bg-white rounded-[10px] border border-[var(--agyn-border-subtle)] overflow-hidden ${className}`}
-      data-testid="conversations-list"
+      data-testid="chat-list"
     >
-      {/* Conversations List */}
+      {/* Chat List */}
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
-        {conversations.map((conversation) => (
-          <ConversationItem
-            key={conversation.id}
-            conversation={conversation}
-            isSelected={selectedConversationId === conversation.id}
-            onSelect={onSelectConversation}
+        {chats.map((chat) => (
+          <ChatListItem
+            key={chat.id}
+            chat={chat}
+            isSelected={selectedChatId === chat.id}
+            onSelect={onSelectChat}
           />
         ))}
         {hasMore && !isLoading && <div ref={loadMoreRef} className="h-4" />}
@@ -101,14 +101,14 @@ export function ConversationsList({
       {isLoading && (
         <div className="flex items-center justify-center py-4">
           <Loader2 className="w-5 h-5 text-[var(--agyn-blue)] animate-spin" />
-          <span className="ml-2 text-sm text-[var(--agyn-gray)]">Loading more conversations...</span>
+          <span className="ml-2 text-sm text-[var(--agyn-gray)]">Loading more chats...</span>
         </div>
       )}
 
       {/* End of List */}
-      {!hasMore && hasLoadedMore && conversations.length > 0 && (
+      {!hasMore && hasLoadedMore && chats.length > 0 && (
         <div className="flex items-center justify-center py-4">
-          <span className="text-sm text-[var(--agyn-gray)]">No more conversations to load</span>
+          <span className="text-sm text-[var(--agyn-gray)]">No more chats to load</span>
         </div>
       )}
     </div>

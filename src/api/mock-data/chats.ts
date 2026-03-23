@@ -2,9 +2,9 @@ import { iso } from './time';
 import { agentAccountId, agentCampaignId, agentResearchId } from './agents';
 import { stubUsers } from '../../data/stub-users';
 
-export const conversationOneId = '11111111-1111-1111-1111-111111111111';
-export const conversationTwoId = '22222222-2222-2222-2222-222222222222';
-export const conversationThreeId = '33333333-3333-3333-3333-333333333333';
+export const chatOneId = '11111111-1111-1111-1111-111111111111';
+export const chatTwoId = '22222222-2222-2222-2222-222222222222';
+export const chatThreeId = '33333333-3333-3333-3333-333333333333';
 
 export type ChatSeed = {
   id: string;
@@ -15,9 +15,9 @@ export type ChatSeed = {
 
 const [casey, alex, jamie] = stubUsers;
 
-export const conversationSeeds: ChatSeed[] = [
+export const chatSeeds: ChatSeed[] = [
   {
-    id: conversationOneId,
+    id: chatOneId,
     createdAt: iso(-180),
     updatedAt: iso(-2),
     participants: [
@@ -26,7 +26,7 @@ export const conversationSeeds: ChatSeed[] = [
     ],
   },
   {
-    id: conversationTwoId,
+    id: chatTwoId,
     createdAt: iso(-420),
     updatedAt: iso(-300),
     participants: [
@@ -35,7 +35,7 @@ export const conversationSeeds: ChatSeed[] = [
     ],
   },
   {
-    id: conversationThreeId,
+    id: chatThreeId,
     createdAt: iso(-90),
     updatedAt: iso(-45),
     participants: [

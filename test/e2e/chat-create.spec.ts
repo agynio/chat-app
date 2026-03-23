@@ -2,11 +2,11 @@ import { argosScreenshot } from '@argos-ci/playwright';
 import { test, expect } from './fixtures';
 import { listAgents } from './chat-api';
 
-test('creates a new conversation', async ({ page }) => {
+test('creates a new chat', async ({ page }) => {
   const message = `Plan the Q3 launch roadmap ${Date.now()}.`;
 
-  await page.goto('/conversations');
-  await page.getByTitle('New conversation').click();
+  await page.goto('/chats');
+  await page.getByTitle('New chat').click();
 
   const participantInput = page.getByPlaceholder('Search participants...');
   await expect(participantInput).toBeVisible();
@@ -33,10 +33,10 @@ test('creates a new conversation', async ({ page }) => {
   await expect(sendButton).toBeEnabled();
   await sendButton.click();
 
-  await expect(page).toHaveURL(/\/conversations\//);
+  await expect(page).toHaveURL(/\/chats\//);
   await expect(page.getByTestId('chat-message').filter({ hasText: message })).toBeVisible();
 
-  const conversationsList = page.getByTestId('conversations-list');
-  await expect(conversationsList.getByText(selectedAgent.name).first()).toBeVisible();
-  await argosScreenshot(page, 'conversation-create-complete');
+  const chatList = page.getByTestId('chat-list');
+  await expect(chatList.getByText(selectedAgent.name).first()).toBeVisible();
+  await argosScreenshot(page, 'chat-create-complete');
 });

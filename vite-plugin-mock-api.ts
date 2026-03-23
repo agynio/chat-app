@@ -8,10 +8,10 @@ import type { TemplateSchema } from './src/api/types/graph';
 import type { PersistedGraph } from './src/types/graph';
 import { agents as mockAgents } from './src/api/mock-data/agents';
 import {
-  createConversationMessagesMap,
-  createUnreadIdsByConversationMap,
-} from './src/api/mock-data/conversation-messages';
-import { conversationSeeds } from './src/api/mock-data/conversations';
+  createChatMessagesMap,
+  createUnreadIdsByChatMap,
+} from './src/api/mock-data/chat-messages';
+import { chatSeeds } from './src/api/mock-data/chats';
 import { graph as mockGraph } from './src/api/mock-data/graph';
 import { templates as mockTemplates } from './src/api/mock-data/templates';
 import { stubUsers } from './src/data/stub-users';
@@ -19,7 +19,7 @@ import { stubUsers } from './src/data/stub-users';
 const [casey] = stubUsers;
 
 const chatStore = new Map<string, Chat>(
-  conversationSeeds.map((seed) => [
+  chatSeeds.map((seed) => [
     seed.id,
     {
       id: seed.id,
@@ -30,8 +30,8 @@ const chatStore = new Map<string, Chat>(
   ]),
 );
 
-const messagesByChat = createConversationMessagesMap();
-const unreadIdsByChat = createUnreadIdsByConversationMap();
+const messagesByChat = createChatMessagesMap();
+const unreadIdsByChat = createUnreadIdsByChatMap();
 
 function sendJson(res: ServerResponse, status: number, body: unknown) {
   res.statusCode = status;
@@ -147,10 +147,10 @@ export function mockApiPlugin(): Plugin {
                 const bValue = Number.isFinite(bTime) ? bTime : 0;
                 return bValue - aValue;
               });
-            const pageConversations = chats.slice(offset, offset + pageSize);
+            const pageChats = chats.slice(offset, offset + pageSize);
             const nextOffset = offset + pageSize;
             const response: { chats: Chat[]; nextPageToken?: string } = {
-              chats: pageConversations,
+              chats: pageChats,
             };
             if (nextOffset < chats.length) response.nextPageToken = String(nextOffset);
             return sendJson(res, 200, response);
@@ -160,7 +160,7 @@ export function mockApiPlugin(): Plugin {
             const request = payload as { chatId?: string; pageSize?: number; pageToken?: string };
             const chatId = request.chatId;
             if (!chatId || !chatStore.has(chatId)) {
-              return sendJson(res, 404, { code: 'not_found', message: 'conversation not found' });
+              return sendJson(res, 404, { code: 'not_found', message: 'chat not found' });
             }
             const messages = messagesByChat.get(chatId) ?? [];
             const pageSize = clampPageSize(request.pageSize, 30);
@@ -181,7 +181,7 @@ export function mockApiPlugin(): Plugin {
             const request = payload as { chatId?: string; body?: string; fileIds?: string[] };
             const chatId = request.chatId;
             if (!chatId || !chatStore.has(chatId)) {
-              return sendJson(res, 404, { code: 'not_found', message: 'conversation not found' });
+              return sendJson(res, 404, { code: 'not_found', message: 'chat not found' });
             }
             const nextMessage: ChatMessage = {
               id: randomUUID(),
@@ -235,7 +235,7 @@ export function mockApiPlugin(): Plugin {
             const request = payload as { chatId?: string; messageIds?: string[] };
             const chatId = request.chatId;
             if (!chatId || !chatStore.has(chatId)) {
-              return sendJson(res, 404, { code: 'not_found', message: 'conversation not found' });
+              return sendJson(res, 404, { code: 'not_found', message: 'chat not found' });
             }
             const messageIds = Array.isArray(request.messageIds)
               ? request.messageIds.filter((id): id is string => typeof id === 'string')
