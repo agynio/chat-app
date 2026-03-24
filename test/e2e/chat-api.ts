@@ -1,21 +1,10 @@
-import * as crypto from 'crypto';
 import type { Page } from '@playwright/test';
-import type { Agent } from '../../src/api/types/agents';
 
 const CHAT_GATEWAY_PATH = '/api/agynio.api.gateway.v1.ChatGateway';
-const AGENTS_GATEWAY_PATH = '/api/agynio.api.gateway.v1.AgentsGateway';
 
 const CONNECT_HEADERS = {
   'Content-Type': 'application/json',
   'Connect-Protocol-Version': '1',
-};
-
-type ListAgentsResponse = {
-  agents?: Agent[];
-};
-
-type CreateAgentResponse = {
-  agent?: Agent;
 };
 
 type CreateChatResponseWire = {
@@ -134,44 +123,6 @@ async function postConnect<T>(
     throw new Error(`ConnectRPC ${method} failed with status ${response.status()}.`);
   }
   return (await response.json()) as T;
-}
-
-export type AgentOption = { id: string; name: string };
-
-export async function listAgents(page: Page): Promise<AgentOption[]> {
-  const response = await postConnect<ListAgentsResponse>(page, AGENTS_GATEWAY_PATH, 'ListAgents', {});
-  const agents = response.agents ?? [];
-  return agents.map((agent) => {
-    if (!agent.meta?.id || typeof agent.meta.id !== 'string') {
-      throw new Error(`Invalid agent payload: ${JSON.stringify(agent)}`);
-    }
-    if (!agent.name || typeof agent.name !== 'string') {
-      throw new Error(`Invalid agent payload: ${JSON.stringify(agent)}`);
-    }
-    return { id: agent.meta.id, name: agent.name };
-  });
-}
-
-export async function createAgent(
-  page: Page,
-  orgId?: string,
-): Promise<{ id: string; name: string }> {
-  const response = await postConnect<CreateAgentResponse>(page, AGENTS_GATEWAY_PATH, 'CreateAgent', {
-    name: `e2e-agent-${Date.now()}`,
-    role: 'assistant',
-    model: crypto.randomUUID(),
-    organizationId: orgId ?? crypto.randomUUID(),
-    description: 'E2E test agent',
-  });
-  const agent = response.agent;
-  if (!agent?.meta?.id || typeof agent.name !== 'string') {
-    throw new Error('CreateAgent returned no agent ID');
-  }
-  return { id: agent.meta.id, name: agent.name };
-}
-
-export async function deleteAgent(page: Page, agentId: string): Promise<void> {
-  await postConnect(page, AGENTS_GATEWAY_PATH, 'DeleteAgent', { id: agentId });
 }
 
 export async function resolveUserId(page: Page, fallbackId?: string): Promise<string> {
