@@ -1,44 +1,21 @@
 import { argosScreenshot } from '@argos-ci/playwright';
-import type { Agent } from '../../src/api/types/agents';
+import { createAgent, createChat, deleteAgent, resolveUserId } from './chat-api';
+import { E2E_ORGANIZATION_ID } from './constants';
 import { test as singleUserTest, expect } from './fixtures';
 import { test as multiUserTest, USER_B_EMAIL } from './multi-user-fixtures';
-import { createAgent, createChat, deleteAgent, resolveUserId } from './chat-api';
-
-const LIST_AGENTS_ROUTE = '**/api/agynio.api.gateway.v1.AgentsGateway/ListAgents';
 
 singleUserTest.describe('chat creation', () => {
   let seededAgent: { id: string; name: string } | null = null;
-  let seededAgentWire: Agent | null = null;
 
   singleUserTest.beforeEach(async ({ page }) => {
-    seededAgent = await createAgent(page);
-    const now = new Date().toISOString();
-    seededAgentWire = {
-      meta: { id: seededAgent.id, createdAt: now, updatedAt: now },
-      name: seededAgent.name,
-      role: 'assistant',
-      model: 'e2e-model',
-      description: 'E2E test agent',
-      configuration: {},
-      image: '',
-    };
-
-    await page.route(LIST_AGENTS_ROUTE, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ agents: seededAgentWire ? [seededAgentWire] : [] }),
-      });
-    });
+    seededAgent = await createAgent(page, E2E_ORGANIZATION_ID);
   });
 
   singleUserTest.afterEach(async ({ page }) => {
-    await page.unroute(LIST_AGENTS_ROUTE);
     if (seededAgent) {
       await deleteAgent(page, seededAgent.id);
       seededAgent = null;
     }
-    seededAgentWire = null;
   });
 
   singleUserTest('creates a new chat with an agent', async ({ page }) => {

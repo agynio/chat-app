@@ -3,6 +3,7 @@
 
 type RuntimeConfig = {
   API_BASE_URL?: string;
+  ORGANIZATION_ID?: string;
   OIDC_AUTHORITY?: string;
   OIDC_CLIENT_ID?: string;
   OIDC_SCOPE?: string;
@@ -10,6 +11,7 @@ type RuntimeConfig = {
 
 type ViteEnv = {
   VITE_API_BASE_URL?: string;
+  VITE_ORGANIZATION_ID?: string;
   VITE_OIDC_AUTHORITY?: string;
   VITE_OIDC_CLIENT_ID?: string;
   VITE_OIDC_SCOPE?: string;
@@ -73,6 +75,10 @@ function deriveBase(raw: string, options: { stripApi: boolean }): string {
 const rawApiBase = requireConfig('API_BASE_URL', readConfigValue('API_BASE_URL', 'VITE_API_BASE_URL'));
 const apiBaseUrl = deriveBase(rawApiBase, { stripApi: true });
 const socketBaseUrl = deriveBase(rawApiBase, { stripApi: true });
+const organizationId = requireConfig(
+  'ORGANIZATION_ID',
+  readConfigValue('ORGANIZATION_ID', 'VITE_ORGANIZATION_ID'),
+);
 
 const rawOidcAuthority = readConfigValue('OIDC_AUTHORITY', 'VITE_OIDC_AUTHORITY');
 const oidcEnabled = Boolean(rawOidcAuthority);
@@ -89,6 +95,7 @@ export const oidcConfig: OidcConfig = oidcEnabled
 export const config = {
   apiBaseUrl,
   socketBaseUrl,
+  organizationId,
 };
 
 export function getSocketBaseUrl(): string {
