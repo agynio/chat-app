@@ -3,7 +3,7 @@ import { createId } from '@/api/mock-data/id';
 
 export type ContainerItem = {
   containerId: string;
-  conversationId: string | null;
+  chatId: string | null;
   image: string;
   name: string;
   status: 'running' | 'stopped' | 'terminating' | 'failed';
@@ -45,11 +45,11 @@ const cloneContainer = (container: ContainerItem): ContainerItem => ({
   mounts: container.mounts ? container.mounts.map((mount) => ({ ...mount })) : undefined,
 });
 
-export function listContainers(params: { status?: string; sortBy?: string; sortDir?: string; conversationId?: string }) {
-  const { status, sortBy, sortDir, conversationId } = params;
+export function listContainers(params: { status?: string; sortBy?: string; sortDir?: string; chatId?: string }) {
+  const { status, sortBy, sortDir, chatId } = params;
   let items = containers;
-  if (conversationId) {
-    items = items.filter((container) => container.conversationId === conversationId);
+  if (chatId) {
+    items = items.filter((container) => container.chatId === chatId);
   }
   if (status && status !== 'all') {
     items = items.filter((container) => container.status === status);

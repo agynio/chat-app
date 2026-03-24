@@ -61,7 +61,7 @@ function MessageComponent({
   return (
     <div
       className={`flex justify-start mb-4 min-w-0 ${className}`}
-      data-testid="conversation-message"
+      data-testid="chat-message"
       data-role={role}
     >
       <div className="flex gap-3 max-w-full min-w-0 flex-1">

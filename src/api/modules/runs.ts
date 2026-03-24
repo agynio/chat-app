@@ -1,6 +1,6 @@
-import type { RunMessageItem, RunMeta } from '@/api/types/conversation-resources';
+import type { RunMessageItem, RunMeta } from '@/api/types/chat-resources';
 import { runMessagesByRunId } from '@/api/mock-data/messages';
-import { runsByConversation } from '@/api/mock-data/runs';
+import { runsByChat } from '@/api/mock-data/runs';
 
 const cloneRun = (run: RunMeta): RunMeta => ({ ...run });
 
@@ -10,8 +10,8 @@ const cloneMessage = (message: RunMessageItem): RunMessageItem => ({
 });
 
 export const runs = {
-  listByConversation: async (conversationId: string) => {
-    const items = runsByConversation.get(conversationId) ?? [];
+  listByChat: async (chatId: string) => {
+    const items = runsByChat.get(chatId) ?? [];
     return { items: items.map(cloneRun) };
   },
   messages: async (runId: string, type: 'input' | 'injected' | 'output') => {

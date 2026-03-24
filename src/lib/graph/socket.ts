@@ -6,25 +6,38 @@ import type { NodeStatusEvent, ReminderCountEvent } from './types';
 
 // Strictly typed server-to-client socket events (listener signatures)
 type NodeStateEvent = { nodeId: string; state: Record<string, unknown>; updatedAt: string };
-type ConversationSummary = { id: string; alias: string; summary: string | null; status: 'open' | 'closed'; createdAt: string; parentId?: string | null };
+type ChatSummary = { id: string; alias: string; summary: string | null; status: 'open' | 'closed'; createdAt: string; parentId?: string | null };
 type MessageSummary = { id: string; kind: 'user' | 'assistant' | 'system' | 'tool'; text: string | null; source: unknown; createdAt: string; runId?: string };
-type RunSummary = {
+type ServerRunSummary = {
   id: string;
   conversationId?: string;
   status: 'running' | 'finished' | 'terminated';
   createdAt: string;
   updatedAt: string;
 };
+type ChatRunSummary = {
+  id: string;
+  chatId?: string;
+  status: 'running' | 'finished' | 'terminated';
+  createdAt: string;
+  updatedAt: string;
+};
+type ServerChatCreatedPayload = { conversation: ChatSummary };
+type ServerChatUpdatedPayload = { conversation: ChatSummary };
+type ServerChatActivityPayload = { conversationId: string; activity: 'working' | 'waiting' | 'idle' };
+type ServerChatRemindersPayload = { conversationId: string; remindersCount: number };
+type ServerMessageCreatedPayload = { conversationId: string; message: MessageSummary };
+type ServerRunStatusChangedPayload = { conversationId: string; run: ServerRunSummary };
 interface ServerToClientEvents {
   node_status: (payload: NodeStatusEvent) => void;
   node_state: (payload: NodeStateEvent) => void;
   node_reminder_count: (payload: ReminderCountEvent) => void;
-  conversation_created: (payload: { conversation: ConversationSummary }) => void;
-  conversation_updated: (payload: { conversation: ConversationSummary }) => void;
-  conversation_activity_changed: (payload: { conversationId: string; activity: 'working' | 'waiting' | 'idle' }) => void;
-  conversation_reminders_count: (payload: { conversationId: string; remindersCount: number }) => void;
-  message_created: (payload: { conversationId: string; message: MessageSummary }) => void;
-  run_status_changed: (payload: RunStatusChangedPayload) => void;
+  conversation_created: (payload: ServerChatCreatedPayload) => void;
+  conversation_updated: (payload: ServerChatUpdatedPayload) => void;
+  conversation_activity_changed: (payload: ServerChatActivityPayload) => void;
+  conversation_reminders_count: (payload: ServerChatRemindersPayload) => void;
+  message_created: (payload: ServerMessageCreatedPayload) => void;
+  run_status_changed: (payload: ServerRunStatusChangedPayload) => void;
 }
 // Client-to-server emits: subscribe to rooms
 type SubscribePayload = { room?: string; rooms?: string[] };
@@ -33,12 +46,12 @@ interface ClientToServerEvents { subscribe: (payload: SubscribePayload) => void 
 type Listener = (ev: NodeStatusEvent) => void;
 type StateListener = (ev: { nodeId: string; state: Record<string, unknown>; updatedAt: string }) => void;
 type ReminderListener = (ev: ReminderCountEvent) => void;
-type ConversationCreatedPayload = { conversation: ConversationSummary };
-type ConversationUpdatedPayload = { conversation: ConversationSummary };
-type ConversationActivityPayload = { conversationId: string; activity: 'working' | 'waiting' | 'idle' };
-type ConversationRemindersPayload = { conversationId: string; remindersCount: number };
-type MessageCreatedPayload = { message: MessageSummary; conversationId: string };
-type RunStatusChangedPayload = { conversationId: string; run: RunSummary };
+type ChatCreatedPayload = { chat: ChatSummary };
+type ChatUpdatedPayload = { chat: ChatSummary };
+type ChatActivityPayload = { chatId: string; activity: 'working' | 'waiting' | 'idle' };
+type ChatRemindersPayload = { chatId: string; remindersCount: number };
+type ChatMessageCreatedPayload = { message: MessageSummary; chatId: string };
+type ChatRunStatusChangedPayload = { chatId: string; run: ChatRunSummary };
 
 // TODO: restore production socket connections when backend is available.
 const socketsEnabled = !import.meta.env.PROD;
@@ -49,12 +62,12 @@ class GraphSocket {
   private listeners = new Map<string, Set<Listener>>();
   private stateListeners = new Map<string, Set<StateListener>>();
   private reminderListeners = new Map<string, Set<ReminderListener>>();
-  private conversationCreatedListeners = new Set<(payload: ConversationCreatedPayload) => void>();
-  private conversationUpdatedListeners = new Set<(payload: ConversationUpdatedPayload) => void>();
-  private conversationActivityListeners = new Set<(payload: ConversationActivityPayload) => void>();
-  private conversationRemindersListeners = new Set<(payload: ConversationRemindersPayload) => void>();
-  private messageCreatedListeners = new Set<(payload: MessageCreatedPayload) => void>();
-  private runStatusListeners = new Set<(payload: RunStatusChangedPayload) => void>();
+  private chatCreatedListeners = new Set<(payload: ChatCreatedPayload) => void>();
+  private chatUpdatedListeners = new Set<(payload: ChatUpdatedPayload) => void>();
+  private chatActivityListeners = new Set<(payload: ChatActivityPayload) => void>();
+  private chatRemindersListeners = new Set<(payload: ChatRemindersPayload) => void>();
+  private chatMessageCreatedListeners = new Set<(payload: ChatMessageCreatedPayload) => void>();
+  private chatRunStatusListeners = new Set<(payload: ChatRunStatusChangedPayload) => void>();
   private subscribedRooms = new Set<string>();
   private connectCallbacks = new Set<() => void>();
   private reconnectCallbacks = new Set<() => void>();
@@ -148,42 +161,58 @@ class GraphSocket {
     };
     socket.on('node_reminder_count', handleNodeReminderCount);
     this.socketCleanup.push(() => socket.off('node_reminder_count', handleNodeReminderCount));
-    // Conversation events
-    const handleConversationCreated: ServerToClientEvents['conversation_created'] = (payload) => {
-      for (const fn of this.conversationCreatedListeners) fn(payload);
+    // Chat events
+    const handleChatCreated: ServerToClientEvents['conversation_created'] = (payload) => {
+      const chatPayload: ChatCreatedPayload = { chat: payload.conversation };
+      for (const fn of this.chatCreatedListeners) fn(chatPayload);
     };
-    socket.on('conversation_created', handleConversationCreated);
-    this.socketCleanup.push(() => socket.off('conversation_created', handleConversationCreated));
+    socket.on('conversation_created', handleChatCreated);
+    this.socketCleanup.push(() => socket.off('conversation_created', handleChatCreated));
 
-    const handleConversationUpdated: ServerToClientEvents['conversation_updated'] = (payload) => {
-      for (const fn of this.conversationUpdatedListeners) fn(payload);
+    const handleChatUpdated: ServerToClientEvents['conversation_updated'] = (payload) => {
+      const chatPayload: ChatUpdatedPayload = { chat: payload.conversation };
+      for (const fn of this.chatUpdatedListeners) fn(chatPayload);
     };
-    socket.on('conversation_updated', handleConversationUpdated);
-    this.socketCleanup.push(() => socket.off('conversation_updated', handleConversationUpdated));
+    socket.on('conversation_updated', handleChatUpdated);
+    this.socketCleanup.push(() => socket.off('conversation_updated', handleChatUpdated));
 
-    const handleConversationActivityChanged: ServerToClientEvents['conversation_activity_changed'] = (payload) => {
-      for (const fn of this.conversationActivityListeners) fn(payload);
+    const handleChatActivityChanged: ServerToClientEvents['conversation_activity_changed'] = (payload) => {
+      const chatPayload: ChatActivityPayload = { chatId: payload.conversationId, activity: payload.activity };
+      for (const fn of this.chatActivityListeners) fn(chatPayload);
     };
-    socket.on('conversation_activity_changed', handleConversationActivityChanged);
-    this.socketCleanup.push(() => socket.off('conversation_activity_changed', handleConversationActivityChanged));
+    socket.on('conversation_activity_changed', handleChatActivityChanged);
+    this.socketCleanup.push(() => socket.off('conversation_activity_changed', handleChatActivityChanged));
 
-    const handleConversationRemindersCount: ServerToClientEvents['conversation_reminders_count'] = (payload) => {
-      for (const fn of this.conversationRemindersListeners) fn(payload);
+    const handleChatRemindersCount: ServerToClientEvents['conversation_reminders_count'] = (payload) => {
+      const chatPayload: ChatRemindersPayload = {
+        chatId: payload.conversationId,
+        remindersCount: payload.remindersCount,
+      };
+      for (const fn of this.chatRemindersListeners) fn(chatPayload);
     };
-    socket.on('conversation_reminders_count', handleConversationRemindersCount);
-    this.socketCleanup.push(() => socket.off('conversation_reminders_count', handleConversationRemindersCount));
+    socket.on('conversation_reminders_count', handleChatRemindersCount);
+    this.socketCleanup.push(() => socket.off('conversation_reminders_count', handleChatRemindersCount));
 
-    const handleMessageCreated: ServerToClientEvents['message_created'] = (payload) => {
-      for (const fn of this.messageCreatedListeners) fn(payload);
+    const handleChatMessageCreated: ServerToClientEvents['message_created'] = (payload) => {
+      const chatPayload: ChatMessageCreatedPayload = { chatId: payload.conversationId, message: payload.message };
+      for (const fn of this.chatMessageCreatedListeners) fn(chatPayload);
     };
-    socket.on('message_created', handleMessageCreated);
-    this.socketCleanup.push(() => socket.off('message_created', handleMessageCreated));
+    socket.on('message_created', handleChatMessageCreated);
+    this.socketCleanup.push(() => socket.off('message_created', handleChatMessageCreated));
 
-    const handleRunStatusChanged: ServerToClientEvents['run_status_changed'] = (payload) => {
-      for (const fn of this.runStatusListeners) fn(payload);
+    const handleChatRunStatusChanged: ServerToClientEvents['run_status_changed'] = (payload) => {
+      const run: ChatRunSummary = {
+        id: payload.run.id,
+        chatId: payload.run.conversationId ?? payload.conversationId,
+        status: payload.run.status,
+        createdAt: payload.run.createdAt,
+        updatedAt: payload.run.updatedAt,
+      };
+      const chatPayload: ChatRunStatusChangedPayload = { chatId: payload.conversationId, run };
+      for (const fn of this.chatRunStatusListeners) fn(chatPayload);
     };
-    socket.on('run_status_changed', handleRunStatusChanged);
-    this.socketCleanup.push(() => socket.off('run_status_changed', handleRunStatusChanged));
+    socket.on('run_status_changed', handleChatRunStatusChanged);
+    this.socketCleanup.push(() => socket.off('run_status_changed', handleChatRunStatusChanged));
 
     return socket;
   }
@@ -265,52 +294,52 @@ class GraphSocket {
     this.listeners.clear();
     this.stateListeners.clear();
     this.reminderListeners.clear();
-    this.conversationCreatedListeners.clear();
-    this.conversationUpdatedListeners.clear();
-    this.conversationActivityListeners.clear();
-    this.conversationRemindersListeners.clear();
-    this.messageCreatedListeners.clear();
-    this.runStatusListeners.clear();
+    this.chatCreatedListeners.clear();
+    this.chatUpdatedListeners.clear();
+    this.chatActivityListeners.clear();
+    this.chatRemindersListeners.clear();
+    this.chatMessageCreatedListeners.clear();
+    this.chatRunStatusListeners.clear();
     this.connectCallbacks.clear();
     this.reconnectCallbacks.clear();
     this.disconnectCallbacks.clear();
   }
 
-  // Conversation listeners
-  onConversationCreated(cb: (payload: ConversationCreatedPayload) => void) {
-    this.conversationCreatedListeners.add(cb);
+  // Chat listeners
+  onChatCreated(cb: (payload: ChatCreatedPayload) => void) {
+    this.chatCreatedListeners.add(cb);
     return () => {
-      this.conversationCreatedListeners.delete(cb);
+      this.chatCreatedListeners.delete(cb);
     };
   }
-  onConversationUpdated(cb: (payload: ConversationUpdatedPayload) => void) {
-    this.conversationUpdatedListeners.add(cb);
+  onChatUpdated(cb: (payload: ChatUpdatedPayload) => void) {
+    this.chatUpdatedListeners.add(cb);
     return () => {
-      this.conversationUpdatedListeners.delete(cb);
+      this.chatUpdatedListeners.delete(cb);
     };
   }
-  onConversationActivityChanged(cb: (payload: ConversationActivityPayload) => void) {
-    this.conversationActivityListeners.add(cb);
+  onChatActivityChanged(cb: (payload: ChatActivityPayload) => void) {
+    this.chatActivityListeners.add(cb);
     return () => {
-      this.conversationActivityListeners.delete(cb);
+      this.chatActivityListeners.delete(cb);
     };
   }
-  onConversationRemindersCount(cb: (payload: ConversationRemindersPayload) => void) {
-    this.conversationRemindersListeners.add(cb);
+  onChatRemindersCount(cb: (payload: ChatRemindersPayload) => void) {
+    this.chatRemindersListeners.add(cb);
     return () => {
-      this.conversationRemindersListeners.delete(cb);
+      this.chatRemindersListeners.delete(cb);
     };
   }
-  onMessageCreated(cb: (payload: MessageCreatedPayload) => void) {
-    this.messageCreatedListeners.add(cb);
+  onChatMessageCreated(cb: (payload: ChatMessageCreatedPayload) => void) {
+    this.chatMessageCreatedListeners.add(cb);
     return () => {
-      this.messageCreatedListeners.delete(cb);
+      this.chatMessageCreatedListeners.delete(cb);
     };
   }
-  onRunStatusChanged(cb: (payload: RunStatusChangedPayload) => void) {
-    this.runStatusListeners.add(cb);
+  onChatRunStatusChanged(cb: (payload: ChatRunStatusChangedPayload) => void) {
+    this.chatRunStatusListeners.add(cb);
     return () => {
-      this.runStatusListeners.delete(cb);
+      this.chatRunStatusListeners.delete(cb);
     };
   }
 

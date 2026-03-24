@@ -1,7 +1,7 @@
-import type { RunMessageItem } from '@/api/types/conversation-resources';
+import type { RunMessageItem } from '@/api/types/chat-resources';
 import { iso } from './time';
 import { runOneId, runTwoId, runThreeId } from './runs';
-import { conversationOneId, conversationThreeId, conversationTwoId } from './conversations';
+import { chatOneId, chatThreeId, chatTwoId } from './chats';
 
 export type RunMessageBucket = {
   input: RunMessageItem[];
@@ -84,8 +84,8 @@ export const runMessagesByRunId = new Map<string, RunMessageBucket>([
   ],
 ]);
 
-export const queuedMessagesByConversation = new Map<string, Array<{ id: string; text: string; enqueuedAt?: string }>>([
-  [conversationOneId, []],
-  [conversationTwoId, []],
-  [conversationThreeId, []],
+export const queuedMessagesByChat = new Map<string, Array<{ id: string; text: string; enqueuedAt?: string }>>([
+  [chatOneId, []],
+  [chatTwoId, []],
+  [chatThreeId, []],
 ]);
