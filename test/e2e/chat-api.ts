@@ -27,6 +27,7 @@ type OidcStorageSnapshot = {
   profileSub: string | null;
   profileEmail: string | null;
   idToken: string | null;
+  accessToken: string | null;
 };
 
 async function readOidcSession(page: Page): Promise<OidcStorageSnapshot | null> {
@@ -48,46 +49,18 @@ async function readOidcSession(page: Page): Promise<OidcStorageSnapshot | null> 
       const parsed = JSON.parse(raw) as {
         profile?: { sub?: unknown; email?: unknown };
         id_token?: unknown;
+        access_token?: unknown;
       };
       return {
         profileSub: typeof parsed.profile?.sub === 'string' ? parsed.profile.sub : null,
         profileEmail: typeof parsed.profile?.email === 'string' ? parsed.profile.email : null,
         idToken: typeof parsed.id_token === 'string' ? parsed.id_token : null,
+        accessToken: typeof parsed.access_token === 'string' ? parsed.access_token : null,
       };
     } catch (_error) {
       return null;
     }
   });
-}
-
-async function getAccessToken(page: Page): Promise<string | null> {
-  const snapshot = await page.evaluate(() => {
-    const allKeys: string[] = [];
-    for (let i = 0; i < window.sessionStorage.length; i += 1) {
-      const key = window.sessionStorage.key(i);
-      if (key) allKeys.push(key);
-    }
-    for (let i = 0; i < window.sessionStorage.length; i += 1) {
-      const key = window.sessionStorage.key(i);
-      if (!key || !key.startsWith('oidc.user:')) continue;
-      const raw = window.sessionStorage.getItem(key);
-      if (!raw) continue;
-      try {
-        const parsed = JSON.parse(raw) as { access_token?: unknown };
-        if (typeof parsed.access_token === 'string') {
-          return { token: parsed.access_token, allKeys };
-        }
-      } catch (_error) {
-        continue;
-      }
-    }
-    return { token: null, allKeys };
-  });
-
-  console.log(
-    `[getAccessToken] hasToken=${Boolean(snapshot.token)}, keys=${JSON.stringify(snapshot.allKeys)}`,
-  );
-  return snapshot.token;
 }
 
 function decodeJwtSubject(token: string): string | null {
@@ -110,8 +83,8 @@ async function postConnect<T>(
   method: string,
   payload: unknown,
 ): Promise<T> {
-  const token = await getAccessToken(page);
-  console.log(`[postConnect] ${method} - token: ${token ? `${token.substring(0, 20)}...` : 'null'}`);
+  const session = await readOidcSession(page);
+  const token = session?.accessToken ?? null;
   const headers = token ? { ...CONNECT_HEADERS, Authorization: `Bearer ${token}` } : CONNECT_HEADERS;
   const response = await page.context().request.post(buildRpcUrl(servicePath, method), {
     data: payload,
@@ -119,8 +92,7 @@ async function postConnect<T>(
   });
   if (!response.ok()) {
     const body = await response.text();
-    console.log(`[postConnect] ${method} - ${response.status()} - body: ${body}`);
-    throw new Error(`ConnectRPC ${method} failed with status ${response.status()}.`);
+    throw new Error(`ConnectRPC ${method} failed with status ${response.status()}: ${body}`);
   }
   return (await response.json()) as T;
 }
