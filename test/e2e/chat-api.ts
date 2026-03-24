@@ -63,20 +63,6 @@ async function readOidcSession(page: Page): Promise<OidcStorageSnapshot | null> 
   });
 }
 
-function decodeJwtSubject(token: string): string | null {
-  const parts = token.split('.');
-  if (parts.length < 2) return null;
-  const payload = parts[1] ?? '';
-  const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
-  const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), '=');
-  try {
-    const parsed = JSON.parse(Buffer.from(padded, 'base64').toString('utf-8')) as { sub?: unknown };
-    return typeof parsed.sub === 'string' ? parsed.sub : null;
-  } catch (_error) {
-    return null;
-  }
-}
-
 async function postConnect<T>(
   page: Page,
   servicePath: string,
@@ -97,27 +83,29 @@ async function postConnect<T>(
   return (await response.json()) as T;
 }
 
-export async function resolveUserId(page: Page, fallbackId?: string): Promise<string> {
-  const storedUser = await readOidcSession(page);
-  if (!storedUser) {
-    if (fallbackId) return fallbackId;
-    throw new Error('Missing OIDC session storage entry.');
+export async function resolveIdentityId(page: Page): Promise<string> {
+  const session = await readOidcSession(page);
+  const token = session?.accessToken ?? null;
+  const headers: Record<string, string> = token
+    ? { Authorization: `Bearer ${token}` }
+    : {};
+
+  const baseUrl = resolveBaseUrl();
+  const response = await page.context().request.get(`${baseUrl}/api/me`, { headers });
+  if (!response.ok()) {
+    const body = await response.text();
+    throw new Error(`GET /api/me failed with status ${response.status()}: ${body}`);
   }
 
-  if (storedUser.profileSub) return storedUser.profileSub;
-
-  const decodedSub = storedUser.idToken ? decodeJwtSubject(storedUser.idToken) : null;
-  if (decodedSub) return decodedSub;
-
-  if (storedUser.profileEmail) return storedUser.profileEmail;
-
-  if (fallbackId) return fallbackId;
-
-  throw new Error('Unable to resolve user id from OIDC session.');
+  const payload = (await response.json()) as { identity_id?: string };
+  if (!payload.identity_id) {
+    throw new Error('/api/me response missing identity_id');
+  }
+  return payload.identity_id;
 }
 
 export async function createChat(page: Page, participantId?: string): Promise<string> {
-  const actualParticipantId = participantId ?? await resolveUserId(page);
+  const actualParticipantId = participantId ?? await resolveIdentityId(page);
   const participantIds = [actualParticipantId];
   const response = await postConnect<CreateChatResponseWire>(page, CHAT_GATEWAY_PATH, 'CreateChat', {
     participantIds,

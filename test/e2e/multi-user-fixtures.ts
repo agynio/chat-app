@@ -37,4 +37,4 @@ export const test = base.extend<MultiUserFixtures>({
   },
 });
 
-export { expect, USER_A_EMAIL, USER_B_EMAIL };
+export { expect, USER_A_EMAIL };
