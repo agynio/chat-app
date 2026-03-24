@@ -15,9 +15,5 @@ export type Agent = {
   resources?: Record<string, unknown>;
 };
 
-export type ListAgentsRequest = {
-  organizationId: string;
-  pageSize?: number;
-  pageToken?: string;
-};
+export type ListAgentsRequest = { pageSize?: number; pageToken?: string };
 export type ListAgentsResponse = { agents: Agent[]; nextPageToken?: string };

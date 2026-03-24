@@ -1,8 +1,5 @@
 import { createArgosReporterOptions } from '@argos-ci/playwright/reporter';
 import { defineConfig, devices } from '@playwright/test';
-import { E2E_ORGANIZATION_ID } from './test/e2e/constants';
-
-process.env.VITE_ORGANIZATION_ID = process.env.VITE_ORGANIZATION_ID ?? E2E_ORGANIZATION_ID;
 
 const BASE_URL = process.env.E2E_BASE_URL;
 

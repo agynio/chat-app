@@ -138,10 +138,8 @@ async function postConnect<T>(
 
 export type AgentOption = { id: string; name: string };
 
-export async function listAgents(page: Page, organizationId: string): Promise<AgentOption[]> {
-  const response = await postConnect<ListAgentsResponse>(page, AGENTS_GATEWAY_PATH, 'ListAgents', {
-    organizationId,
-  });
+export async function listAgents(page: Page): Promise<AgentOption[]> {
+  const response = await postConnect<ListAgentsResponse>(page, AGENTS_GATEWAY_PATH, 'ListAgents', {});
   const agents = response.agents ?? [];
   return agents.map((agent) => {
     if (!agent.meta?.id || typeof agent.meta.id !== 'string') {
@@ -156,13 +154,13 @@ export async function listAgents(page: Page, organizationId: string): Promise<Ag
 
 export async function createAgent(
   page: Page,
-  organizationId: string,
+  orgId?: string,
 ): Promise<{ id: string; name: string }> {
   const response = await postConnect<CreateAgentResponse>(page, AGENTS_GATEWAY_PATH, 'CreateAgent', {
     name: `e2e-agent-${Date.now()}`,
     role: 'assistant',
     model: crypto.randomUUID(),
-    organizationId,
+    organizationId: orgId ?? crypto.randomUUID(),
     description: 'E2E test agent',
   });
   const agent = response.agent;
