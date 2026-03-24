@@ -19,6 +19,13 @@ async function createUserContext(browser: Browser, email: string) {
   page.on('requestfailed', (request) => {
     console.log(`[request-failed] ${request.url()} — ${request.failure()?.errorText}`);
   });
+  page.on('response', (response) => {
+    if (response.url().includes('/api/')) {
+      console.log(
+        `[browser-api] ${response.status()} ${response.request().method()} ${response.url()}`,
+      );
+    }
+  });
   await signInViaMockAuth(page, email);
   return { page, context };
 }

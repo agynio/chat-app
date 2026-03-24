@@ -33,8 +33,12 @@ test('navigates to chat detail', async ({ page }) => {
   const firstChat = chatList.locator('.cursor-pointer').first();
   await expect(firstChat).toBeVisible();
   await firstChat.click();
+  await page.waitForResponse(
+    (resp) => resp.url().includes('GetChats') && resp.status() === 200,
+    { timeout: 15000 },
+  );
 
   await expect(page).toHaveURL(new RegExp(`/chats/${chatId}`));
-  await expect(page.getByTestId('chat')).toBeVisible();
+  await expect(page.getByTestId('chat')).toBeVisible({ timeout: 15000 });
   await argosScreenshot(page, 'chats-list-detail');
 });

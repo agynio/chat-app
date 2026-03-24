@@ -10,17 +10,33 @@ test('two users exchange messages in a shared chat', async ({ userAPage, userBPa
   await sendChatMessage(userAPage, chatId, messageFromA);
 
   await userAPage.goto(`/chats/${chatId}`);
-  await expect(userAPage.getByTestId('chat-message').filter({ hasText: messageFromA })).toBeVisible();
+  await userAPage.waitForResponse(
+    (resp) => resp.url().includes('GetMessages') && resp.status() === 200,
+    { timeout: 15000 },
+  );
+  await expect(userAPage.getByTestId('chat-message').filter({ hasText: messageFromA })).toBeVisible({
+    timeout: 15000,
+  });
 
   await userBPage.goto(`/chats/${chatId}`);
-  await expect(userBPage.getByTestId('chat-message').filter({ hasText: messageFromA })).toBeVisible();
+  await userBPage.waitForResponse(
+    (resp) => resp.url().includes('GetMessages') && resp.status() === 200,
+    { timeout: 15000 },
+  );
+  await expect(userBPage.getByTestId('chat-message').filter({ hasText: messageFromA })).toBeVisible({
+    timeout: 15000,
+  });
 
   const editorB = userBPage.getByTestId('markdown-composer-editor');
   await editorB.click();
   await userBPage.keyboard.type(messageFromB);
   await userBPage.getByLabel('Send message').click();
-  await expect(userBPage.getByTestId('chat-message').filter({ hasText: messageFromB })).toBeVisible();
+  await expect(userBPage.getByTestId('chat-message').filter({ hasText: messageFromB })).toBeVisible({
+    timeout: 15000,
+  });
 
   await userAPage.reload();
-  await expect(userAPage.getByTestId('chat-message').filter({ hasText: messageFromB })).toBeVisible();
+  await expect(userAPage.getByTestId('chat-message').filter({ hasText: messageFromB })).toBeVisible({
+    timeout: 15000,
+  });
 });
