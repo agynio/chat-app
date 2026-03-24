@@ -86,7 +86,7 @@ export function useSendMessage() {
         const [first, ...rest] = current.pages;
         const updatedFirst: GetMessagesResponse = {
           ...first,
-          messages: [...first.messages, optimisticMessage],
+          messages: [...(first.messages ?? []), optimisticMessage],
         };
         return { ...current, pages: [updatedFirst, ...rest] };
       });
@@ -106,7 +106,7 @@ export function useSendMessage() {
           ...current,
           pages: current.pages.map((page) => ({
             ...page,
-            messages: page.messages.map((message) =>
+            messages: (page.messages ?? []).map((message) =>
               message.id === context?.optimisticId ? data.message : message,
             ),
           })),

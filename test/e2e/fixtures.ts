@@ -19,13 +19,6 @@ export const test = base.extend({
         `[request-failed] ${request.url()} — ${request.failure()?.errorText}`,
       );
     });
-    page.on('response', (response) => {
-      if (response.url().includes('/api/')) {
-        console.log(
-          `[browser-api] ${response.status()} ${response.request().method()} ${response.url()}`,
-        );
-      }
-    });
     await signInAndLoad(page);
     await runPage(page);
   },
