@@ -9,20 +9,22 @@ test('two users exchange messages in a shared chat', async ({ userAPage, userBPa
   const chatId = await createChat(userAPage, userBId);
   await sendChatMessage(userAPage, chatId, messageFromA);
 
-  await userAPage.goto(`/chats/${chatId}`);
-  await userAPage.waitForResponse(
+  const userAMessagesLoaded = userAPage.waitForResponse(
     (resp) => resp.url().includes('GetMessages') && resp.status() === 200,
     { timeout: 15000 },
   );
+  await userAPage.goto(`/chats/${chatId}`);
+  await userAMessagesLoaded;
   await expect(userAPage.getByTestId('chat-message').filter({ hasText: messageFromA })).toBeVisible({
     timeout: 15000,
   });
 
-  await userBPage.goto(`/chats/${chatId}`);
-  await userBPage.waitForResponse(
+  const userBMessagesLoaded = userBPage.waitForResponse(
     (resp) => resp.url().includes('GetMessages') && resp.status() === 200,
     { timeout: 15000 },
   );
+  await userBPage.goto(`/chats/${chatId}`);
+  await userBMessagesLoaded;
   await expect(userBPage.getByTestId('chat-message').filter({ hasText: messageFromA })).toBeVisible({
     timeout: 15000,
   });

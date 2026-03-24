@@ -24,9 +24,6 @@ function buildRpcUrl(servicePath: string, method: string): string {
 }
 
 type OidcStorageSnapshot = {
-  profileSub: string | null;
-  profileEmail: string | null;
-  idToken: string | null;
   accessToken: string | null;
 };
 
@@ -46,15 +43,8 @@ async function readOidcSession(page: Page): Promise<OidcStorageSnapshot | null> 
     if (!raw) return null;
 
     try {
-      const parsed = JSON.parse(raw) as {
-        profile?: { sub?: unknown; email?: unknown };
-        id_token?: unknown;
-        access_token?: unknown;
-      };
+      const parsed = JSON.parse(raw) as { access_token?: unknown };
       return {
-        profileSub: typeof parsed.profile?.sub === 'string' ? parsed.profile.sub : null,
-        profileEmail: typeof parsed.profile?.email === 'string' ? parsed.profile.email : null,
-        idToken: typeof parsed.id_token === 'string' ? parsed.id_token : null,
         accessToken: typeof parsed.access_token === 'string' ? parsed.access_token : null,
       };
     } catch (_error) {
