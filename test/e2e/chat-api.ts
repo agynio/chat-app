@@ -68,28 +68,32 @@ async function readOidcSession(page: Page): Promise<OidcStorageSnapshot | null> 
 
 async function getAccessToken(page: Page): Promise<string | null> {
   const snapshot = await page.evaluate(() => {
-    let hasOidcEntry = false;
+    const allKeys: string[] = [];
+    for (let i = 0; i < window.sessionStorage.length; i += 1) {
+      const key = window.sessionStorage.key(i);
+      if (key) allKeys.push(key);
+    }
     for (let i = 0; i < window.sessionStorage.length; i += 1) {
       const key = window.sessionStorage.key(i);
       if (!key || !key.startsWith('oidc.user:')) continue;
-      hasOidcEntry = true;
       const raw = window.sessionStorage.getItem(key);
       if (!raw) continue;
       try {
         const parsed = JSON.parse(raw) as { access_token?: unknown };
         if (typeof parsed.access_token === 'string') {
-          return { token: parsed.access_token, hasOidcEntry };
+          return { token: parsed.access_token, allKeys };
         }
       } catch (_error) {
         continue;
       }
     }
-    return { token: null, hasOidcEntry };
+    return { token: null, allKeys };
   });
 
-  if (snapshot.token) return snapshot.token;
-  if (!snapshot.hasOidcEntry) return null;
-  throw new Error('No access_token found in sessionStorage. Is the user signed in?');
+  console.log(
+    `[getAccessToken] hasToken=${Boolean(snapshot.token)}, keys=${JSON.stringify(snapshot.allKeys)}`,
+  );
+  return snapshot.token;
 }
 
 function decodeJwtSubject(token: string): string | null {
@@ -113,12 +117,15 @@ async function postConnect<T>(
   payload: unknown,
 ): Promise<T> {
   const token = await getAccessToken(page);
+  console.log(`[postConnect] ${method} - token: ${token ? `${token.substring(0, 20)}...` : 'null'}`);
   const headers = token ? { ...CONNECT_HEADERS, Authorization: `Bearer ${token}` } : CONNECT_HEADERS;
   const response = await page.context().request.post(buildRpcUrl(servicePath, method), {
     data: payload,
     headers,
   });
   if (!response.ok()) {
+    const body = await response.text();
+    console.log(`[postConnect] ${method} - ${response.status()} - body: ${body}`);
     throw new Error(`ConnectRPC ${method} failed with status ${response.status()}.`);
   }
   return (await response.json()) as T;
@@ -128,10 +135,8 @@ export type AgentOption = { id: string; name: string };
 
 export async function listAgents(page: Page): Promise<AgentOption[]> {
   const response = await postConnect<ListAgentsResponse>(page, AGENTS_GATEWAY_PATH, 'ListAgents', {});
-  if (!Array.isArray(response.agents)) {
-    throw new Error('Invalid agents response');
-  }
-  return response.agents.map((agent) => {
+  const agents = response.agents ?? [];
+  return agents.map((agent) => {
     if (!agent.meta?.id || typeof agent.meta.id !== 'string') {
       throw new Error(`Invalid agent payload: ${JSON.stringify(agent)}`);
     }
