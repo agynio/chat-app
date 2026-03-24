@@ -1,3 +1,4 @@
+import * as crypto from 'crypto';
 import type { Page } from '@playwright/test';
 import type { Agent } from '../../src/api/types/agents';
 
@@ -11,6 +12,10 @@ const CONNECT_HEADERS = {
 
 type ListAgentsResponse = {
   agents?: Agent[];
+};
+
+type CreateAgentResponse = {
+  agent?: Agent;
 };
 
 type CreateChatResponseWire = {
@@ -145,6 +150,28 @@ export async function listAgents(page: Page): Promise<AgentOption[]> {
     }
     return { id: agent.meta.id, name: agent.name };
   });
+}
+
+export async function createAgent(
+  page: Page,
+  orgId?: string,
+): Promise<{ id: string; name: string }> {
+  const response = await postConnect<CreateAgentResponse>(page, AGENTS_GATEWAY_PATH, 'CreateAgent', {
+    name: `e2e-agent-${Date.now()}`,
+    role: 'assistant',
+    model: crypto.randomUUID(),
+    organizationId: orgId ?? crypto.randomUUID(),
+    description: 'E2E test agent',
+  });
+  const agent = response.agent;
+  if (!agent?.meta?.id || typeof agent.name !== 'string') {
+    throw new Error('CreateAgent returned no agent ID');
+  }
+  return { id: agent.meta.id, name: agent.name };
+}
+
+export async function deleteAgent(page: Page, agentId: string): Promise<void> {
+  await postConnect(page, AGENTS_GATEWAY_PATH, 'DeleteAgent', { id: agentId });
 }
 
 export async function resolveUserId(page: Page, fallbackId?: string): Promise<string> {

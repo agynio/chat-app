@@ -17,6 +17,7 @@ import { templates as mockTemplates } from './src/api/mock-data/templates';
 import { stubUsers } from './src/data/stub-users';
 
 const [casey] = stubUsers;
+const agentStore = [...mockAgents];
 
 const chatStore = new Map<string, Chat>(
   chatSeeds.map((seed) => [
@@ -272,7 +273,39 @@ export function mockApiPlugin(): Plugin {
             const request = payload as { pageSize?: number; pageToken?: string };
             const pageSize = clampPageSize(request.pageSize, 50);
             const offset = parsePageToken(request.pageToken) ?? 0;
-            return sendJson(res, 200, buildAgentsResponse(mockAgents, offset, pageSize));
+            return sendJson(res, 200, buildAgentsResponse(agentStore, offset, pageSize));
+          }
+
+          if (rpc === 'CreateAgent') {
+            const request = payload as {
+              name?: string;
+              role?: string;
+            };
+            if (typeof request.name !== 'string' || request.name.trim().length === 0) {
+              return sendJson(res, 400, { code: 'invalid_argument', message: 'name is required' });
+            }
+            const agent = {
+              id: randomUUID(),
+              name: request.name.trim(),
+              role: typeof request.role === 'string' && request.role.trim().length > 0
+                ? request.role.trim()
+                : 'Assistant',
+            };
+            agentStore.push(agent);
+            return sendJson(res, 200, { agent: mapAgentToAgent(agent) });
+          }
+
+          if (rpc === 'DeleteAgent') {
+            const request = payload as { id?: string };
+            if (typeof request.id !== 'string' || request.id.trim().length === 0) {
+              return sendJson(res, 400, { code: 'invalid_argument', message: 'id is required' });
+            }
+            const index = agentStore.findIndex((agent) => agent.id === request.id);
+            if (index === -1) {
+              return sendJson(res, 404, { code: 'not_found', message: 'agent not found' });
+            }
+            agentStore.splice(index, 1);
+            return sendJson(res, 200, {});
           }
 
           return sendJson(res, 404, { code: 'not_found', message: 'unknown method' });
