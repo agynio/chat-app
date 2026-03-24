@@ -117,7 +117,8 @@ export async function resolveUserId(page: Page, fallbackId?: string): Promise<st
 }
 
 export async function createChat(page: Page, participantId?: string): Promise<string> {
-  const participantIds = participantId ? [participantId] : [];
+  const actualParticipantId = participantId ?? await resolveUserId(page);
+  const participantIds = [actualParticipantId];
   const response = await postConnect<CreateChatResponseWire>(page, CHAT_GATEWAY_PATH, 'CreateChat', {
     participantIds,
   });
