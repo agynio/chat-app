@@ -16,6 +16,31 @@ test('renders chat list on load', async ({ page }) => {
   await argosScreenshot(page, 'chats-list-loaded');
 });
 
+test('participant picker shows available options', async ({ page }) => {
+  const agentsLoaded = page.waitForResponse(
+    (resp) => resp.url().includes('ListAgents') && resp.status() === 200,
+    { timeout: 15000 },
+  );
+
+  await page.goto('/chats');
+
+  await expectChatListVisible(page);
+  await agentsLoaded;
+
+  const newChatBtn = page.getByTitle('New chat');
+  await expect(newChatBtn).toBeVisible({ timeout: 15000 });
+  await newChatBtn.click();
+
+  const autocomplete = page.getByPlaceholder('Search participants...');
+  await expect(autocomplete).toBeVisible({ timeout: 15000 });
+  await autocomplete.click();
+
+  const dropdownOption = autocomplete.locator('..').locator('button[data-highlighted]').first();
+  await expect(dropdownOption).toBeVisible({ timeout: 15000 });
+
+  await argosScreenshot(page, 'participant-picker-dropdown');
+});
+
 test('redirects root to /chats', async ({ page }) => {
   await page.goto('/');
 

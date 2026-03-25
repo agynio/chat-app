@@ -11,6 +11,7 @@ import { notifyError } from '@/lib/notify';
 import { useUser } from '@/user/user.runtime';
 import { useFileAttachments } from '@/hooks/useFileAttachments';
 import { useAgentsList } from '@/api/hooks/agents';
+import { useBatchGetUsers } from '@/api/hooks/users';
 import { useAccessibleOrganizations } from '@/api/hooks/organizations';
 import {
   useChats,
@@ -28,7 +29,6 @@ import { chatResources } from '@/api/modules/chat-resources';
 import type { ChatMessage as ChatMessageRecord, Chat } from '@/api/types/chat';
 import type { ChatReminder, RunMeta } from '@/api/types/chat-resources';
 import type { ContainerItem } from '@/api/modules/containers';
-import { stubUsers } from '@/data/stub-users';
 import { cancelReminder } from '@/features/reminders/api';
 import { clearDraft, CHAT_MESSAGE_MAX_LENGTH } from '@/utils/draftStorage';
 import type { DraftParticipant } from '@/types/chats';
@@ -95,7 +95,7 @@ function ChatsContent({ user }: { user: User }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const userEmail = user.email;
-  const currentUserId = userEmail;
+  const currentUserId = user.identityId ?? userEmail;
 
   const [filterMode, setFilterMode] = useState<'open' | 'closed' | 'all'>('open');
   const [selectedChatIdState, setSelectedChatIdState] = useState<string | null>(params.chatId ?? null);
@@ -175,18 +175,45 @@ function ChatsContent({ user }: { user: User }) {
   }, [selectedChatId]);
 
   const agents = useMemo(() => agentsQuery.data?.agents ?? [], [agentsQuery.data]);
+  const agentIdSet = useMemo(() => new Set(agents.map((agent) => agent.meta.id)), [agents]);
+
+  const chatSummaries = useMemo(
+    () => chatsQuery.data?.pages.flatMap((page) => page.chats ?? []) ?? [],
+    [chatsQuery.data],
+  );
+
+  const userParticipantIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const chat of chatSummaries) {
+      for (const participant of chat.participants ?? []) {
+        if (!agentIdSet.has(participant.id)) {
+          ids.add(participant.id);
+        }
+      }
+    }
+    if (user.identityId) ids.delete(user.identityId);
+    return [...ids];
+  }, [chatSummaries, agentIdSet, user.identityId]);
+
+  const batchUsersQuery = useBatchGetUsers(userParticipantIds);
+
   const participantLookup = useMemo(() => {
     const map = new Map<string, DraftParticipant>();
     for (const agent of agents) {
       map.set(agent.meta.id, { id: agent.meta.id, name: agent.name, type: 'agent' });
     }
-    // TODO: Replace stub users with directory-backed identities.
-    for (const stubUser of stubUsers) {
-      map.set(stubUser.id, { id: stubUser.id, name: stubUser.name, type: 'user' });
+    for (const fetchedUser of batchUsersQuery.data?.users ?? []) {
+      map.set(fetchedUser.meta.id, {
+        id: fetchedUser.meta.id,
+        name: fetchedUser.name || fetchedUser.email,
+        type: 'user',
+      });
     }
-    map.set(userEmail, { id: userEmail, name: user.name || userEmail, type: 'user' });
+    if (user.identityId) {
+      map.set(user.identityId, { id: user.identityId, name: user.name || userEmail, type: 'user' });
+    }
     return map;
-  }, [agents, userEmail, user.name]);
+  }, [agents, batchUsersQuery.data, user.identityId, user.name, userEmail]);
 
   const draftParticipants = useMemo(() => activeDraft?.participants ?? EMPTY_PARTICIPANTS, [activeDraft]);
   const selectedParticipantIds = useMemo(
@@ -195,15 +222,16 @@ function ChatsContent({ user }: { user: User }) {
   );
 
   const draftOptions = useMemo(() => {
-    const userOptions = stubUsers
-      .filter((stubUser) => stubUser.id !== userEmail)
-      .map((stubUser) => ({ value: stubUser.id, label: stubUser.name }));
+    const fetchedUsers = batchUsersQuery.data?.users ?? [];
+    const userOptions = fetchedUsers
+      .filter((fetchedUser) => fetchedUser.meta.id !== user.identityId)
+      .map((fetchedUser) => ({ value: fetchedUser.meta.id, label: fetchedUser.name || fetchedUser.email }));
     const options = [
       ...agents.map((agent) => ({ value: agent.meta.id, label: agent.name })),
       ...userOptions,
     ];
     return options.filter((option) => !selectedParticipantIds.has(option.value));
-  }, [agents, selectedParticipantIds, userEmail]);
+  }, [agents, batchUsersQuery.data, selectedParticipantIds, user.identityId]);
 
   const draftFetchOptions = useCallback(
     async (query: string) => {
@@ -224,11 +252,6 @@ function ChatsContent({ user }: { user: User }) {
       handleDraftParticipantAdd(participant);
     },
     [participantLookup, handleDraftParticipantAdd],
-  );
-
-  const chatSummaries = useMemo(
-    () => chatsQuery.data?.pages.flatMap((page) => page.chats) ?? [],
-    [chatsQuery.data],
   );
 
   const resolveChatTitle = useCallback(
@@ -416,7 +439,6 @@ function ChatsContent({ user }: { user: User }) {
     });
   }, [selectedChatId, effectiveDraftMode, unreadMessageIds, markAsRead]);
 
-  const agentIdSet = useMemo(() => new Set(agents.map((agent) => agent.meta.id)), [agents]);
   const unreadMessageIdSet = useMemo(() => new Set(unreadMessageIds), [unreadMessageIds]);
 
   const handleDeleteMessage = useCallback(

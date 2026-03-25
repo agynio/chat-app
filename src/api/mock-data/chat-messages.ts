@@ -1,5 +1,5 @@
 import type { ChatMessage } from '../types/chat';
-import { stubUsers } from '../../data/stub-users';
+import { mockUsers } from './users';
 import { agentAccountId, agentCampaignId, agentResearchId } from './agents';
 import { chatOneId, chatThreeId, chatTwoId } from './chats';
 import { iso } from './time';
@@ -9,7 +9,7 @@ type ChatMessageSeed = {
   messages: ChatMessage[];
 };
 
-const [casey, alex, jamie] = stubUsers;
+const [casey, alex, jamie] = mockUsers;
 
 const chatMessageSeeds: ChatMessageSeed[] = [
   {

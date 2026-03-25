@@ -6,6 +6,7 @@ import type { Chat, ChatMessage } from './src/api/types/chat';
 import type { FileRecord } from './src/api/types/files';
 import type { TemplateSchema } from './src/api/types/graph';
 import type { Organization } from './src/api/types/organizations';
+import type { UserInfo } from './src/api/types/users';
 import type { PersistedGraph } from './src/types/graph';
 import { agents as mockAgents } from './src/api/mock-data/agents';
 import {
@@ -15,9 +16,9 @@ import {
 import { chatSeeds } from './src/api/mock-data/chats';
 import { graph as mockGraph } from './src/api/mock-data/graph';
 import { templates as mockTemplates } from './src/api/mock-data/templates';
-import { stubUsers } from './src/data/stub-users';
+import { mockUsers } from './src/api/mock-data/users';
 
-const [casey] = stubUsers;
+const [casey] = mockUsers;
 const agentStore = [...mockAgents];
 const organizationTimestamp = new Date().toISOString();
 const organizations: Organization[] = [
@@ -264,6 +265,39 @@ export function mockApiPlugin(): Plugin {
             });
             unreadIdsByChat.set(chatId, unreadIds);
             return sendJson(res, 200, { readCount });
+          }
+
+          return sendJson(res, 404, { code: 'not_found', message: 'unknown method' });
+        }
+
+        const usersPrefix = '/api/agynio.api.gateway.v1.UsersGateway/';
+        if (pathname.startsWith(usersPrefix)) {
+          if (method !== 'POST') {
+            return sendJson(res, 405, { code: 'invalid_argument', message: 'Method not allowed' });
+          }
+
+          let payload: unknown;
+          try {
+            payload = await readBody(req);
+          } catch (_error) {
+            return sendJson(res, 400, { code: 'invalid_argument', message: 'Invalid JSON payload' });
+          }
+
+          const rpc = pathname.slice(usersPrefix.length);
+          if (rpc === 'BatchGetUsers') {
+            const request = payload as { identityIds?: string[] };
+            const identityIds = Array.isArray(request.identityIds)
+              ? request.identityIds.filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+              : [];
+            const identityIdSet = new Set(identityIds);
+            const users: UserInfo[] = mockUsers
+              .filter((user) => identityIdSet.has(user.id))
+              .map((user) => ({
+                meta: { id: user.id },
+                name: user.name,
+                email: user.email,
+              }));
+            return sendJson(res, 200, { users });
           }
 
           return sendJson(res, 404, { code: 'not_found', message: 'unknown method' });
