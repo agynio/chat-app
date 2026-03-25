@@ -1,6 +1,8 @@
 import type { Page } from '@playwright/test';
 
 const CHAT_GATEWAY_PATH = '/api/agynio.api.gateway.v1.ChatGateway';
+const AGENTS_GATEWAY_PATH = '/api/agynio.api.gateway.v1.AgentsGateway';
+const ORGS_GATEWAY_PATH = '/api/agynio.api.gateway.v1.OrganizationsGateway';
 
 const CONNECT_HEADERS = {
   'Content-Type': 'application/json',
@@ -9,6 +11,22 @@ const CONNECT_HEADERS = {
 
 type CreateChatResponseWire = {
   chat?: { id?: string };
+};
+
+type CreateOrganizationResponseWire = {
+  organization?: { id?: string };
+};
+
+type ListAccessibleOrganizationsResponseWire = {
+  organizations?: Array<{ id: string; name: string }>;
+};
+
+type CreateAgentResponseWire = {
+  agent?: { meta?: { id?: string } };
+};
+
+type ListAgentsResponseWire = {
+  agents?: Array<{ meta?: { id?: string }; name?: string }>;
 };
 
 function resolveBaseUrl(): string {
@@ -104,6 +122,59 @@ export async function createChat(page: Page, participantId?: string): Promise<st
     throw new Error('CreateChat response missing chat id.');
   }
   return response.chat.id;
+}
+
+export async function createOrganization(page: Page, name: string): Promise<string> {
+  const response = await postConnect<CreateOrganizationResponseWire>(
+    page,
+    ORGS_GATEWAY_PATH,
+    'CreateOrganization',
+    { name },
+  );
+  if (!response.organization?.id) {
+    throw new Error('CreateOrganization response missing organization id.');
+  }
+  return response.organization.id;
+}
+
+export async function listAccessibleOrganizations(
+  page: Page,
+): Promise<Array<{ id: string; name: string }>> {
+  const response = await postConnect<ListAccessibleOrganizationsResponseWire>(
+    page,
+    ORGS_GATEWAY_PATH,
+    'ListAccessibleOrganizations',
+    {},
+  );
+  return response.organizations ?? [];
+}
+
+type CreateAgentOptions = {
+  organizationId: string;
+  name: string;
+  role: string;
+  model: string;
+  description: string;
+  configuration: string;
+  image: string;
+};
+
+export async function createAgent(page: Page, opts: CreateAgentOptions): Promise<string> {
+  const response = await postConnect<CreateAgentResponseWire>(page, AGENTS_GATEWAY_PATH, 'CreateAgent', opts);
+  if (!response.agent?.meta?.id) {
+    throw new Error('CreateAgent response missing agent id.');
+  }
+  return response.agent.meta.id;
+}
+
+export async function listAgents(
+  page: Page,
+  organizationId: string,
+): Promise<Array<{ meta?: { id?: string }; name?: string }>> {
+  const response = await postConnect<ListAgentsResponseWire>(page, AGENTS_GATEWAY_PATH, 'ListAgents', {
+    organizationId,
+  });
+  return response.agents ?? [];
 }
 
 export async function sendChatMessage(
