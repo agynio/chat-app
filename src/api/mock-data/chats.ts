@@ -1,6 +1,6 @@
 import { iso } from './time';
 import { agentAccountId, agentCampaignId, agentResearchId } from './agents';
-import { stubUsers } from '../../data/stub-users';
+import { mockUsers } from './users';
 
 export const chatOneId = '11111111-1111-1111-1111-111111111111';
 export const chatTwoId = '22222222-2222-2222-2222-222222222222';
@@ -13,7 +13,7 @@ export type ChatSeed = {
   participants: Array<{ id: string; joinedAt: string }>;
 };
 
-const [casey, alex, jamie] = stubUsers;
+const [casey, alex, jamie] = mockUsers;
 
 export const chatSeeds: ChatSeed[] = [
   {
