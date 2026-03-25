@@ -42,6 +42,7 @@ test('two users exchange messages in a shared chat', async ({ userAPage, userBPa
   await expect(userAPage.getByTestId('chat-message').filter({ hasText: messageFromB })).toBeVisible({
     timeout: 15000,
   });
+  await argosScreenshot(userAPage, 'two-user-message-exchange');
 });
 
 test('user B sees shared chat in their chat list', async ({ userAPage, userBPage }) => {
