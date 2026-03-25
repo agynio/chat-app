@@ -25,6 +25,20 @@ type CreateAgentResponseWire = {
   agent?: { meta?: { id?: string } };
 };
 
+type CreateEnvResponseWire = {
+  env?: { meta?: { id?: string } };
+};
+
+type Message = {
+  id?: string;
+  senderId?: string;
+  body?: string;
+};
+
+type GetMessagesResponseWire = {
+  messages?: Message[];
+};
+
 type ListAgentsResponseWire = {
   agents?: Array<{ meta?: { id?: string }; name?: string }>;
   nextPageToken?: string;
@@ -144,16 +158,15 @@ export async function resolveIdentityId(page: Page): Promise<string> {
   return payload.identity_id;
 }
 
+<<<<<<< HEAD
 export async function createChat(
   page: Page,
   organizationId: string,
-  participantId?: string,
+  participantId: string,
 ): Promise<string> {
-  const actualParticipantId = participantId ?? await resolveIdentityId(page);
-  const participantIds = [actualParticipantId];
   const response = await postConnect<CreateChatResponseWire>(page, CHAT_GATEWAY_PATH, 'CreateChat', {
     organizationId,
-    participantIds,
+    participantIds: [participantId],
   });
   if (!response.chat?.id) {
     throw new Error('CreateChat response missing chat id.');
@@ -196,6 +209,7 @@ type CreateAgentOptions = {
   description: string;
   configuration: string;
   image: string;
+  initImage?: string;
 };
 
 async function waitForAgent(page: Page, organizationId: string, agentId: string): Promise<void> {
@@ -212,13 +226,38 @@ async function waitForAgent(page: Page, organizationId: string, agentId: string)
 }
 
 export async function createAgent(page: Page, opts: CreateAgentOptions): Promise<string> {
-  const response = await postConnect<CreateAgentResponseWire>(page, AGENTS_GATEWAY_PATH, 'CreateAgent', opts);
+  const { initImage, ...rest } = opts;
+  const payload = initImage ? { ...rest, initImage } : rest;
+  const response = await postConnect<CreateAgentResponseWire>(
+    page,
+    AGENTS_GATEWAY_PATH,
+    'CreateAgent',
+    payload,
+  );
   if (!response.agent?.meta?.id) {
     throw new Error('CreateAgent response missing agent id.');
   }
   const agentId = response.agent.meta.id;
   await waitForAgent(page, opts.organizationId, agentId);
   return agentId;
+}
+
+export async function createAgentEnv(
+  page: Page,
+  agentId: string,
+  name: string,
+  value: string,
+): Promise<string> {
+  const response = await postConnect<CreateEnvResponseWire>(page, AGENTS_GATEWAY_PATH, 'CreateEnv', {
+    agentId,
+    name,
+    value,
+    description: `e2e env: ${name}`,
+  });
+  if (!response.env?.meta?.id) {
+    throw new Error(`CreateEnv response missing env id for ${name}.`);
+  }
+  return response.env.meta.id;
 }
 
 export async function listAgents(
@@ -239,6 +278,32 @@ export async function listAgents(
     pageToken = response.nextPageToken;
   } while (pageToken && pageToken !== previousToken);
   return agents;
+}
+
+export async function getMessages(page: Page, chatId: string): Promise<Message[]> {
+  const response = await postConnect<GetMessagesResponseWire>(page, CHAT_GATEWAY_PATH, 'GetMessages', {
+    chatId,
+  });
+  return response.messages ?? [];
+}
+
+export async function waitForAgentReply(
+  page: Page,
+  chatId: string,
+  senderIdToExclude: string,
+  timeoutMs = 120000,
+  intervalMs = 3000,
+): Promise<Message> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const messages = await getMessages(page, chatId);
+    const agentMsg = messages.find(
+      (message) => message.senderId && message.senderId !== senderIdToExclude && message.body,
+    );
+    if (agentMsg) return agentMsg;
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+  throw new Error(`Agent did not reply within ${timeoutMs}ms`);
 }
 
 export async function sendChatMessage(

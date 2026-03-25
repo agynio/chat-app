@@ -288,7 +288,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
         .map((participant) => resolveParticipantLabel(participant.id, participantLookup))
         .filter(Boolean);
       if (names.length === 0) {
-        return 'Just you';
+        return 'Unknown';
       }
       return names.join(', ');
     },
@@ -665,11 +665,13 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
         if (createChat.isPending) return;
         const draft = draftsRef.current.find((item) => item.id === chatId);
         if (!draft) return;
-        if (draft.participants.length === 0) {
+        const participantIds = draft.participants
+          .map((participant) => participant.id)
+          .filter((participantId) => participantId !== currentUserId);
+        if (participantIds.length === 0) {
           notifyError('Select participants before sending.');
           return;
         }
-        const participantIds = draft.participants.map((participant) => participant.id);
         const draftId = chatId;
         clearAttachments();
         createChat.mutate(
@@ -809,6 +811,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
           onSendMessage={handleSendMessage}
           onChatsLoadMore={handleChatsLoadMore}
           onCreateDraft={handleCreateDraft}
+          currentUserId={currentUserId}
           isSendMessagePending={sendMessage.isPending || createChat.isPending}
           onOpenContainerTerminal={handleOpenContainerTerminal}
           draftMode={effectiveDraftMode}

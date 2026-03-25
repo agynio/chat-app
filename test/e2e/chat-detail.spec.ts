@@ -1,23 +1,25 @@
 import { argosScreenshot } from '@argos-ci/playwright';
-import { test, expect } from './fixtures';
-import { createChat, createOrganization, sendChatMessage } from './chat-api';
+import { test, expect } from './multi-user-fixtures';
+import { createChat, createOrganization, resolveIdentityId, sendChatMessage } from './chat-api';
 import { setSelectedOrganization } from './organization-helpers';
 
-test('shows chat messages', async ({ page }) => {
-  const message = `E2E detail message ${Date.now()}`;
-  const organizationId = await createOrganization(page, `e2e-org-detail-${Date.now()}`);
-  const chatId = await createChat(page, organizationId);
-  await sendChatMessage(page, chatId, message);
-  await setSelectedOrganization(page, organizationId);
+test('shows chat messages', async ({ userAPage, userBPage }) => {
+  const now = Date.now();
+  const message = `E2E detail message ${now}`;
+  const organizationId = await createOrganization(userAPage, `e2e-org-detail-${now}`);
+  const userBId = await resolveIdentityId(userBPage);
+  const chatId = await createChat(userAPage, organizationId, userBId);
+  await sendChatMessage(userAPage, chatId, message);
+  await setSelectedOrganization(userAPage, organizationId);
 
-  const messagesLoaded = page.waitForResponse(
+  const messagesLoaded = userAPage.waitForResponse(
     (resp) => resp.url().includes('GetMessages') && resp.status() === 200,
     { timeout: 15000 },
   );
-  await page.goto(`/chats/${encodeURIComponent(chatId)}`);
+  await userAPage.goto(`/chats/${encodeURIComponent(chatId)}`);
   await messagesLoaded;
 
-  const messageItem = page.getByTestId('chat-message').filter({ hasText: message });
+  const messageItem = userAPage.getByTestId('chat-message').filter({ hasText: message });
   await expect(messageItem).toBeVisible({ timeout: 15000 });
-  await argosScreenshot(page, 'chat-detail-messages');
+  await argosScreenshot(userAPage, 'chat-detail-messages');
 });
