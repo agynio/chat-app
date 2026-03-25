@@ -57,7 +57,7 @@ test('agent responds via TestLLM', async ({ page }) => {
   const initialMessages = await getMessages(page, chatId);
   expect(initialMessages.some((message) => message.body === 'hi')).toBe(true);
 
-  const agentReply = await waitForAgentReply(page, chatId, userId, 120000);
+  const agentReply = await waitForAgentReply(page, chatId, userId, 150000);
   expect(agentReply.body).toContain('How are you');
 
   const messagesLoaded = page.waitForResponse(

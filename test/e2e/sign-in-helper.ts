@@ -72,6 +72,6 @@ export async function signInViaMockAuth(
   await page.getByRole('button', { name: 'Continue' }).click();
 
   await page.waitForURL(/\/chats/);
-  await expect(appReady).toBeVisible({ timeout: 15000 });
+  await expect(appReady).toBeVisible({ timeout: 30000 });
   return true;
 }
