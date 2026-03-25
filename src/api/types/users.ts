@@ -6,4 +6,4 @@ export type UserInfo = {
 };
 
 export type BatchGetUsersRequest = { identityIds: string[] };
-export type BatchGetUsersResponse = { users?: UserInfo[] };
+export type BatchGetUsersResponse = { users: UserInfo[] };

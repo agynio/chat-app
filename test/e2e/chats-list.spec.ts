@@ -35,7 +35,7 @@ test('participant picker shows available options', async ({ page }) => {
   await expect(autocomplete).toBeVisible({ timeout: 15000 });
   await autocomplete.click();
 
-  const dropdownOption = autocomplete.locator('..').locator('button[data-highlighted]').first();
+  const dropdownOption = page.getByRole('option').first();
   await expect(dropdownOption).toBeVisible({ timeout: 15000 });
 
   await argosScreenshot(page, 'participant-picker-dropdown');

@@ -132,7 +132,7 @@ export function mockApiPlugin(): Plugin {
         const method = req.method ?? 'GET';
 
         if (method === 'GET' && pathname === '/api/me') {
-          return sendJson(res, 200, { identity_id: casey.id });
+          return sendJson(res, 200, { identity_id: casey.id, identity_type: 'user' });
         }
 
         const chatPrefix = '/api/agynio.api.gateway.v1.ChatGateway/';

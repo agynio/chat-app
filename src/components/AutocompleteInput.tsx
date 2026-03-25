@@ -295,6 +295,7 @@ export const AutocompleteInput = forwardRef<AutocompleteInputHandle, Autocomplet
         {isOpen && options.length > 0 && !disabled && (
           <div
             ref={dropdownRef}
+            role="listbox"
             className="absolute z-50 w-full mt-2 bg-white border border-[var(--agyn-border-default)] rounded-[10px] shadow-lg max-h-[300px] overflow-hidden"
           >
             <div className="p-1 max-h-[300px] overflow-auto">
@@ -302,6 +303,8 @@ export const AutocompleteInput = forwardRef<AutocompleteInputHandle, Autocomplet
                 <button
                   key={option.value}
                   type="button"
+                  role="option"
+                  aria-selected={index === highlightedIndex}
                   onClick={() => handleSelectOption(option)}
                   onMouseEnter={() => setHighlightedIndex(index)}
                   data-highlighted={index === highlightedIndex}

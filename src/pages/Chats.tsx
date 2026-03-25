@@ -90,12 +90,14 @@ const resolveParticipantLabel = (participantId: string, lookup: Map<string, Draf
   return lookup.get(participantId)?.name ?? UNKNOWN_PARTICIPANT_LABEL;
 };
 
-function ChatsContent({ user }: { user: User }) {
+type IdentifiedUser = User & { identityId: string };
+
+function ChatsContent({ user }: { user: IdentifiedUser }) {
   const params = useParams<{ chatId?: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const userEmail = user.email;
-  const currentUserId = user.identityId ?? userEmail;
+  const currentUserId = user.identityId;
 
   const [filterMode, setFilterMode] = useState<'open' | 'closed' | 'all'>('open');
   const [selectedChatIdState, setSelectedChatIdState] = useState<string | null>(params.chatId ?? null);
@@ -178,20 +180,20 @@ function ChatsContent({ user }: { user: User }) {
   const agentIdSet = useMemo(() => new Set(agents.map((agent) => agent.meta.id)), [agents]);
 
   const chatSummaries = useMemo(
-    () => chatsQuery.data?.pages.flatMap((page) => page.chats ?? []) ?? [],
+    () => chatsQuery.data?.pages.flatMap((page) => page.chats) ?? [],
     [chatsQuery.data],
   );
 
   const userParticipantIds = useMemo(() => {
     const ids = new Set<string>();
     for (const chat of chatSummaries) {
-      for (const participant of chat.participants ?? []) {
+      for (const participant of chat.participants) {
         if (!agentIdSet.has(participant.id)) {
           ids.add(participant.id);
         }
       }
     }
-    if (user.identityId) ids.delete(user.identityId);
+    ids.delete(user.identityId);
     return [...ids];
   }, [chatSummaries, agentIdSet, user.identityId]);
 
@@ -209,9 +211,7 @@ function ChatsContent({ user }: { user: User }) {
         type: 'user',
       });
     }
-    if (user.identityId) {
-      map.set(user.identityId, { id: user.identityId, name: user.name || userEmail, type: 'user' });
-    }
+    map.set(user.identityId, { id: user.identityId, name: user.name || userEmail, type: 'user' });
     return map;
   }, [agents, batchUsersQuery.data, user.identityId, user.name, userEmail]);
 
@@ -789,7 +789,7 @@ function ChatsContent({ user }: { user: User }) {
 }
 
 export function Chats() {
-  const { user } = useUser();
+  const { user, identityStatus, identityError } = useUser();
 
   if (!user?.email) {
     return (
@@ -799,5 +799,22 @@ export function Chats() {
     );
   }
 
-  return <ChatsContent user={user} />;
+  if (identityStatus === 'loading' || identityStatus === 'idle') {
+    return (
+      <div className="flex h-full items-center justify-center text-sm text-[var(--agyn-gray)]">
+        Loading user identity…
+      </div>
+    );
+  }
+
+  if (identityStatus === 'error' || !user.identityId) {
+    const message = identityError?.message ?? 'Unable to load user identity. Please refresh and try again.';
+    return (
+      <div className="flex h-full items-center justify-center text-sm text-[var(--agyn-status-failed)]">
+        {message}
+      </div>
+    );
+  }
+
+  return <ChatsContent user={{ ...user, identityId: user.identityId }} />;
 }
