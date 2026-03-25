@@ -5,6 +5,7 @@ import type { Agent } from './src/api/types/agents';
 import type { Chat, ChatMessage } from './src/api/types/chat';
 import type { FileRecord } from './src/api/types/files';
 import type { TemplateSchema } from './src/api/types/graph';
+import type { Organization } from './src/api/types/organizations';
 import type { PersistedGraph } from './src/types/graph';
 import { agents as mockAgents } from './src/api/mock-data/agents';
 import {
@@ -18,6 +19,15 @@ import { stubUsers } from './src/data/stub-users';
 
 const [casey] = stubUsers;
 const agentStore = [...mockAgents];
+const organizationTimestamp = new Date().toISOString();
+const organizations: Organization[] = [
+  {
+    id: randomUUID(),
+    name: 'Default Organization',
+    createdAt: organizationTimestamp,
+    updatedAt: organizationTimestamp,
+  },
+];
 
 const chatStore = new Map<string, Chat>(
   chatSeeds.map((seed) => [
@@ -119,6 +129,10 @@ export function mockApiPlugin(): Plugin {
         const url = new URL(req.url, 'http://localhost');
         const { pathname } = url;
         const method = req.method ?? 'GET';
+
+        if (method === 'GET' && pathname === '/api/me') {
+          return sendJson(res, 200, { identity_id: casey.id });
+        }
 
         const chatPrefix = '/api/agynio.api.gateway.v1.ChatGateway/';
         if (pathname.startsWith(chatPrefix)) {
@@ -270,7 +284,10 @@ export function mockApiPlugin(): Plugin {
 
           const rpc = pathname.slice(agentsPrefix.length);
           if (rpc === 'ListAgents') {
-            const request = payload as { pageSize?: number; pageToken?: string };
+            const request = payload as { organizationId?: string; pageSize?: number; pageToken?: string };
+            if (typeof request.organizationId !== 'string' || request.organizationId.trim().length === 0) {
+              return sendJson(res, 400, { code: 'invalid_argument', message: 'organizationId is required' });
+            }
             const pageSize = clampPageSize(request.pageSize, 50);
             const offset = parsePageToken(request.pageToken) ?? 0;
             return sendJson(res, 200, buildAgentsResponse(agentStore, offset, pageSize));
@@ -306,6 +323,28 @@ export function mockApiPlugin(): Plugin {
             }
             agentStore.splice(index, 1);
             return sendJson(res, 200, {});
+          }
+
+          return sendJson(res, 404, { code: 'not_found', message: 'unknown method' });
+        }
+
+        const organizationsPrefix = '/api/agynio.api.gateway.v1.OrganizationsGateway/';
+        if (pathname.startsWith(organizationsPrefix)) {
+          if (method !== 'POST') {
+            return sendJson(res, 405, { code: 'invalid_argument', message: 'Method not allowed' });
+          }
+
+          try {
+            await readBody(req);
+          } catch (_error) {
+            return sendJson(res, 400, { code: 'invalid_argument', message: 'Invalid JSON payload' });
+          }
+
+          const rpc = pathname.slice(organizationsPrefix.length);
+          if (rpc === 'ListAccessibleOrganizations') {
+            return sendJson(res, 200, {
+              organizations: organizations.map((organization) => ({ ...organization })),
+            });
           }
 
           return sendJson(res, 404, { code: 'not_found', message: 'unknown method' });

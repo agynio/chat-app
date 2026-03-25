@@ -11,6 +11,7 @@ import { notifyError } from '@/lib/notify';
 import { useUser } from '@/user/user.runtime';
 import { useFileAttachments } from '@/hooks/useFileAttachments';
 import { useAgentsList } from '@/api/hooks/agents';
+import { useAccessibleOrganizations } from '@/api/hooks/organizations';
 import {
   useChats,
   useChatMessages,
@@ -121,8 +122,11 @@ function ChatsContent({ user }: { user: User }) {
     clearAll: clearAttachments,
   } = useFileAttachments();
 
+  const orgsQuery = useAccessibleOrganizations();
+  const organizationId = orgsQuery.data?.organizations?.[0]?.id;
+
   const chatsQuery = useChats();
-  const agentsQuery = useAgentsList();
+  const agentsQuery = useAgentsList(organizationId);
 
   const canFallbackToChat = useCallback(
     (chatId: string) => {
