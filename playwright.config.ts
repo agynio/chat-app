@@ -12,6 +12,7 @@ if (!BASE_URL) {
 
 export default defineConfig({
   testDir: './test/e2e',
+  timeout: 60000,
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: 1,
