@@ -334,13 +334,31 @@ export function mockApiPlugin(): Plugin {
             return sendJson(res, 405, { code: 'invalid_argument', message: 'Method not allowed' });
           }
 
+          let payload: unknown;
           try {
-            await readBody(req);
+            payload = await readBody(req);
           } catch (_error) {
             return sendJson(res, 400, { code: 'invalid_argument', message: 'Invalid JSON payload' });
           }
 
           const rpc = pathname.slice(organizationsPrefix.length);
+          if (rpc === 'CreateOrganization') {
+            const request = payload as { name?: string };
+            const name = typeof request.name === 'string' ? request.name.trim() : '';
+            if (!name) {
+              return sendJson(res, 400, { code: 'invalid_argument', message: 'name is required' });
+            }
+            const timestamp = new Date().toISOString();
+            const organization: Organization = {
+              id: randomUUID(),
+              name,
+              createdAt: timestamp,
+              updatedAt: timestamp,
+            };
+            organizations.push(organization);
+            return sendJson(res, 200, { organization: { ...organization } });
+          }
+
           if (rpc === 'ListAccessibleOrganizations') {
             return sendJson(res, 200, {
               organizations: organizations.map((organization) => ({ ...organization })),
