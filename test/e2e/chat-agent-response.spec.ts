@@ -13,7 +13,7 @@ import {
   waitForAgentReply,
 } from './chat-api';
 
-const TESTLLM_ENDPOINT = 'https://testllm.dev/v1/org/agynio/suite/agn';
+const TESTLLM_ENDPOINT = 'https://testllm.dev/v1/org/agynio/suite/codex';
 const INIT_IMAGE = 'ghcr.io/agynio/agent-init-codex:0.1.0';
 
 async function setupTestAgent(page: Page) {
@@ -55,9 +55,9 @@ test('agent responds via TestLLM', async ({ page }) => {
   const userId = await resolveIdentityId(page);
   const chatId = await createChat(page, agentId);
 
-  await sendChatMessage(page, chatId, 'hi');
+  await sendChatMessage(page, chatId, 'hello');
   const initialMessages = await getMessages(page, chatId);
-  expect(initialMessages.some((message) => message.body === 'hi')).toBe(true);
+  expect(initialMessages.some((message) => message.body === 'hello')).toBe(true);
 
   const agentReply = await waitForAgentReply(page, chatId, userId, 150000);
   expect(agentReply.body).toContain('How are you');
@@ -69,7 +69,7 @@ test('agent responds via TestLLM', async ({ page }) => {
   await page.goto(`/chats/${chatId}`);
   await messagesLoaded;
 
-  await expect(page.getByTestId('chat-message').filter({ hasText: 'hi' })).toBeVisible({
+  await expect(page.getByTestId('chat-message').filter({ hasText: 'hello' })).toBeVisible({
     timeout: 15000,
   });
   await expect(page.getByTestId('chat-message').filter({ hasText: 'How are you' })).toBeVisible({
