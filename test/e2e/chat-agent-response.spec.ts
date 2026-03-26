@@ -1,6 +1,5 @@
 import { argosScreenshot } from '@argos-ci/playwright';
 import type { Page } from '@playwright/test';
-import * as crypto from 'node:crypto';
 import { test, expect } from './fixtures';
 import {
   createAgent,
@@ -23,7 +22,7 @@ async function setupTestAgent(page: Page) {
     organizationId,
     name: `e2e-codex-agent-${now}`,
     role: 'You are a helpful assistant.',
-    model: crypto.randomUUID(),
+    model: 'simple-hello',
     description: 'E2E test agent using TestLLM simple-hello',
     configuration: '{}',
     image: 'alpine:3.21',
