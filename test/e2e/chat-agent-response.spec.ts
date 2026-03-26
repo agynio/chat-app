@@ -3,8 +3,9 @@ import type { Page } from '@playwright/test';
 import { test, expect } from './fixtures';
 import {
   createAgent,
-  createAgentEnv,
   createChat,
+  createLLMProvider,
+  createModel,
   createOrganization,
   getMessages,
   resolveIdentityId,
@@ -12,35 +13,37 @@ import {
   waitForAgentReply,
 } from './chat-api';
 
-const TESTLLM_BASE_URL = 'https://testllm.dev/v1/org/agynio/suite/agn';
+const TESTLLM_ENDPOINT = 'https://testllm.dev/v1/org/agynio/suite/agn';
 const INIT_IMAGE = 'ghcr.io/agynio/agent-init-codex:0.1.0';
 
 async function setupTestAgent(page: Page) {
   const now = Date.now();
   const organizationId = await createOrganization(page, `e2e-org-llm-${now}`);
+
+  const providerId = await createLLMProvider(page, {
+    endpoint: TESTLLM_ENDPOINT,
+    authMethod: 'AUTH_METHOD_BEARER',
+    token: 'unused',
+    organizationId,
+  });
+
+  const modelId = await createModel(page, {
+    name: `e2e-model-${now}`,
+    llmProviderId: providerId,
+    remoteName: 'simple-hello',
+    organizationId,
+  });
+
   const agentId = await createAgent(page, {
     organizationId,
     name: `e2e-codex-agent-${now}`,
     role: 'You are a helpful assistant.',
-    model: 'simple-hello',
+    model: modelId,
     description: 'E2E test agent using TestLLM simple-hello',
     configuration: '{}',
     image: 'alpine:3.21',
     initImage: INIT_IMAGE,
   });
-
-  const envVars: Record<string, string> = {
-    THREADS_ADDRESS: 'threads:50051',
-    NOTIFICATIONS_ADDRESS: 'notifications:50051',
-    TEAMS_ADDRESS: 'agents:50051',
-    OPENAI_API_KEY: 'dummy',
-    OPENAI_BASE_URL: TESTLLM_BASE_URL,
-    CODEX_BINARY: '/agyn-bin/codex',
-  };
-
-  for (const [name, value] of Object.entries(envVars)) {
-    await createAgentEnv(page, agentId, name, value);
-  }
 
   return { organizationId, agentId };
 }

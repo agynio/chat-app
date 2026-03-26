@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 
 const CHAT_GATEWAY_PATH = '/api/agynio.api.gateway.v1.ChatGateway';
 const AGENTS_GATEWAY_PATH = '/api/agynio.api.gateway.v1.AgentsGateway';
+const LLM_GATEWAY_PATH = '/api/agynio.api.gateway.v1.LLMGateway';
 const ORGS_GATEWAY_PATH = '/api/agynio.api.gateway.v1.OrganizationsGateway';
 
 const CONNECT_HEADERS = {
@@ -27,6 +28,14 @@ type CreateAgentResponseWire = {
 
 type CreateEnvResponseWire = {
   env?: { meta?: { id?: string } };
+};
+
+type CreateLLMProviderResponseWire = {
+  provider?: { meta?: { id?: string } };
+};
+
+type CreateModelResponseWire = {
+  model?: { meta?: { id?: string } };
 };
 
 type Message = {
@@ -199,6 +208,48 @@ export async function listAccessibleOrganizations(
     {},
   );
   return response.organizations ?? [];
+}
+
+export async function createLLMProvider(
+  page: Page,
+  opts: { endpoint: string; authMethod: string; token: string; organizationId: string },
+): Promise<string> {
+  const response = await postConnect<CreateLLMProviderResponseWire>(
+    page,
+    LLM_GATEWAY_PATH,
+    'CreateLLMProvider',
+    {
+      endpoint: opts.endpoint,
+      authMethod: opts.authMethod,
+      token: opts.token,
+      organizationId: opts.organizationId,
+    },
+  );
+  if (!response.provider?.meta?.id) {
+    throw new Error('CreateLLMProvider response missing provider id.');
+  }
+  return response.provider.meta.id;
+}
+
+export async function createModel(
+  page: Page,
+  opts: { name: string; llmProviderId: string; remoteName: string; organizationId: string },
+): Promise<string> {
+  const response = await postConnect<CreateModelResponseWire>(
+    page,
+    LLM_GATEWAY_PATH,
+    'CreateModel',
+    {
+      name: opts.name,
+      llmProviderId: opts.llmProviderId,
+      remoteName: opts.remoteName,
+      organizationId: opts.organizationId,
+    },
+  );
+  if (!response.model?.meta?.id) {
+    throw new Error('CreateModel response missing model id.');
+  }
+  return response.model.meta.id;
 }
 
 type CreateAgentOptions = {
