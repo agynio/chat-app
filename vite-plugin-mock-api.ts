@@ -31,6 +31,12 @@ const organizations: Organization[] = [
 ];
 const defaultOrganizationId = organizations[0].id;
 
+const llmProviders = new Map<string, { id: string; organizationId: string; endpoint: string }>();
+const llmModels = new Map<
+  string,
+  { id: string; organizationId: string; llmProviderId: string; remoteName: string; name: string }
+>();
+
 const chatStore = new Map<string, Chat>(
   chatSeeds.map((seed) => [
     seed.id,
@@ -220,11 +226,12 @@ export function mockApiPlugin(): Plugin {
             if (!chatId || !chatStore.has(chatId)) {
               return sendJson(res, 404, { code: 'not_found', message: 'chat not found' });
             }
+            const body = typeof request.body === 'string' ? request.body : '';
             const nextMessage: ChatMessage = {
               id: randomUUID(),
               chatId,
               senderId: casey.id,
-              body: typeof request.body === 'string' ? request.body : '',
+              body,
               fileIds: Array.isArray(request.fileIds)
                 ? request.fileIds.filter((id): id is string => typeof id === 'string')
                 : [],
@@ -240,6 +247,28 @@ export function mockApiPlugin(): Plugin {
                 ...chat,
                 updatedAt: nextMessage.createdAt,
               });
+            }
+
+            if (chat && body.trim().length > 0) {
+              const agentParticipant = chat.participants.find(
+                (participant) => participant.id !== casey.id && agentStore.some((agent) => agent.id === participant.id),
+              );
+              if (agentParticipant) {
+                const replyMessage: ChatMessage = {
+                  id: randomUUID(),
+                  chatId,
+                  senderId: agentParticipant.id,
+                  body: 'How are you today?',
+                  fileIds: [],
+                  createdAt: new Date().toISOString(),
+                };
+                messages.push(replyMessage);
+                messagesByChat.set(chatId, messages);
+                chatStore.set(chatId, {
+                  ...chat,
+                  updatedAt: replyMessage.createdAt,
+                });
+              }
             }
 
             return sendJson(res, 200, { message: cloneChatMessage(nextMessage) });
@@ -392,6 +421,91 @@ export function mockApiPlugin(): Plugin {
             }
             agentStore.splice(index, 1);
             return sendJson(res, 200, {});
+          }
+
+          return sendJson(res, 404, { code: 'not_found', message: 'unknown method' });
+        }
+
+        const llmPrefix = '/api/agynio.api.gateway.v1.LLMGateway/';
+        if (pathname.startsWith(llmPrefix)) {
+          if (method !== 'POST') {
+            return sendJson(res, 405, { code: 'invalid_argument', message: 'Method not allowed' });
+          }
+
+          let payload: unknown;
+          try {
+            payload = await readBody(req);
+          } catch (_error) {
+            return sendJson(res, 400, { code: 'invalid_argument', message: 'Invalid JSON payload' });
+          }
+
+          const rpc = pathname.slice(llmPrefix.length);
+          if (rpc === 'CreateLLMProvider') {
+            const request = payload as {
+              endpoint?: string;
+              authMethod?: string;
+              token?: string;
+              organizationId?: string;
+            };
+            const endpoint = typeof request.endpoint === 'string' ? request.endpoint.trim() : '';
+            const authMethod = typeof request.authMethod === 'string' ? request.authMethod.trim() : '';
+            const token = typeof request.token === 'string' ? request.token.trim() : '';
+            const organizationId =
+              typeof request.organizationId === 'string' ? request.organizationId.trim() : '';
+            if (!endpoint) {
+              return sendJson(res, 400, { code: 'invalid_argument', message: 'endpoint is required' });
+            }
+            if (!authMethod) {
+              return sendJson(res, 400, { code: 'invalid_argument', message: 'authMethod is required' });
+            }
+            if (!token) {
+              return sendJson(res, 400, { code: 'invalid_argument', message: 'token is required' });
+            }
+            if (!organizationId) {
+              return sendJson(res, 400, { code: 'invalid_argument', message: 'organizationId is required' });
+            }
+            const providerId = randomUUID();
+            llmProviders.set(providerId, { id: providerId, organizationId, endpoint });
+            return sendJson(res, 200, { provider: { meta: { id: providerId } } });
+          }
+
+          if (rpc === 'CreateModel') {
+            const request = payload as {
+              name?: string;
+              llmProviderId?: string;
+              remoteName?: string;
+              organizationId?: string;
+            };
+            const name = typeof request.name === 'string' ? request.name.trim() : '';
+            const llmProviderId =
+              typeof request.llmProviderId === 'string' ? request.llmProviderId.trim() : '';
+            const remoteName = typeof request.remoteName === 'string' ? request.remoteName.trim() : '';
+            const organizationId =
+              typeof request.organizationId === 'string' ? request.organizationId.trim() : '';
+            if (!name) {
+              return sendJson(res, 400, { code: 'invalid_argument', message: 'name is required' });
+            }
+            if (!llmProviderId) {
+              return sendJson(res, 400, { code: 'invalid_argument', message: 'llmProviderId is required' });
+            }
+            if (!remoteName) {
+              return sendJson(res, 400, { code: 'invalid_argument', message: 'remoteName is required' });
+            }
+            if (!organizationId) {
+              return sendJson(res, 400, { code: 'invalid_argument', message: 'organizationId is required' });
+            }
+            if (!llmProviders.has(llmProviderId)) {
+              return sendJson(res, 404, { code: 'not_found', message: 'llm provider not found' });
+            }
+            const modelId = randomUUID();
+            llmModels.set(modelId, {
+              id: modelId,
+              organizationId,
+              llmProviderId,
+              remoteName,
+              name,
+            });
+            return sendJson(res, 200, { model: { meta: { id: modelId } } });
           }
 
           return sendJson(res, 404, { code: 'not_found', message: 'unknown method' });
