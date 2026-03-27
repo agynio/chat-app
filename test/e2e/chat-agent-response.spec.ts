@@ -14,7 +14,7 @@ import {
 } from './chat-api';
 
 const TESTLLM_ENDPOINT = 'https://testllm.dev/v1/org/agynio/suite/codex';
-const INIT_IMAGE = 'ghcr.io/agynio/agent-init-codex:0.1.0';
+const INIT_IMAGE = 'ghcr.io/agynio/agent-init-codex:0.5.0';
 
 async function setupTestAgent(page: Page) {
   const now = Date.now();

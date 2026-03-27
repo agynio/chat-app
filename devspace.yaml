@@ -35,6 +35,11 @@ functions:
     kubectl set image deployment/chat-app chat-app="$IMAGE" -n ${APP_NAMESPACE}
     kubectl rollout status deployment/chat-app -n ${APP_NAMESPACE} --timeout=120s
     echo "PR image deployed successfully"
+  patch_orchestrator: |-
+    kubectl set env deployment/agents-orchestrator -n platform \
+      AGENT_LLM_BASE_URL="https://testllm.dev/v1/org/agynio/suite/codex" \
+      AGENT_MODEL_OVERRIDE="simple-hello"
+    kubectl rollout status deployment/agents-orchestrator -n platform --timeout=120s
 
 deployments:
   e2e-runner:
@@ -84,6 +89,7 @@ pipelines:
     run: |-
       disable_argocd_sync
       deploy_pr_image
+      patch_orchestrator
       create_deployments e2e-runner
       start_dev e2e-runner &
       sleep 5
