@@ -36,9 +36,12 @@ functions:
     kubectl rollout status deployment/chat-app -n ${APP_NAMESPACE} --timeout=120s
     echo "PR image deployed successfully"
   patch_orchestrator: |-
+    CLUSTER_ADMIN_TOKEN=$(kubectl exec deploy/gateway-gateway -n platform -- printenv CLUSTER_ADMIN_TOKEN 2>/dev/null || true)
     kubectl set env deployment/agents-orchestrator -n platform \
       AGENT_LLM_BASE_URL="https://testllm.dev/v1/org/agynio/suite/codex" \
-      AGENT_MODEL_OVERRIDE="simple-hello"
+      AGENT_MODEL_OVERRIDE="simple-hello" \
+      AGENT_GATEWAY_ADDRESS="gateway-gateway.platform.svc.cluster.local:8080" \
+      AGENT_AUTH_TOKEN="$CLUSTER_ADMIN_TOKEN"
     kubectl rollout status deployment/agents-orchestrator -n platform --timeout=120s
 
 deployments:
