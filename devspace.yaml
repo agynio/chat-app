@@ -43,23 +43,22 @@ functions:
     else
       echo "CLUSTER_ADMIN_TOKEN extracted (length=${#CLUSTER_ADMIN_TOKEN})"
     fi
-    # First, find the index of AGENT_LLM_BASE_URL in the env array and patch it
+    # Find index of AGENT_LLM_BASE_URL to replace it
     LLM_INDEX=$(kubectl get deployment agents-orchestrator -n platform -o json | \
       jq '.spec.template.spec.containers[0].env | to_entries[] | select(.value.name == "AGENT_LLM_BASE_URL") | .key')
+    echo "AGENT_LLM_BASE_URL found at env index: $LLM_INDEX"
+    # Build a single JSON patch that does everything atomically
+    PATCH="["
     if [ -n "$LLM_INDEX" ]; then
-      echo "Patching AGENT_LLM_BASE_URL at index $LLM_INDEX"
-      kubectl patch deployment agents-orchestrator -n platform --type=json \
-        -p "[{\"op\":\"replace\",\"path\":\"/spec/template/spec/containers/0/env/$LLM_INDEX/value\",\"value\":\"https://testllm.dev/v1/org/agynio/suite/codex\"}]"
-    else
-      echo "AGENT_LLM_BASE_URL not found in env, adding via kubectl set env"
-      kubectl set env deployment/agents-orchestrator -n platform \
-        AGENT_LLM_BASE_URL="https://testllm.dev/v1/org/agynio/suite/codex"
+      PATCH="${PATCH}{\"op\":\"replace\",\"path\":\"/spec/template/spec/containers/0/env/${LLM_INDEX}/value\",\"value\":\"https://testllm.dev/v1/org/agynio/suite/codex\"},"
     fi
-    # Add new env vars
-    kubectl set env deployment/agents-orchestrator -n platform \
-      AGENT_MODEL_OVERRIDE="simple-hello" \
-      AGENT_GATEWAY_ADDRESS="gateway-gateway.platform.svc.cluster.local:8080" \
-      AGENT_AUTH_TOKEN="$CLUSTER_ADMIN_TOKEN"
+    # Append new env vars at the end of the env array
+    PATCH="${PATCH}{\"op\":\"add\",\"path\":\"/spec/template/spec/containers/0/env/-\",\"value\":{\"name\":\"AGENT_MODEL_OVERRIDE\",\"value\":\"simple-hello\"}},"
+    PATCH="${PATCH}{\"op\":\"add\",\"path\":\"/spec/template/spec/containers/0/env/-\",\"value\":{\"name\":\"AGENT_GATEWAY_ADDRESS\",\"value\":\"gateway-gateway.platform.svc.cluster.local:8080\"}},"
+    PATCH="${PATCH}{\"op\":\"add\",\"path\":\"/spec/template/spec/containers/0/env/-\",\"value\":{\"name\":\"AGENT_AUTH_TOKEN\",\"value\":\"${CLUSTER_ADMIN_TOKEN}\"}}"
+    PATCH="${PATCH}]"
+    echo "Applying patch..."
+    kubectl patch deployment agents-orchestrator -n platform --type=json -p "$PATCH"
     kubectl rollout status deployment/agents-orchestrator -n platform --timeout=120s
     echo "--- Verifying orchestrator env (full list) ---"
     kubectl get deployment agents-orchestrator -n platform -o jsonpath='{range .spec.template.spec.containers[0].env[*]}{.name}={.value}{"\n"}{end}'
