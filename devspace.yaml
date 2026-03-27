@@ -43,8 +43,20 @@ functions:
     else
       echo "CLUSTER_ADMIN_TOKEN extracted (length=${#CLUSTER_ADMIN_TOKEN})"
     fi
+    # First, find the index of AGENT_LLM_BASE_URL in the env array and patch it
+    LLM_INDEX=$(kubectl get deployment agents-orchestrator -n platform -o json | \
+      jq '.spec.template.spec.containers[0].env | to_entries[] | select(.value.name == "AGENT_LLM_BASE_URL") | .key')
+    if [ -n "$LLM_INDEX" ]; then
+      echo "Patching AGENT_LLM_BASE_URL at index $LLM_INDEX"
+      kubectl patch deployment agents-orchestrator -n platform --type=json \
+        -p "[{\"op\":\"replace\",\"path\":\"/spec/template/spec/containers/0/env/$LLM_INDEX/value\",\"value\":\"https://testllm.dev/v1/org/agynio/suite/codex\"}]"
+    else
+      echo "AGENT_LLM_BASE_URL not found in env, adding via kubectl set env"
+      kubectl set env deployment/agents-orchestrator -n platform \
+        AGENT_LLM_BASE_URL="https://testllm.dev/v1/org/agynio/suite/codex"
+    fi
+    # Add new env vars
     kubectl set env deployment/agents-orchestrator -n platform \
-      AGENT_LLM_BASE_URL="https://testllm.dev/v1/org/agynio/suite/codex" \
       AGENT_MODEL_OVERRIDE="simple-hello" \
       AGENT_GATEWAY_ADDRESS="gateway-gateway.platform.svc.cluster.local:8080" \
       AGENT_AUTH_TOKEN="$CLUSTER_ADMIN_TOKEN"
