@@ -6,25 +6,29 @@ vars:
 
 functions:
   disable_argocd_sync: |-
-    if kubectl get application chat-app -n argocd >/dev/null 2>&1; then
-      echo "Disabling ArgoCD auto-sync for chat-app..."
-      kubectl patch application chat-app -n argocd \
-        --type merge \
-        -p '{"spec":{"syncPolicy":{"automated":null}}}'
-      echo "ArgoCD auto-sync disabled."
-    else
-      echo "WARNING: ArgoCD Application 'chat-app' not found in argocd namespace."
-    fi
+    for app in chat-app agents-orchestrator; do
+      if kubectl get application "$app" -n argocd >/dev/null 2>&1; then
+        echo "Disabling ArgoCD auto-sync for $app..."
+        kubectl patch application "$app" -n argocd \
+          --type merge \
+          -p '{"spec":{"syncPolicy":{"automated":null}}}'
+        echo "ArgoCD auto-sync disabled for $app."
+      else
+        echo "WARNING: ArgoCD Application '$app' not found in argocd namespace."
+      fi
+    done
   restore_argocd_sync: &restore_argocd_sync |-
-    if kubectl get application chat-app -n argocd >/dev/null 2>&1; then
-      echo "Re-enabling ArgoCD auto-sync for chat-app..."
-      kubectl patch application chat-app -n argocd \
-        --type merge \
-        -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
-      echo "ArgoCD auto-sync restored."
-    else
-      echo "WARNING: ArgoCD Application 'chat-app' not found in argocd namespace."
-    fi
+    for app in chat-app agents-orchestrator; do
+      if kubectl get application "$app" -n argocd >/dev/null 2>&1; then
+        echo "Re-enabling ArgoCD auto-sync for $app..."
+        kubectl patch application "$app" -n argocd \
+          --type merge \
+          -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
+        echo "ArgoCD auto-sync restored for $app."
+      else
+        echo "WARNING: ArgoCD Application '$app' not found."
+      fi
+    done
   deploy_pr_image: |-
     echo "Deploying PR image to cluster..."
     IMAGE="${PR_IMAGE:-}"
