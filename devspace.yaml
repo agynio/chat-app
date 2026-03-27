@@ -37,9 +37,9 @@ functions:
     echo "PR image deployed successfully"
   patch_orchestrator: |-
     echo "--- Patching orchestrator for e2e ---"
-    CLUSTER_ADMIN_TOKEN=$(kubectl exec deploy/gateway-gateway -n platform -- printenv CLUSTER_ADMIN_TOKEN 2>/dev/null || true)
+    CLUSTER_ADMIN_TOKEN=$(kubectl get deployment gateway-gateway -n platform -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="CLUSTER_ADMIN_TOKEN")].value}')
     if [ -z "$CLUSTER_ADMIN_TOKEN" ]; then
-      echo "ERROR: CLUSTER_ADMIN_TOKEN not found in gateway deployment"
+      echo "ERROR: CLUSTER_ADMIN_TOKEN not found in gateway deployment spec"
     else
       echo "CLUSTER_ADMIN_TOKEN extracted (length=${#CLUSTER_ADMIN_TOKEN})"
     fi
@@ -49,12 +49,12 @@ functions:
       AGENT_GATEWAY_ADDRESS="gateway-gateway.platform.svc.cluster.local:8080" \
       AGENT_AUTH_TOKEN="$CLUSTER_ADMIN_TOKEN"
     kubectl rollout status deployment/agents-orchestrator -n platform --timeout=120s
-    echo "--- Verifying orchestrator env ---"
-    kubectl get deployment agents-orchestrator -n platform -o jsonpath='{range .spec.template.spec.containers[0].env[*]}{.name}={.value}{"\n"}{end}' | grep -E 'AGENT_GATEWAY|AGENT_AUTH_TOKEN|AGENT_LLM|AGENT_MODEL'
+    echo "--- Verifying orchestrator env (full list) ---"
+    kubectl get deployment agents-orchestrator -n platform -o jsonpath='{range .spec.template.spec.containers[0].env[*]}{.name}={.value}{"\n"}{end}'
     echo "--- Orchestrator pod status ---"
     kubectl get pods -n platform -l app.kubernetes.io/name=agents-orchestrator -o wide
-    echo "--- Orchestrator logs (last 20 lines) ---"
-    kubectl logs deploy/agents-orchestrator -n platform --tail=20 || true
+    echo "--- Orchestrator logs (last 30 lines) ---"
+    kubectl logs deploy/agents-orchestrator -n platform --tail=30 || true
     echo "--- Patching complete ---"
   dump_agent_logs: |-
     echo "=== ORCHESTRATOR LOGS ==="
@@ -122,6 +122,7 @@ pipelines:
       create_deployments e2e-runner
       start_dev e2e-runner &
       sleep 5
+      set +e
       exec_container \
         --label-selector "app.kubernetes.io/name=chat-app-e2e" \
         -n ${APP_NAMESPACE} \
@@ -142,11 +143,12 @@ pipelines:
           E2E_BASE_URL=https://chat.agyn.dev ARGOS_TOKEN=${ARGOS_TOKEN} ARGOS_BRANCH=${ARGOS_BRANCH} ARGOS_COMMIT=${ARGOS_COMMIT} CI=true pnpm test:e2e
         '
       EXIT_CODE=$?
-      dump_agent_logs
+      set -e
+      dump_agent_logs || true
       stop_dev e2e-runner
       purge_deployments e2e-runner
       restore_argocd_sync
-      exit $EXIT_CODE
+      exit ${EXIT_CODE}
 
 hooks:
   - name: restore-argocd-auto-sync
