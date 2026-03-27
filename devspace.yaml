@@ -36,13 +36,39 @@ functions:
     kubectl rollout status deployment/chat-app -n ${APP_NAMESPACE} --timeout=120s
     echo "PR image deployed successfully"
   patch_orchestrator: |-
+    echo "--- Patching orchestrator for e2e ---"
     CLUSTER_ADMIN_TOKEN=$(kubectl exec deploy/gateway-gateway -n platform -- printenv CLUSTER_ADMIN_TOKEN 2>/dev/null || true)
+    if [ -z "$CLUSTER_ADMIN_TOKEN" ]; then
+      echo "ERROR: CLUSTER_ADMIN_TOKEN not found in gateway deployment"
+    else
+      echo "CLUSTER_ADMIN_TOKEN extracted (length=${#CLUSTER_ADMIN_TOKEN})"
+    fi
     kubectl set env deployment/agents-orchestrator -n platform \
       AGENT_LLM_BASE_URL="https://testllm.dev/v1/org/agynio/suite/codex" \
       AGENT_MODEL_OVERRIDE="simple-hello" \
       AGENT_GATEWAY_ADDRESS="gateway-gateway.platform.svc.cluster.local:8080" \
       AGENT_AUTH_TOKEN="$CLUSTER_ADMIN_TOKEN"
     kubectl rollout status deployment/agents-orchestrator -n platform --timeout=120s
+    echo "--- Verifying orchestrator env ---"
+    kubectl get deployment agents-orchestrator -n platform -o jsonpath='{range .spec.template.spec.containers[0].env[*]}{.name}={.value}{"\n"}{end}' | grep -E 'AGENT_GATEWAY|AGENT_AUTH_TOKEN|AGENT_LLM|AGENT_MODEL'
+    echo "--- Orchestrator pod status ---"
+    kubectl get pods -n platform -l app.kubernetes.io/name=agents-orchestrator -o wide
+    echo "--- Orchestrator logs (last 20 lines) ---"
+    kubectl logs deploy/agents-orchestrator -n platform --tail=20 || true
+    echo "--- Patching complete ---"
+  dump_agent_logs: |-
+    echo "=== ORCHESTRATOR LOGS ==="
+    kubectl logs deploy/agents-orchestrator -n platform --tail=100 || true
+    echo "=== AGENT WORKLOAD PODS (agyn-workloads) ==="
+    kubectl get pods -n agyn-workloads -o wide 2>/dev/null || true
+    echo "=== AGENT WORKLOAD LOGS ==="
+    for pod in $(kubectl get pods -n agyn-workloads -o name 2>/dev/null); do
+      echo "--- $pod ---"
+      kubectl logs "$pod" -n agyn-workloads --all-containers --tail=50 2>/dev/null || true
+    done
+    echo "=== K8S-RUNNER LOGS ==="
+    kubectl logs deploy/k8s-runner -n platform --tail=50 || true
+    echo "=== END DIAGNOSTIC LOGS ==="
 
 deployments:
   e2e-runner:
@@ -116,6 +142,7 @@ pipelines:
           E2E_BASE_URL=https://chat.agyn.dev ARGOS_TOKEN=${ARGOS_TOKEN} ARGOS_BRANCH=${ARGOS_BRANCH} ARGOS_COMMIT=${ARGOS_COMMIT} CI=true pnpm test:e2e
         '
       EXIT_CODE=$?
+      dump_agent_logs
       stop_dev e2e-runner
       purge_deployments e2e-runner
       restore_argocd_sync
