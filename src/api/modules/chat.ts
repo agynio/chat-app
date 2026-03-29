@@ -20,12 +20,13 @@ function normalizeMessage(message: ChatMessage): ChatMessage {
   return { ...message, fileIds: message.fileIds ?? [] };
 }
 
-type ChatWire = Omit<Chat, 'organizationId'> & { organization_id?: string };
+type ChatWire = Omit<Chat, 'organizationId'> & { organization_id?: string; organizationId?: string };
 type CreateChatRequestWire = CreateChatRequest & { organization_id: string };
 type GetChatsRequestWire = GetChatsRequest & { organization_id: string };
 
 function normalizeChat(chat: ChatWire): Chat {
-  const { organization_id: organizationId, participants, ...rest } = chat;
+  const { organization_id, organizationId: organizationIdCamel, participants, ...rest } = chat;
+  const organizationId = organizationIdCamel ?? organization_id;
   if (!organizationId) {
     throw new Error('Chat response missing organization_id.');
   }
