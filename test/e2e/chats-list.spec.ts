@@ -18,9 +18,7 @@ test('renders chat list on load', async ({ page }) => {
     { timeout: 15000 },
   );
   await page.goto('/chats');
-  const chatsResponse = await chatsLoaded;
-  const chatsBody = await chatsResponse.json();
-  console.log('[e2e] GetChats response (list load):', JSON.stringify(chatsBody));
+  await chatsLoaded;
 
   await expectChatListVisible(page);
   await argosScreenshot(page, 'chats-list-loaded');
@@ -34,9 +32,7 @@ test('participant picker shows available options', async ({ page }) => {
     { timeout: 15000 },
   );
   await page.goto('/chats');
-  const chatsResponse = await chatsLoaded;
-  const chatsBody = await chatsResponse.json();
-  console.log('[e2e] GetChats response (participant picker):', JSON.stringify(chatsBody));
+  await chatsLoaded;
 
   await expectChatListVisible(page);
 
@@ -69,9 +65,7 @@ test('navigates to chat detail', async ({ page }) => {
     { timeout: 15000 },
   );
   await page.goto('/chats');
-  const chatsResponse = await chatsLoaded;
-  const chatsBody = await chatsResponse.json();
-  console.log('[e2e] GetChats response (chat detail):', JSON.stringify(chatsBody));
+  await chatsLoaded;
 
   const chatList = page.getByTestId('chat-list');
   await expect(chatList).toBeVisible({ timeout: 15000 });

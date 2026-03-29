@@ -55,9 +55,7 @@ test('agent chat appears in chat list', async ({ page }) => {
     { timeout: 15000 },
   );
   await page.goto('/chats');
-  const chatsResponse = await chatsLoaded;
-  const chatsBody = await chatsResponse.json();
-  console.log('[e2e] GetChats response (agent chat list):', JSON.stringify(chatsBody));
+  await chatsLoaded;
 
   const chatList = page.getByTestId('chat-list');
   await expect(chatList).toBeVisible({ timeout: 15000 });

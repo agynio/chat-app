@@ -205,10 +205,11 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
   const agents = useMemo(() => agentsQuery.data?.agents ?? [], [agentsQuery.data]);
   const agentIdSet = useMemo(() => new Set(agents.map((agent) => agent.meta.id)), [agents]);
 
-  const chatSummaries = useMemo(
-    () => chatsQuery.data?.pages.flatMap((page) => page.chats) ?? [],
-    [chatsQuery.data],
-  );
+  const chatSummaries = useMemo(() => {
+    const items = chatsQuery.data?.pages.flatMap((page) => page.chats) ?? [];
+    if (!organizationId) return [];
+    return items.filter((chat) => !chat.organizationId || chat.organizationId === organizationId);
+  }, [chatsQuery.data, organizationId]);
 
   const userParticipantIds = useMemo(() => {
     const ids = new Set<string>();

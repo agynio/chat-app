@@ -1,4 +1,5 @@
 import { connectPost } from '@/api/connect';
+import { readChatOrganizationMap, writeChatOrganization } from '@/utils/chatOrganizationStorage';
 import type {
   Chat,
   ChatMessage,
@@ -25,14 +26,10 @@ type CreateChatRequestWire = CreateChatRequest & { organization_id: string };
 type GetChatsRequestWire = GetChatsRequest & { organization_id: string };
 
 function normalizeChat(chat: ChatWire): Chat {
-  const { organization_id, organizationId: organizationIdCamel, participants, ...rest } = chat;
-  const organizationId = organizationIdCamel ?? organization_id;
-  if (!organizationId) {
-    throw new Error('Chat response missing organization_id.');
-  }
+  const { organization_id: organizationIdWire, organizationId, participants, ...rest } = chat;
   return {
     ...rest,
-    organizationId,
+    organizationId: organizationId ?? organizationIdWire ?? '',
     participants: participants ?? [],
   };
 }
@@ -52,13 +49,17 @@ export const chatApi = {
       'CreateChat',
       serializeCreateChatRequest(req),
     );
-    if (!resp.chat) {
-      throw new Error('CreateChat response missing chat.');
-    }
     const normalizedChat = normalizeChat(resp.chat);
+    const chatWithOrganization = normalizedChat.organizationId
+      ? normalizedChat
+      : {
+          ...normalizedChat,
+          organizationId: req.organizationId,
+        };
+    writeChatOrganization(chatWithOrganization.id, req.organizationId);
     return {
       ...resp,
-      chat: normalizedChat,
+      chat: chatWithOrganization,
     };
   },
   getChats: async (req: GetChatsRequest): Promise<GetChatsResponse> => {
@@ -67,7 +68,17 @@ export const chatApi = {
       'GetChats',
       serializeGetChatsRequest(req),
     );
-    const chats = (resp.chats ?? []).map(normalizeChat);
+    const chatOrganizationMap = readChatOrganizationMap();
+    const chats = (resp.chats ?? []).map((chat) => {
+      const normalized = normalizeChat(chat);
+      if (normalized.organizationId) return normalized;
+      const mappedOrganizationId = chatOrganizationMap[normalized.id];
+      if (!mappedOrganizationId) return normalized;
+      return {
+        ...normalized,
+        organizationId: mappedOrganizationId,
+      };
+    });
     return {
       ...resp,
       chats,

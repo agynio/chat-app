@@ -86,9 +86,7 @@ async function switchOrganization(page: Page, organizationId: string) {
     { timeout: 15000 },
   );
   await orgItem.click();
-  const chatsResponse = await chatsLoaded;
-  const chatsBody = await chatsResponse.json();
-  console.log('[e2e] GetChats response (switch org):', JSON.stringify({ organizationId, chatsBody }));
+  await chatsLoaded;
 }
 
 test('org switcher displays organizations', async ({ page }) => {
@@ -120,9 +118,7 @@ test('switching orgs reloads chat list', async ({ page }) => {
     { timeout: 15000 },
   );
   await page.goto('/chats');
-  const chatsResponse = await chatsLoaded;
-  const chatsBody = await chatsResponse.json();
-  console.log('[e2e] GetChats response (switch list load):', JSON.stringify(chatsBody));
+  await chatsLoaded;
   const chatList = page.getByTestId('chat-list');
   await expect(chatList).toBeVisible({ timeout: 15000 });
 
@@ -142,9 +138,7 @@ test('switching orgs clears selected conversation', async ({ page }) => {
     { timeout: 15000 },
   );
   await page.goto('/chats');
-  const chatsResponse = await chatsLoaded;
-  const chatsBody = await chatsResponse.json();
-  console.log('[e2e] GetChats response (clear selection load):', JSON.stringify(chatsBody));
+  await chatsLoaded;
   const chatList = page.getByTestId('chat-list');
   await expect(chatList).toBeVisible({ timeout: 15000 });
 
