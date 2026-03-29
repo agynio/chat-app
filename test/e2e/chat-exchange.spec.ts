@@ -16,21 +16,35 @@ test('two users exchange messages in a shared chat', async ({ userAPage, userBPa
   const userBOrganizationId = await createOrganization(userBPage, `e2e-org-exchange-b-${Date.now()}`);
   await setSelectedOrganization(userBPage, userBOrganizationId);
 
+  const userAChatsLoaded = userAPage.waitForResponse(
+    (resp) => resp.url().includes('GetChats') && resp.status() === 200,
+    { timeout: 15000 },
+  );
   const userAMessagesLoaded = userAPage.waitForResponse(
     (resp) => resp.url().includes('GetMessages') && resp.status() === 200,
     { timeout: 15000 },
   );
   await userAPage.goto(`/chats/${encodeURIComponent(chatId)}`);
+  const userAChatsResponse = await userAChatsLoaded;
+  const userAChatsBody = await userAChatsResponse.json();
+  console.log('[e2e] GetChats response (user A):', JSON.stringify(userAChatsBody));
   await userAMessagesLoaded;
   await expect(userAPage.getByTestId('chat-message').filter({ hasText: messageFromA })).toBeVisible({
     timeout: 15000,
   });
 
+  const userBChatsLoaded = userBPage.waitForResponse(
+    (resp) => resp.url().includes('GetChats') && resp.status() === 200,
+    { timeout: 15000 },
+  );
   const userBMessagesLoaded = userBPage.waitForResponse(
     (resp) => resp.url().includes('GetMessages') && resp.status() === 200,
     { timeout: 15000 },
   );
   await userBPage.goto(`/chats/${encodeURIComponent(chatId)}`);
+  const userBChatsResponse = await userBChatsLoaded;
+  const userBChatsBody = await userBChatsResponse.json();
+  console.log('[e2e] GetChats response (user B):', JSON.stringify(userBChatsBody));
   await userBMessagesLoaded;
   await expect(userBPage.getByTestId('chat-message').filter({ hasText: messageFromA })).toBeVisible({
     timeout: 15000,
