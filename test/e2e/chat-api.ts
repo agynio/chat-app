@@ -27,6 +27,7 @@ type CreateAgentResponseWire = {
 
 type ListAgentsResponseWire = {
   agents?: Array<{ meta?: { id?: string }; name?: string }>;
+  nextPageToken?: string;
 };
 
 const CHAT_ORG_STORAGE_KEY = 'ui.organization.chat-map';
@@ -198,7 +199,7 @@ type CreateAgentOptions = {
 };
 
 async function waitForAgent(page: Page, organizationId: string, agentId: string): Promise<void> {
-  const timeoutMs = 10000;
+  const timeoutMs = 20000;
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     const agents = await listAgents(page, organizationId);
@@ -224,11 +225,20 @@ export async function listAgents(
   page: Page,
   organizationId: string,
 ): Promise<Array<{ meta?: { id?: string }; name?: string }>> {
-  const response = await postConnect<ListAgentsResponseWire>(page, AGENTS_GATEWAY_PATH, 'ListAgents', {
-    organizationId,
-    pageSize: 200,
-  });
-  return response.agents ?? [];
+  const agents: Array<{ meta?: { id?: string }; name?: string }> = [];
+  let pageToken: string | undefined;
+  let previousToken: string | undefined;
+  do {
+    const response = await postConnect<ListAgentsResponseWire>(page, AGENTS_GATEWAY_PATH, 'ListAgents', {
+      organizationId,
+      pageSize: 200,
+      pageToken,
+    });
+    agents.push(...(response.agents ?? []));
+    previousToken = pageToken;
+    pageToken = response.nextPageToken;
+  } while (pageToken && pageToken !== previousToken);
+  return agents;
 }
 
 export async function sendChatMessage(

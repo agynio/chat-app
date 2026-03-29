@@ -143,19 +143,10 @@ test('switching orgs clears selected conversation', async ({ page }) => {
 });
 
 base('no-organizations screen', async ({ page }) => {
-  await page.route('**/api/agynio.api.gateway.v1.OrganizationsGateway/ListAccessibleOrganizations', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ organizations: [] }),
-    });
-  });
-
-  const organizationsLoaded = page.waitForResponse(
-    (resp) => resp.url().includes('ListAccessibleOrganizations') && resp.status() === 200,
-    { timeout: 15000 },
-  );
-  await signInViaMockAuth(page);
-  await organizationsLoaded;
+  const uniqueEmail = `no-orgs-${Date.now()}@agyn.test`;
+  const signedIn = await signInViaMockAuth(page, uniqueEmail);
+  if (!signedIn) {
+    base.skip(true, 'MockAuth disabled; cannot verify no-org state.');
+  }
   await baseExpect(page.getByTestId('no-organizations-screen')).toBeVisible({ timeout: 15000 });
 });
