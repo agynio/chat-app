@@ -11,11 +11,13 @@ import type {
 const CHAT_PAGE_SIZE = 25;
 const MESSAGE_PAGE_SIZE = 30;
 
-export function useChats() {
+export function useChats(organizationId: string | undefined) {
   return useInfiniteQuery({
-    queryKey: ['chats', 'list', CHAT_PAGE_SIZE],
+    enabled: Boolean(organizationId),
+    queryKey: ['chats', 'list', organizationId, CHAT_PAGE_SIZE],
     queryFn: ({ pageParam }) =>
       chatApi.getChats({
+        organizationId: organizationId as string,
         pageSize: CHAT_PAGE_SIZE,
         pageToken: pageParam ?? undefined,
       }),
@@ -117,13 +119,20 @@ export function useSendMessage() {
   });
 }
 
-export function useCreateChat() {
+type CreateChatInput = Omit<CreateChatRequest, 'organizationId'>;
+
+export function useCreateChat(organizationId: string | undefined) {
   const queryClient = useQueryClient();
 
-  return useMutation<CreateChatResponse, Error, CreateChatRequest>({
-    mutationFn: (req) => chatApi.createChat(req),
+  return useMutation<CreateChatResponse, Error, CreateChatInput>({
+    mutationFn: (req) => {
+      if (!organizationId) {
+        throw new Error('Organization is required to create a chat.');
+      }
+      return chatApi.createChat({ ...req, organizationId });
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['chats', 'list'] });
+      queryClient.invalidateQueries({ queryKey: ['chats', 'list', organizationId] });
     },
   });
 }

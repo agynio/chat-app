@@ -1,20 +1,24 @@
 import { argosScreenshot } from '@argos-ci/playwright';
 import { test, expect } from './multi-user-fixtures';
-import { createChat, resolveIdentityId, sendChatMessage } from './chat-api';
+import { createChat, createOrganization, resolveIdentityId, sendChatMessage } from './chat-api';
+import { setSelectedOrganization } from './organization-helpers';
 
 test('two users exchange messages in a shared chat', async ({ userAPage, userBPage }) => {
   const messageFromA = `Hello from User A ${Date.now()}`;
   const messageFromB = `Reply from User B ${Date.now()}`;
 
   const userBId = await resolveIdentityId(userBPage);
-  const chatId = await createChat(userAPage, userBId);
+  const organizationId = await createOrganization(userAPage, `e2e-org-exchange-${Date.now()}`);
+  const chatId = await createChat(userAPage, organizationId, userBId);
   await sendChatMessage(userAPage, chatId, messageFromA);
+  await setSelectedOrganization(userAPage, organizationId);
+  await setSelectedOrganization(userBPage, organizationId);
 
   const userAMessagesLoaded = userAPage.waitForResponse(
     (resp) => resp.url().includes('GetMessages') && resp.status() === 200,
     { timeout: 15000 },
   );
-  await userAPage.goto(`/chats/${chatId}`);
+  await userAPage.goto(`/chats/${encodeURIComponent(chatId)}`);
   await userAMessagesLoaded;
   await expect(userAPage.getByTestId('chat-message').filter({ hasText: messageFromA })).toBeVisible({
     timeout: 15000,
@@ -24,7 +28,7 @@ test('two users exchange messages in a shared chat', async ({ userAPage, userBPa
     (resp) => resp.url().includes('GetMessages') && resp.status() === 200,
     { timeout: 15000 },
   );
-  await userBPage.goto(`/chats/${chatId}`);
+  await userBPage.goto(`/chats/${encodeURIComponent(chatId)}`);
   await userBMessagesLoaded;
   await expect(userBPage.getByTestId('chat-message').filter({ hasText: messageFromA })).toBeVisible({
     timeout: 15000,
@@ -48,8 +52,10 @@ test('user B sees shared chat in their chat list', async ({ userAPage, userBPage
   const messageFromA = `Hello from User A ${Date.now()}`;
 
   const userBId = await resolveIdentityId(userBPage);
-  const chatId = await createChat(userAPage, userBId);
+  const organizationId = await createOrganization(userAPage, `e2e-org-exchange-${Date.now()}`);
+  const chatId = await createChat(userAPage, organizationId, userBId);
   await sendChatMessage(userAPage, chatId, messageFromA);
+  await setSelectedOrganization(userBPage, organizationId);
 
   await userBPage.goto('/chats');
 

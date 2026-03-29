@@ -1,7 +1,8 @@
 import { argosScreenshot } from '@argos-ci/playwright';
 import type { Page } from '@playwright/test';
 import { test, expect } from './fixtures';
-import { createChat } from './chat-api';
+import { createChat, createOrganization } from './chat-api';
+import { setSelectedOrganization } from './organization-helpers';
 
 async function expectChatListVisible(page: Page) {
   const list = page.getByTestId('chat-list');
@@ -10,6 +11,8 @@ async function expectChatListVisible(page: Page) {
 }
 
 test('renders chat list on load', async ({ page }) => {
+  const organizationId = await createOrganization(page, `e2e-org-list-${Date.now()}`);
+  await setSelectedOrganization(page, organizationId);
   await page.goto('/chats');
 
   await expectChatListVisible(page);
@@ -17,6 +20,8 @@ test('renders chat list on load', async ({ page }) => {
 });
 
 test('participant picker shows available options', async ({ page }) => {
+  const organizationId = await createOrganization(page, `e2e-org-picker-${Date.now()}`);
+  await setSelectedOrganization(page, organizationId);
   await page.goto('/chats');
 
   await expectChatListVisible(page);
@@ -41,7 +46,9 @@ test('redirects root to /chats', async ({ page }) => {
 });
 
 test('navigates to chat detail', async ({ page }) => {
-  const chatId = await createChat(page);
+  const organizationId = await createOrganization(page, `e2e-org-detail-${Date.now()}`);
+  const chatId = await createChat(page, organizationId);
+  await setSelectedOrganization(page, organizationId);
 
   await page.goto('/chats');
 
@@ -52,7 +59,7 @@ test('navigates to chat detail', async ({ page }) => {
   await expect(firstChat).toBeVisible();
   await firstChat.click();
 
-  await expect(page).toHaveURL(new RegExp(`/chats/${chatId}`));
+  await expect(page).toHaveURL(new RegExp(`/chats/${encodeURIComponent(chatId)}`));
   await expect(page.getByTestId('chat')).toBeVisible({ timeout: 15000 });
   await argosScreenshot(page, 'chats-list-detail');
 });
