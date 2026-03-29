@@ -30,7 +30,8 @@ export const test = base.extend<MultiUserFixtures>({
     await context.close();
   },
 
-  userBPage: async ({ browser }, use) => {
+  userBPage: async ({ browser, userAPage }, use) => {
+    void userAPage;
     const { page, context } = await createUserContext(browser, USER_B_EMAIL);
     await use(page);
     await context.close();

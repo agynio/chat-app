@@ -14,7 +14,7 @@ test('creates a chat with an agent and sends a message', async ({ page }) => {
     model: crypto.randomUUID(),
     description: 'E2E test agent',
     configuration: '{}',
-    image: 'agent-image:latest',
+    image: 'alpine:3.21',
   });
   const chatId = await createChat(page, organizationId, agentId);
   const message = `Hello agent ${now}`;
@@ -44,7 +44,7 @@ test('agent chat appears in chat list', async ({ page }) => {
     model: crypto.randomUUID(),
     description: 'E2E test agent',
     configuration: '{}',
-    image: 'agent-image:latest',
+    image: 'alpine:3.21',
   });
   const chatId = await createChat(page, organizationId, agentId);
   await sendChatMessage(page, chatId, `Hello agent ${now}`);

@@ -39,7 +39,7 @@ test('participant picker shows available options', async ({ userAPage }) => {
     model: crypto.randomUUID(),
     description: 'E2E participant picker agent',
     configuration: '{}',
-    image: 'agent-image:latest',
+    image: 'alpine:3.21',
   });
   const chatsLoaded = userAPage.waitForResponse(
     (resp) => resp.url().includes('GetChats') && resp.status() === 200,
