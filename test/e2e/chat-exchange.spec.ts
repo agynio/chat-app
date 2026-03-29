@@ -12,6 +12,7 @@ test('two users exchange messages in a shared chat', async ({ userAPage, userBPa
   const chatId = await createChat(userAPage, organizationId, userBId);
   await sendChatMessage(userAPage, chatId, messageFromA);
   await setSelectedOrganization(userAPage, organizationId);
+  // User B needs their own org to pass the org gate; direct URL access works because GetMessages/SendMessage ignore orgs.
   const userBOrganizationId = await createOrganization(userBPage, `e2e-org-exchange-b-${Date.now()}`);
   await setSelectedOrganization(userBPage, userBOrganizationId);
 

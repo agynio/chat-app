@@ -1,19 +1,11 @@
 import React from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAccessibleOrganizations } from '@/api/hooks/organizations';
+import { resolveStorage } from '@/utils/localStorage';
 import type { OrganizationContextType } from './organization-types';
 import { OrganizationContext } from './organization.runtime';
 
 const ORGANIZATION_STORAGE_KEY = 'ui.organization.selected';
-
-function resolveStorage(): Storage | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    return window.localStorage;
-  } catch (_error) {
-    return null;
-  }
-}
 
 function readStoredOrganizationId(): string | null {
   const storage = resolveStorage();

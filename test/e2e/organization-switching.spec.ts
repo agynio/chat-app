@@ -142,11 +142,17 @@ test('switching orgs clears selected conversation', async ({ page }) => {
   await expect(page.getByText('Select a chat to view details')).toBeVisible({ timeout: 15000 });
 });
 
+// Use the base Playwright test to avoid fixture auth and ensure a fresh user with no orgs.
 base('no-organizations screen', async ({ page }) => {
   const uniqueEmail = `no-orgs-${Date.now()}@agyn.test`;
+  await page.goto('/');
+  const mockAuthEnabled = await page.evaluate(() => Boolean(window.__APP_CONFIG?.OIDC_AUTHORITY));
+  if (!mockAuthEnabled) {
+    base.skip(true, 'MockAuth disabled (OIDC_AUTHORITY missing); cannot verify no-org state.');
+  }
   const signedIn = await signInViaMockAuth(page, uniqueEmail);
   if (!signedIn) {
-    base.skip(true, 'MockAuth disabled; cannot verify no-org state.');
+    throw new Error('Expected MockAuth sign-in for no-org test.');
   }
   await baseExpect(page.getByTestId('no-organizations-screen')).toBeVisible({ timeout: 15000 });
 });

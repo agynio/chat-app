@@ -205,11 +205,10 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
   const agents = useMemo(() => agentsQuery.data?.agents ?? [], [agentsQuery.data]);
   const agentIdSet = useMemo(() => new Set(agents.map((agent) => agent.meta.id)), [agents]);
 
-  const chatSummaries = useMemo(() => {
-    const items = chatsQuery.data?.pages.flatMap((page) => page.chats) ?? [];
-    if (!organizationId) return [];
-    return items.filter((chat) => !chat.organizationId || chat.organizationId === organizationId);
-  }, [chatsQuery.data, organizationId]);
+  const chatSummaries = useMemo(
+    () => chatsQuery.data?.pages.flatMap((page) => page.chats) ?? [],
+    [chatsQuery.data],
+  );
 
   const userParticipantIds = useMemo(() => {
     const ids = new Set<string>();
@@ -331,12 +330,23 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     return [...fromDrafts, ...fromData];
   }, [drafts, mapDraftToChat, chatSummaries, resolveChatTitle]);
 
-  const selectedChat = useMemo(
-    () => chatsForList.find((chat) => chat.id === selectedChatId),
-    [chatsForList, selectedChatId],
-  );
+  const selectedChat = useMemo(() => {
+    const found = chatsForList.find((chat) => chat.id === selectedChatId);
+    if (found || !selectedChatId || chatsQuery.isLoading) return found;
+    // Allow direct URL access even if the chat isn't in the current org list.
+    return {
+      id: selectedChatId,
+      title: 'Chat',
+      subtitle: undefined,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      status: 'pending',
+      isOpen: true,
+      unreadCount: 0,
+    } satisfies ChatListItem;
+  }, [chatsForList, selectedChatId, chatsQuery.isLoading]);
 
-  const isChatsEmpty = !chatsQuery.isLoading && chatsForList.length === 0;
+  const isChatsEmpty = !chatsQuery.isLoading && chatsForList.length === 0 && !selectedChatId;
 
   const chatMessagesQuery = useChatMessages(
     effectiveDraftMode || !selectedChatId ? null : selectedChatId,

@@ -29,12 +29,14 @@ const organizations: Organization[] = [
     updatedAt: organizationTimestamp,
   },
 ];
+const defaultOrganizationId = organizations[0].id;
 
 const chatStore = new Map<string, Chat>(
   chatSeeds.map((seed) => [
     seed.id,
     {
       id: seed.id,
+      organizationId: defaultOrganizationId,
       participants: seed.participants.map((participant) => ({ ...participant })),
       createdAt: seed.createdAt,
       updatedAt: seed.updatedAt,
@@ -85,10 +87,14 @@ function parsePageToken(value: unknown): number | null {
   return Math.max(0, Math.trunc(parsed));
 }
 
-function buildChatResponse(chat: Chat): Chat {
+type ChatWire = Omit<Chat, 'organizationId'> & { organization_id: string };
+
+function buildChatResponse(chat: Chat): ChatWire {
+  const { organizationId, participants, ...rest } = chat;
   return {
-    ...chat,
-    participants: chat.participants.map((participant) => ({ ...participant })),
+    ...rest,
+    organization_id: organizationId,
+    participants: participants.map((participant) => ({ ...participant })),
   };
 }
 
@@ -151,10 +157,25 @@ export function mockApiPlugin(): Plugin {
           const rpc = pathname.slice(chatPrefix.length);
 
           if (rpc === 'GetChats') {
-            const request = payload as { pageSize?: number; pageToken?: string };
+            const request = payload as {
+              pageSize?: number;
+              pageToken?: string;
+              organizationId?: string;
+              organization_id?: string;
+            };
+            const organizationId =
+              typeof request.organization_id === 'string' && request.organization_id.trim().length > 0
+                ? request.organization_id.trim()
+                : typeof request.organizationId === 'string' && request.organizationId.trim().length > 0
+                  ? request.organizationId.trim()
+                  : '';
+            if (!organizationId) {
+              return sendJson(res, 400, { code: 'invalid_argument', message: 'organizationId is required' });
+            }
             const pageSize = clampPageSize(request.pageSize, 20);
             const offset = parsePageToken(request.pageToken) ?? 0;
             const chats = Array.from(chatStore.values())
+              .filter((chat) => chat.organizationId === organizationId)
               .map(buildChatResponse)
               .sort((a, b) => {
                 const aTime = Date.parse(a.updatedAt);
@@ -165,7 +186,7 @@ export function mockApiPlugin(): Plugin {
               });
             const pageChats = chats.slice(offset, offset + pageSize);
             const nextOffset = offset + pageSize;
-            const response: { chats: Chat[]; nextPageToken?: string } = {
+            const response: { chats: ChatWire[]; nextPageToken?: string } = {
               chats: pageChats,
             };
             if (nextOffset < chats.length) response.nextPageToken = String(nextOffset);
@@ -225,7 +246,20 @@ export function mockApiPlugin(): Plugin {
           }
 
           if (rpc === 'CreateChat') {
-            const request = payload as { participantIds?: string[] };
+            const request = payload as {
+              participantIds?: string[];
+              organizationId?: string;
+              organization_id?: string;
+            };
+            const organizationId =
+              typeof request.organization_id === 'string' && request.organization_id.trim().length > 0
+                ? request.organization_id.trim()
+                : typeof request.organizationId === 'string' && request.organizationId.trim().length > 0
+                  ? request.organizationId.trim()
+                  : '';
+            if (!organizationId) {
+              return sendJson(res, 400, { code: 'invalid_argument', message: 'organizationId is required' });
+            }
             const participantIds = Array.isArray(request.participantIds)
               ? request.participantIds.filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
               : [];
@@ -237,6 +271,7 @@ export function mockApiPlugin(): Plugin {
             }));
             const chat: Chat = {
               id: randomUUID(),
+              organizationId,
               participants,
               createdAt,
               updatedAt: createdAt,

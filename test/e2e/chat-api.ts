@@ -30,9 +30,6 @@ type ListAgentsResponseWire = {
   nextPageToken?: string;
 };
 
-const CHAT_ORG_STORAGE_KEY = 'ui.organization.chat-map';
-const CHAT_ORG_STORAGE_VERSION = 1;
-
 function resolveBaseUrl(): string {
   const baseUrl = process.env.E2E_BASE_URL;
   if (!baseUrl) {
@@ -95,34 +92,6 @@ async function postConnect<T>(
   return (await response.json()) as T;
 }
 
-async function storeChatOrganization(page: Page, chatId: string, organizationId: string): Promise<void> {
-  await page.evaluate(
-    ({ key, version, chatId: chatIdValue, organizationId: organizationIdValue }) => {
-      const storage = window.localStorage;
-      const raw = storage.getItem(key);
-      let map: Record<string, string> = {};
-      if (raw) {
-        try {
-          const parsed = JSON.parse(raw) as { version?: number; map?: Record<string, string> } | null;
-          if (parsed && parsed.version === version && parsed.map && typeof parsed.map === 'object') {
-            map = { ...parsed.map };
-          }
-        } catch (_error) {
-          map = {};
-        }
-      }
-      map[chatIdValue] = organizationIdValue;
-      storage.setItem(key, JSON.stringify({ version, map }));
-    },
-    {
-      key: CHAT_ORG_STORAGE_KEY,
-      version: CHAT_ORG_STORAGE_VERSION,
-      chatId,
-      organizationId,
-    },
-  );
-}
-
 export async function resolveIdentityId(page: Page): Promise<string> {
   const session = await readOidcSession(page);
   const token = session?.accessToken ?? null;
@@ -158,9 +127,7 @@ export async function createChat(
   if (!response.chat?.id) {
     throw new Error('CreateChat response missing chat id.');
   }
-  const chatId = response.chat.id;
-  await storeChatOrganization(page, chatId, organizationId);
-  return chatId;
+  return response.chat.id;
 }
 
 export async function createOrganization(page: Page, name: string): Promise<string> {
