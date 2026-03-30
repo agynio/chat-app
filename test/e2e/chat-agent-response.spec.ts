@@ -13,7 +13,7 @@ import {
   waitForAgentReply,
 } from './chat-api';
 
-const TESTLLM_ENDPOINT = 'https://testllm.dev/v1/org/agynio/suite/codex';
+const TESTLLM_ENDPOINT = 'https://testllm.dev/v1/org/agynio/suite/codex/responses';
 const INIT_IMAGE = 'ghcr.io/agynio/agent-init-codex:0.5.0';
 
 async function setupTestAgent(page: Page) {
@@ -51,9 +51,9 @@ async function setupTestAgent(page: Page) {
 test('agent responds via TestLLM', async ({ page }) => {
   test.setTimeout(180000);
 
-  const { agentId } = await setupTestAgent(page);
+  const { organizationId, agentId } = await setupTestAgent(page);
   const userId = await resolveIdentityId(page);
-  const chatId = await createChat(page, agentId);
+  const chatId = await createChat(page, organizationId, agentId);
 
   await sendChatMessage(page, chatId, 'hello');
   const initialMessages = await getMessages(page, chatId);

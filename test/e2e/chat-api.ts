@@ -167,7 +167,6 @@ export async function resolveIdentityId(page: Page): Promise<string> {
   return payload.identity_id;
 }
 
-<<<<<<< HEAD
 export async function createChat(
   page: Page,
   organizationId: string,

@@ -39,38 +39,6 @@ functions:
     kubectl set image deployment/chat-app chat-app="$IMAGE" -n ${APP_NAMESPACE}
     kubectl rollout status deployment/chat-app -n ${APP_NAMESPACE} --timeout=120s
     echo "PR image deployed successfully"
-  patch_orchestrator: |-
-    echo "--- Patching orchestrator for e2e ---"
-    CLUSTER_ADMIN_TOKEN=$(kubectl get deployment gateway-gateway -n platform -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="CLUSTER_ADMIN_TOKEN")].value}')
-    if [ -z "$CLUSTER_ADMIN_TOKEN" ]; then
-      echo "ERROR: CLUSTER_ADMIN_TOKEN not found in gateway deployment spec"
-    else
-      echo "CLUSTER_ADMIN_TOKEN extracted (length=${#CLUSTER_ADMIN_TOKEN})"
-    fi
-    # Find index of AGENT_LLM_BASE_URL to replace it
-    LLM_INDEX=$(kubectl get deployment agents-orchestrator -n platform -o json | \
-      jq '.spec.template.spec.containers[0].env | to_entries[] | select(.value.name == "AGENT_LLM_BASE_URL") | .key')
-    echo "AGENT_LLM_BASE_URL found at env index: $LLM_INDEX"
-    # Build a single JSON patch that does everything atomically
-    PATCH="["
-    if [ -n "$LLM_INDEX" ]; then
-      PATCH="${PATCH}{\"op\":\"replace\",\"path\":\"/spec/template/spec/containers/0/env/${LLM_INDEX}/value\",\"value\":\"https://testllm.dev/v1/org/agynio/suite/codex\"},"
-    fi
-    # Append new env vars at the end of the env array
-    PATCH="${PATCH}{\"op\":\"add\",\"path\":\"/spec/template/spec/containers/0/env/-\",\"value\":{\"name\":\"AGENT_MODEL_OVERRIDE\",\"value\":\"simple-hello\"}},"
-    PATCH="${PATCH}{\"op\":\"add\",\"path\":\"/spec/template/spec/containers/0/env/-\",\"value\":{\"name\":\"AGENT_GATEWAY_ADDRESS\",\"value\":\"gateway-gateway.platform.svc.cluster.local:8080\"}},"
-    PATCH="${PATCH}{\"op\":\"add\",\"path\":\"/spec/template/spec/containers/0/env/-\",\"value\":{\"name\":\"AGENT_AUTH_TOKEN\",\"value\":\"${CLUSTER_ADMIN_TOKEN}\"}}"
-    PATCH="${PATCH}]"
-    echo "Applying patch..."
-    kubectl patch deployment agents-orchestrator -n platform --type=json -p "$PATCH"
-    kubectl rollout status deployment/agents-orchestrator -n platform --timeout=120s
-    echo "--- Verifying orchestrator env (full list) ---"
-    kubectl get deployment agents-orchestrator -n platform -o jsonpath='{range .spec.template.spec.containers[0].env[*]}{.name}={.value}{"\n"}{end}'
-    echo "--- Orchestrator pod status ---"
-    kubectl get pods -n platform -l app.kubernetes.io/name=agents-orchestrator -o wide
-    echo "--- Orchestrator logs (last 30 lines) ---"
-    kubectl logs deploy/agents-orchestrator -n platform --tail=30 || true
-    echo "--- Patching complete ---"
   dump_agent_logs: |-
     echo "=== ORCHESTRATOR LOGS ==="
     kubectl logs deploy/agents-orchestrator -n platform --tail=100 || true
@@ -133,7 +101,6 @@ pipelines:
     run: |-
       disable_argocd_sync
       deploy_pr_image
-      patch_orchestrator
       create_deployments e2e-runner
       start_dev e2e-runner &
       sleep 5

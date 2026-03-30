@@ -11,7 +11,6 @@ async function expectChatListVisible(page: Page) {
   await expect(list.or(emptyState)).toBeVisible({ timeout: 15000 });
 }
 
-<<<<<<< HEAD
 test('renders chat list on load', async ({ userAPage }) => {
   const organizationId = await createOrganization(userAPage, `e2e-org-list-${Date.now()}`);
   await setSelectedOrganization(userAPage, organizationId);
@@ -26,7 +25,6 @@ test('renders chat list on load', async ({ userAPage }) => {
   await argosScreenshot(userAPage, 'chats-list-loaded');
 });
 
-<<<<<<< HEAD
 test('participant picker shows available options', async ({ userAPage }) => {
   const now = Date.now();
   const organizationId = await createOrganization(userAPage, `e2e-org-picker-${now}`);
@@ -39,7 +37,7 @@ test('participant picker shows available options', async ({ userAPage }) => {
     model: crypto.randomUUID(),
     description: 'E2E participant picker agent',
     configuration: '{}',
-    image: 'alpine:3.21',
+    image: 'agent-image:latest',
   });
   const chatsLoaded = userAPage.waitForResponse(
     (resp) => resp.url().includes('GetChats') && resp.status() === 200,
@@ -47,8 +45,6 @@ test('participant picker shows available options', async ({ userAPage }) => {
   );
   await userAPage.goto('/chats');
   await chatsLoaded;
-
-  await userAPage.goto('/chats');
 
   await expectChatListVisible(userAPage);
 
@@ -71,7 +67,6 @@ test('redirects root to /chats', async ({ userAPage }) => {
   await expect(userAPage).toHaveURL(/\/chats$/);
 });
 
-<<<<<<< HEAD
 test('navigates to chat detail', async ({ userAPage, userBPage }) => {
   const now = Date.now();
   const organizationId = await createOrganization(userAPage, `e2e-org-detail-${now}`);
@@ -93,7 +88,6 @@ test('navigates to chat detail', async ({ userAPage, userBPage }) => {
   await expect(firstChat).toBeVisible({ timeout: 15000 });
   await firstChat.click();
 
-<<<<<<< HEAD
   await expect(userAPage).toHaveURL(new RegExp(`/chats/${encodeURIComponent(chatId)}`));
   await expect(userAPage.getByTestId('chat')).toBeVisible({ timeout: 15000 });
   await argosScreenshot(userAPage, 'chats-list-detail');
