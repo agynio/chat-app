@@ -1,3 +1,5 @@
+import { resolveStorage } from '@/utils/localStorage';
+
 const STORAGE_PREFIX = 'ui.draft.chats';
 const STORAGE_VERSION = 1;
 export const CHAT_MESSAGE_MAX_LENGTH = 100000;
@@ -8,15 +10,6 @@ type DraftRecord = {
   updatedAt: string;
   userEmail: string | null;
 };
-
-function resolveStorage(): Storage | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    return window.localStorage;
-  } catch (_error) {
-    return null;
-  }
-}
 
 export function makeDraftKey(chatId: string, userEmail?: string | null): string {
   const normalizedId = chatId ?? '';

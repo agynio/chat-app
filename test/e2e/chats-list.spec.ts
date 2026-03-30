@@ -1,23 +1,38 @@
 import { argosScreenshot } from '@argos-ci/playwright';
 import type { Page } from '@playwright/test';
 import { test, expect } from './fixtures';
-import { createChat } from './chat-api';
+import { createChat, createOrganization } from './chat-api';
+import { setSelectedOrganization } from './organization-helpers';
 
 async function expectChatListVisible(page: Page) {
   const list = page.getByTestId('chat-list');
   const emptyState = page.getByText(/No chats (available yet|match the current filter)/);
-  await expect(list.or(emptyState)).toBeVisible({ timeout: 5000 });
+  await expect(list.or(emptyState)).toBeVisible({ timeout: 15000 });
 }
 
 test('renders chat list on load', async ({ page }) => {
+  const organizationId = await createOrganization(page, `e2e-org-list-${Date.now()}`);
+  await setSelectedOrganization(page, organizationId);
+  const chatsLoaded = page.waitForResponse(
+    (resp) => resp.url().includes('GetChats') && resp.status() === 200,
+    { timeout: 15000 },
+  );
   await page.goto('/chats');
+  await chatsLoaded;
 
   await expectChatListVisible(page);
   await argosScreenshot(page, 'chats-list-loaded');
 });
 
 test('participant picker shows available options', async ({ page }) => {
+  const organizationId = await createOrganization(page, `e2e-org-picker-${Date.now()}`);
+  await setSelectedOrganization(page, organizationId);
+  const chatsLoaded = page.waitForResponse(
+    (resp) => resp.url().includes('GetChats') && resp.status() === 200,
+    { timeout: 15000 },
+  );
   await page.goto('/chats');
+  await chatsLoaded;
 
   await expectChatListVisible(page);
 
@@ -41,18 +56,25 @@ test('redirects root to /chats', async ({ page }) => {
 });
 
 test('navigates to chat detail', async ({ page }) => {
-  const chatId = await createChat(page);
+  const organizationId = await createOrganization(page, `e2e-org-detail-${Date.now()}`);
+  const chatId = await createChat(page, organizationId);
+  await setSelectedOrganization(page, organizationId);
 
+  const chatsLoaded = page.waitForResponse(
+    (resp) => resp.url().includes('GetChats') && resp.status() === 200,
+    { timeout: 15000 },
+  );
   await page.goto('/chats');
+  await chatsLoaded;
 
   const chatList = page.getByTestId('chat-list');
-  await expect(chatList).toBeVisible();
+  await expect(chatList).toBeVisible({ timeout: 15000 });
 
   const firstChat = chatList.locator('.cursor-pointer').first();
-  await expect(firstChat).toBeVisible();
+  await expect(firstChat).toBeVisible({ timeout: 15000 });
   await firstChat.click();
 
-  await expect(page).toHaveURL(new RegExp(`/chats/${chatId}`));
+  await expect(page).toHaveURL(new RegExp(`/chats/${encodeURIComponent(chatId)}`));
   await expect(page.getByTestId('chat')).toBeVisible({ timeout: 15000 });
   await argosScreenshot(page, 'chats-list-detail');
 });

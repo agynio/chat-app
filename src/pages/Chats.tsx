@@ -9,10 +9,10 @@ import { formatDuration } from '@/components/agents/runTimelineFormatting';
 import ChatsScreen from '@/components/screens/ChatsScreen';
 import { notifyError } from '@/lib/notify';
 import { useUser } from '@/user/user.runtime';
+import { useOrganization } from '@/organization/organization.runtime';
 import { useFileAttachments } from '@/hooks/useFileAttachments';
 import { useAgentsList } from '@/api/hooks/agents';
 import { useBatchGetUsers } from '@/api/hooks/users';
-import { useAccessibleOrganizations } from '@/api/hooks/organizations';
 import {
   useChats,
   useChatMessages,
@@ -90,6 +90,23 @@ const resolveParticipantLabel = (participantId: string, lookup: Map<string, Draf
   return lookup.get(participantId)?.name ?? UNKNOWN_PARTICIPANT_LABEL;
 };
 
+function NoOrganizationsScreen() {
+  return (
+    <div
+      className="flex h-full min-h-0 flex-1 items-center justify-center bg-[var(--agyn-bg-light)] p-6 text-center"
+      data-testid="no-organizations-screen"
+    >
+      <div className="max-w-md space-y-3">
+        <h2 className="text-lg font-semibold text-[var(--agyn-dark)]">Join or create an organization</h2>
+        <p className="text-sm text-[var(--agyn-gray)]">
+          You do not have access to any organizations yet. Ask for an invite from a teammate or create a new
+          organization to start chatting.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 type IdentifiedUser = User & { identityId: string };
 
 function ChatsContent({ user }: { user: IdentifiedUser }) {
@@ -98,6 +115,8 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
   const queryClient = useQueryClient();
   const userEmail = user.email;
   const currentUserId = user.identityId;
+  const { organizations, selectedOrganizationId, isLoading: isOrganizationsLoading } = useOrganization();
+  const organizationId = selectedOrganizationId ?? undefined;
 
   const [filterMode, setFilterMode] = useState<'open' | 'closed' | 'all'>('open');
   const [selectedChatIdState, setSelectedChatIdState] = useState<string | null>(params.chatId ?? null);
@@ -107,12 +126,22 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
   const [deletedMessageIds, setDeletedMessageIds] = useState<ReadonlySet<string>>(() => new Set());
 
   const selectedChatId = params.chatId ?? selectedChatIdState;
+  const previousOrganizationIdRef = useRef<string | null>(selectedOrganizationId ?? null);
 
   useEffect(() => {
     if (params.chatId) {
       setSelectedChatIdState(params.chatId);
     }
   }, [params.chatId]);
+
+  useEffect(() => {
+    const previousOrganizationId = previousOrganizationIdRef.current;
+    if (previousOrganizationId && previousOrganizationId !== selectedOrganizationId) {
+      setSelectedChatIdState(null);
+      navigate('/chats');
+    }
+    previousOrganizationIdRef.current = selectedOrganizationId ?? null;
+  }, [selectedOrganizationId, navigate]);
 
   const {
     attachments,
@@ -124,10 +153,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     clearAll: clearAttachments,
   } = useFileAttachments();
 
-  const orgsQuery = useAccessibleOrganizations();
-  const organizationId = orgsQuery.data?.organizations?.[0]?.id;
-
-  const chatsQuery = useChats();
+  const chatsQuery = useChats(organizationId);
   const agentsQuery = useAgentsList(organizationId);
 
   const canFallbackToChat = useCallback(
@@ -179,10 +205,11 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
   const agents = useMemo(() => agentsQuery.data?.agents ?? [], [agentsQuery.data]);
   const agentIdSet = useMemo(() => new Set(agents.map((agent) => agent.meta.id)), [agents]);
 
-  const chatSummaries = useMemo(
-    () => chatsQuery.data?.pages.flatMap((page) => page.chats) ?? [],
-    [chatsQuery.data],
-  );
+  const chatSummaries = useMemo(() => {
+    const items = chatsQuery.data?.pages.flatMap((page) => page.chats) ?? [];
+    if (!organizationId) return [];
+    return items.filter((chat) => !chat.organizationId || chat.organizationId === organizationId);
+  }, [chatsQuery.data, organizationId]);
 
   const userParticipantIds = useMemo(() => {
     const ids = new Set<string>();
@@ -304,12 +331,23 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     return [...fromDrafts, ...fromData];
   }, [drafts, mapDraftToChat, chatSummaries, resolveChatTitle]);
 
-  const selectedChat = useMemo(
-    () => chatsForList.find((chat) => chat.id === selectedChatId),
-    [chatsForList, selectedChatId],
-  );
+  const selectedChat = useMemo(() => {
+    const found = chatsForList.find((chat) => chat.id === selectedChatId);
+    if (found || !selectedChatId || chatsQuery.isLoading) return found;
+    // Allow direct URL access even if the chat isn't in the current org list.
+    return {
+      id: selectedChatId,
+      title: 'Chat',
+      subtitle: undefined,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      status: 'pending',
+      isOpen: true,
+      unreadCount: 0,
+    } satisfies ChatListItem;
+  }, [chatsForList, selectedChatId, chatsQuery.isLoading]);
 
-  const isChatsEmpty = !chatsQuery.isLoading && chatsForList.length === 0;
+  const isChatsEmpty = !chatsQuery.isLoading && chatsForList.length === 0 && !selectedChatId;
 
   const chatMessagesQuery = useChatMessages(
     effectiveDraftMode || !selectedChatId ? null : selectedChatId,
@@ -347,7 +385,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
   );
 
   const sendMessage = useSendMessage();
-  const createChat = useCreateChat();
+  const createChat = useCreateChat(organizationId);
 
   const runItems = useMemo(() => runMetaQuery.data?.items ?? EMPTY_RUN_ITEMS, [runMetaQuery.data]);
   const runItemsSorted = useMemo(() => [...runItems].sort(compareRunMeta), [runItems]);
@@ -727,6 +765,18 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
 
   const listErrorNode = listErrorMessage ? <span>{listErrorMessage}</span> : undefined;
   const detailErrorNode = detailErrorMessage ? <div className="text-sm">{detailErrorMessage}</div> : undefined;
+
+  if (isOrganizationsLoading) {
+    return (
+      <div className="flex h-full items-center justify-center text-sm text-[var(--agyn-gray)]">
+        Loading organizations…
+      </div>
+    );
+  }
+
+  if (organizations.length === 0) {
+    return <NoOrganizationsScreen />;
+  }
 
   return (
     <div className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden">

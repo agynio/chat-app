@@ -5,6 +5,7 @@ export type ChatParticipant = {
 
 export type Chat = {
   id: string;
+  organizationId: string;
   participants: ChatParticipant[];
   createdAt: string;
   updatedAt: string;
@@ -19,10 +20,10 @@ export type ChatMessage = {
   createdAt: string;
 };
 
-export type CreateChatRequest = { participantIds: string[] };
+export type CreateChatRequest = { organizationId: string; participantIds: string[] };
 export type CreateChatResponse = { chat: Chat };
 
-export type GetChatsRequest = { pageSize?: number; pageToken?: string };
+export type GetChatsRequest = { organizationId: string; pageSize?: number; pageToken?: string };
 export type GetChatsResponse = { chats: Chat[]; nextPageToken?: string };
 
 export type GetMessagesRequest = { chatId: string; pageSize?: number; pageToken?: string };

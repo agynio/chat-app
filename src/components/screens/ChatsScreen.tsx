@@ -13,7 +13,6 @@ import {
   CheckCircle,
   ChevronDown,
   Trash2,
-  User,
   LogOut,
   X,
 } from 'lucide-react';
@@ -49,6 +48,7 @@ import { useChatSoundNotifications } from '@/hooks/useChatSoundNotifications';
 import type { Attachment } from '@/hooks/useFileAttachments';
 import type { DraftParticipant } from '@/types/chats';
 import { useUser } from '@/user/user.runtime';
+import { useOrganization } from '@/organization/organization.runtime';
 import { oidcConfig } from '@/config';
 import { LogoutButton } from '@/auth/LogoutButton';
 
@@ -91,9 +91,12 @@ function AppLogo() {
 
 function UserMenu() {
   const { user } = useUser();
+  const { organizations, selectedOrganizationId, selectOrganization } = useOrganization();
   const userInitials = useMemo(() => getInitials(user?.name ?? user?.email), [user?.name, user?.email]);
-  const displayName = user?.name?.trim() || 'Signed in';
-  const displayEmail = user?.email?.trim() || 'Not connected';
+  const currentOrganization = useMemo(
+    () => organizations.find((org) => org.id === selectedOrganizationId) ?? organizations[0] ?? null,
+    [organizations, selectedOrganizationId],
+  );
 
   return (
     <DropdownMenu>
@@ -101,6 +104,7 @@ function UserMenu() {
         <button
           type="button"
           className="flex items-center gap-2 rounded-full px-2 py-1 transition-colors hover:bg-[var(--agyn-bg-light)]"
+          data-testid="user-menu-trigger"
         >
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--agyn-blue)] text-xs font-medium text-white">
             {userInitials}
@@ -112,16 +116,31 @@ function UserMenu() {
         className="w-[220px] rounded-[10px] border border-[var(--agyn-border-subtle)] bg-white p-2 shadow-lg"
         align="end"
       >
-        <DropdownMenuLabel className="text-xs text-[var(--agyn-gray)]">Signed in as</DropdownMenuLabel>
-        <div className="px-2 py-1">
-          <p className="text-sm text-[var(--agyn-dark)]">{displayName}</p>
-          <p className="text-xs text-[var(--agyn-gray)]">{displayEmail}</p>
+        <DropdownMenuLabel className="text-xs text-[var(--agyn-gray)]">Organizations</DropdownMenuLabel>
+        <div className="px-2 pb-2">
+          <p className="text-sm text-[var(--agyn-dark)]" data-testid="current-org-name">
+            {currentOrganization?.name ?? 'No organization'}
+          </p>
         </div>
+        <DropdownMenuRadioGroup
+          value={selectedOrganizationId ?? ''}
+          onValueChange={(value) => selectOrganization(value)}
+          data-testid="org-switcher"
+        >
+          {organizations.map((organization) => (
+            <DropdownMenuRadioItem
+              key={organization.id}
+              value={organization.id}
+              className="data-[state=checked]:font-medium"
+              data-testid={`org-item-${organization.id}`}
+            >
+              <span className="truncate" title={organization.name}>
+                {organization.name}
+              </span>
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem disabled>
-          <User className="h-4 w-4 text-[var(--agyn-gray)]" />
-          <span>Account</span>
-        </DropdownMenuItem>
         {oidcConfig.enabled ? (
           <DropdownMenuItem asChild>
             <LogoutButton className="w-full">
