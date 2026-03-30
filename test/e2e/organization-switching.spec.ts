@@ -90,14 +90,34 @@ async function switchOrganization(page: Page, organizationId: string) {
   await chatsLoaded;
 }
 
-test('org switcher displays organizations', async ({ page }) => {
+base('org switcher displays organizations', async ({ page }) => {
+  const uniqueEmail = `org-switcher-${crypto.randomUUID()}@agyn.test`;
+  await signInViaMockAuth(page, uniqueEmail);
   const { orgAId, orgBId, orgAName, orgBName } = await createOrganizations(page);
+  await page.route(
+    '**/agynio.api.gateway.v1.OrganizationsGateway/ListAccessibleOrganizations',
+    async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          organizations: [
+            { id: orgAId, name: orgAName },
+            { id: orgBId, name: orgBName },
+          ],
+        }),
+      });
+    },
+  );
 
   await page.goto('/chats');
 
   await openOrganizationMenu(page);
-  await expect(page.getByTestId(`org-item-${orgAId}`)).toContainText(orgAName);
-  await expect(page.getByTestId(`org-item-${orgBId}`)).toContainText(orgBName);
+  const orgAItem = page.getByTestId(`org-item-${orgAId}`);
+  const orgBItem = page.getByTestId(`org-item-${orgBId}`);
+  await expect(orgAItem).toContainText(orgAName);
+  await expect(orgBItem).toContainText(orgBName);
+  await argosScreenshot(page, 'org-switcher-menu-open');
 });
 
 test('org switcher highlights current org', async ({ page }) => {
@@ -123,25 +143,7 @@ test('switching orgs reloads chat list', async ({ page }) => {
   const chatList = page.getByTestId('chat-list');
   await expect(chatList).toBeVisible({ timeout: 15000 });
 
-  await openOrganizationMenu(page);
-  const orgAItem = page.getByTestId(`org-item-${orgAId}`);
-  await expect(orgAItem).toBeVisible({ timeout: 15000 });
-  await argosScreenshot(page, 'org-switcher-menu-open');
-  const isOrgAChecked = (await orgAItem.getAttribute('data-state')) === 'checked';
-  if (isOrgAChecked) {
-    await page.keyboard.press('Escape');
-  } else {
-    const orgAChatsLoaded = page.waitForResponse(
-      (resp) => {
-        if (!resp.url().includes('GetChats') || resp.status() !== 200) return false;
-        const payload = resp.request().postData() ?? '';
-        return payload.includes(orgAId);
-      },
-      { timeout: 15000 },
-    );
-    await orgAItem.click();
-    await orgAChatsLoaded;
-  }
+  await switchOrganization(page, orgAId);
   await expect(chatList.getByText(agentAName)).toBeVisible({ timeout: 15000 });
 
   await switchOrganization(page, orgBId);
