@@ -1,4 +1,5 @@
 import * as crypto from 'node:crypto';
+import { argosScreenshot } from '@argos-ci/playwright';
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { test as base, expect as baseExpect } from '@playwright/test';
@@ -125,12 +126,7 @@ test('switching orgs reloads chat list', async ({ page }) => {
   await openOrganizationMenu(page);
   const orgAItem = page.getByTestId(`org-item-${orgAId}`);
   await expect(orgAItem).toBeVisible({ timeout: 15000 });
-  const screenshot = await page.screenshot();
-  await test.info().attach('org-switcher-menu-open', {
-    body: screenshot,
-    contentType: 'image/png',
-  });
-  await page.screenshot({ path: 'test-results/org-switcher-menu-open.png' });
+  await argosScreenshot(page, 'org-switcher-menu-open');
   const isOrgAChecked = (await orgAItem.getAttribute('data-state')) === 'checked';
   if (isOrgAChecked) {
     await page.keyboard.press('Escape');
