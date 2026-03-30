@@ -94,21 +94,6 @@ base('org switcher displays organizations', async ({ page }) => {
   const uniqueEmail = `org-switcher-${crypto.randomUUID()}@agyn.test`;
   await signInViaMockAuth(page, uniqueEmail);
   const { orgAId, orgBId, orgAName, orgBName } = await createOrganizations(page);
-  await page.route(
-    '**/agynio.api.gateway.v1.OrganizationsGateway/ListAccessibleOrganizations',
-    async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          organizations: [
-            { id: orgAId, name: orgAName },
-            { id: orgBId, name: orgBName },
-          ],
-        }),
-      });
-    },
-  );
 
   await page.goto('/chats');
 
