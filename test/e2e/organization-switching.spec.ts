@@ -125,7 +125,7 @@ test('switching orgs reloads chat list', async ({ page }) => {
   await openOrganizationMenu(page);
   const orgAItem = page.getByTestId(`org-item-${orgAId}`);
   await expect(orgAItem).toBeVisible({ timeout: 15000 });
-  await page.screenshot({ path: 'test-results/org-switcher-menu-open.png' });
+  await page.screenshot({ path: 'playwright-report/org-switcher-menu-open.png' });
   const isOrgAChecked = (await orgAItem.getAttribute('data-state')) === 'checked';
   if (isOrgAChecked) {
     await page.keyboard.press('Escape');
