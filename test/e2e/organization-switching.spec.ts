@@ -122,7 +122,25 @@ test('switching orgs reloads chat list', async ({ page }) => {
   const chatList = page.getByTestId('chat-list');
   await expect(chatList).toBeVisible({ timeout: 15000 });
 
-  await switchOrganization(page, orgAId);
+  await openOrganizationMenu(page);
+  const orgAItem = page.getByTestId(`org-item-${orgAId}`);
+  await expect(orgAItem).toBeVisible({ timeout: 15000 });
+  await page.screenshot({ path: 'test-results/org-switcher-menu-open.png' });
+  const isOrgAChecked = (await orgAItem.getAttribute('data-state')) === 'checked';
+  if (isOrgAChecked) {
+    await page.keyboard.press('Escape');
+  } else {
+    const orgAChatsLoaded = page.waitForResponse(
+      (resp) => {
+        if (!resp.url().includes('GetChats') || resp.status() !== 200) return false;
+        const payload = resp.request().postData() ?? '';
+        return payload.includes(orgAId);
+      },
+      { timeout: 15000 },
+    );
+    await orgAItem.click();
+    await orgAChatsLoaded;
+  }
   await expect(chatList.getByText(agentAName)).toBeVisible({ timeout: 15000 });
 
   await switchOrganization(page, orgBId);
