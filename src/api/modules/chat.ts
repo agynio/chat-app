@@ -22,8 +22,8 @@ function normalizeMessage(message: ChatMessage): ChatMessage {
 }
 
 type ChatWire = Omit<Chat, 'organizationId'> & { organization_id?: string; organizationId?: string };
-type CreateChatRequestWire = CreateChatRequest & { organization_id: string };
-type GetChatsRequestWire = GetChatsRequest & { organization_id: string };
+type CreateChatRequestWire = Omit<CreateChatRequest, 'organizationId'> & { organization_id: string };
+type GetChatsRequestWire = Omit<GetChatsRequest, 'organizationId'> & { organization_id: string };
 
 function normalizeChat(chat: ChatWire): Chat {
   const { organization_id: organizationIdWire, organizationId, participants, ...rest } = chat;
@@ -35,11 +35,13 @@ function normalizeChat(chat: ChatWire): Chat {
 }
 
 function serializeCreateChatRequest(req: CreateChatRequest): CreateChatRequestWire {
-  return { ...req, organization_id: req.organizationId };
+  const { organizationId, ...rest } = req;
+  return { ...rest, organization_id: organizationId };
 }
 
 function serializeGetChatsRequest(req: GetChatsRequest): GetChatsRequestWire {
-  return { ...req, organization_id: req.organizationId };
+  const { organizationId, ...rest } = req;
+  return { ...rest, organization_id: organizationId };
 }
 
 export const chatApi = {
