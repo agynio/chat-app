@@ -3,7 +3,7 @@ import { argosScreenshot } from '@argos-ci/playwright';
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { test as base, expect as baseExpect } from '@playwright/test';
-import { createAgent, createChat, createOrganization } from './chat-api';
+import { createAgent, createChat, createOrganization, listAccessibleOrganizations } from './chat-api';
 import { signInViaMockAuth } from './sign-in-helper';
 
 type OrgSetup = {
@@ -37,12 +37,26 @@ function buildAgentOptions(organizationId: string, name: string) {
   };
 }
 
+async function waitForOrganizations(page: Page, organizationIds: string[]) {
+  await baseExpect
+    .poll(
+      async () => {
+        const organizations = await listAccessibleOrganizations(page);
+        const ids = new Set(organizations.map((org) => org.id));
+        return organizationIds.every((id) => ids.has(id));
+      },
+      { timeout: 20000 },
+    )
+    .toBe(true);
+}
+
 async function createOrganizations(page: Page): Promise<OrgSetup> {
   const now = Date.now();
   const orgAName = `e2e-org-switch-a-${now}`;
   const orgBName = `e2e-org-switch-b-${now}`;
   const orgAId = await createOrganization(page, orgAName);
   const orgBId = await createOrganization(page, orgBName);
+  await waitForOrganizations(page, [orgAId, orgBId]);
   return { orgAId, orgBId, orgAName, orgBName };
 }
 
