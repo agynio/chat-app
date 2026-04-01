@@ -590,6 +590,7 @@ interface ChatsScreenProps {
   isToggleChatStatusPending?: boolean;
   isSendMessagePending?: boolean;
   onOpenContainerTerminal?: (containerId: string) => void;
+  currentUserId: string;
   draftMode?: boolean;
   draftParticipants?: DraftParticipant[];
   draftFetchOptions?: (query: string) => Promise<AutocompleteOption[]>;
@@ -638,6 +639,7 @@ export default function ChatsScreen({
   isToggleChatStatusPending = false,
   isSendMessagePending = false,
   onOpenContainerTerminal,
+  currentUserId,
   draftMode = false,
   draftParticipants = [],
   draftFetchOptions,
@@ -752,7 +754,7 @@ export default function ChatsScreen({
     if (draftMode) {
       const trimmedInputValue = inputValue.trim();
       const trimmedLength = trimmedInputValue.length;
-      const hasParticipants = draftParticipants.length > 0;
+      const hasParticipants = draftParticipants.some((participant) => participant.id !== currentUserId);
       const hasMessage = trimmedLength > 0;
       const draftBaseDisabled = !onSendMessage || isSendMessagePending || !hasParticipants || !hasMessage;
 

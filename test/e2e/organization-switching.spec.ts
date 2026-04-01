@@ -95,7 +95,7 @@ base('org switcher displays organizations', async ({ page }) => {
   await signInViaMockAuth(page, uniqueEmail);
   const { orgAId, orgBId, orgAName, orgBName } = await createOrganizations(page);
 
-  await page.goto('/chats');
+  await signInViaMockAuth(page, uniqueEmail);
 
   await openOrganizationMenu(page);
   const orgAItem = page.getByTestId(`org-item-${orgAId}`);
@@ -108,7 +108,7 @@ base('org switcher displays organizations', async ({ page }) => {
 test('org switcher highlights current org', async ({ page }) => {
   const { orgAId, orgAName } = await createOrganizations(page);
 
-  await page.goto('/chats');
+  await signInViaMockAuth(page);
 
   await switchOrganization(page, orgAId);
   await openOrganizationMenu(page);
@@ -123,7 +123,7 @@ test('switching orgs reloads chat list', async ({ page }) => {
     (resp) => resp.url().includes('GetChats') && resp.status() === 200,
     { timeout: 15000 },
   );
-  await page.goto('/chats');
+  await signInViaMockAuth(page);
   await chatsLoaded;
   const chatList = page.getByTestId('chat-list');
   await expect(chatList).toBeVisible({ timeout: 15000 });
@@ -143,7 +143,7 @@ test('switching orgs clears selected conversation', async ({ page }) => {
     (resp) => resp.url().includes('GetChats') && resp.status() === 200,
     { timeout: 15000 },
   );
-  await page.goto('/chats');
+  await signInViaMockAuth(page);
   await chatsLoaded;
   const chatList = page.getByTestId('chat-list');
   await expect(chatList).toBeVisible({ timeout: 15000 });

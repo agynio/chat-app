@@ -6,25 +6,29 @@ vars:
 
 functions:
   disable_argocd_sync: |-
-    if kubectl get application chat-app -n argocd >/dev/null 2>&1; then
-      echo "Disabling ArgoCD auto-sync for chat-app..."
-      kubectl patch application chat-app -n argocd \
-        --type merge \
-        -p '{"spec":{"syncPolicy":{"automated":null}}}'
-      echo "ArgoCD auto-sync disabled."
-    else
-      echo "WARNING: ArgoCD Application 'chat-app' not found in argocd namespace."
-    fi
+    for app in chat-app; do
+      if kubectl get application "$app" -n argocd >/dev/null 2>&1; then
+        echo "Disabling ArgoCD auto-sync for $app..."
+        kubectl patch application "$app" -n argocd \
+          --type merge \
+          -p '{"spec":{"syncPolicy":{"automated":null}}}'
+        echo "ArgoCD auto-sync disabled for $app."
+      else
+        echo "WARNING: ArgoCD Application '$app' not found in argocd namespace."
+      fi
+    done
   restore_argocd_sync: &restore_argocd_sync |-
-    if kubectl get application chat-app -n argocd >/dev/null 2>&1; then
-      echo "Re-enabling ArgoCD auto-sync for chat-app..."
-      kubectl patch application chat-app -n argocd \
-        --type merge \
-        -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
-      echo "ArgoCD auto-sync restored."
-    else
-      echo "WARNING: ArgoCD Application 'chat-app' not found in argocd namespace."
-    fi
+    for app in chat-app; do
+      if kubectl get application "$app" -n argocd >/dev/null 2>&1; then
+        echo "Re-enabling ArgoCD auto-sync for $app..."
+        kubectl patch application "$app" -n argocd \
+          --type merge \
+          -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
+        echo "ArgoCD auto-sync restored for $app."
+      else
+        echo "WARNING: ArgoCD Application '$app' not found."
+      fi
+    done
   deploy_pr_image: |-
     echo "Deploying PR image to cluster..."
     IMAGE="${PR_IMAGE:-}"
@@ -35,6 +39,19 @@ functions:
     kubectl set image deployment/chat-app chat-app="$IMAGE" -n ${APP_NAMESPACE}
     kubectl rollout status deployment/chat-app -n ${APP_NAMESPACE} --timeout=120s
     echo "PR image deployed successfully"
+  dump_agent_logs: |-
+    echo "=== ORCHESTRATOR LOGS ==="
+    kubectl logs deploy/agents-orchestrator -n platform --tail=100 || true
+    echo "=== AGENT WORKLOAD PODS (agyn-workloads) ==="
+    kubectl get pods -n agyn-workloads -o wide 2>/dev/null || true
+    echo "=== AGENT WORKLOAD LOGS ==="
+    for pod in $(kubectl get pods -n agyn-workloads -o name 2>/dev/null); do
+      echo "--- $pod ---"
+      kubectl logs "$pod" -n agyn-workloads --all-containers --tail=50 2>/dev/null || true
+    done
+    echo "=== K8S-RUNNER LOGS ==="
+    kubectl logs deploy/k8s-runner -n platform --tail=50 || true
+    echo "=== END DIAGNOSTIC LOGS ==="
 
 deployments:
   e2e-runner:
@@ -87,6 +104,7 @@ pipelines:
       create_deployments e2e-runner
       start_dev e2e-runner &
       sleep 5
+      set +e
       exec_container \
         --label-selector "app.kubernetes.io/name=chat-app-e2e" \
         -n ${APP_NAMESPACE} \
@@ -107,10 +125,12 @@ pipelines:
           E2E_BASE_URL=https://chat.agyn.dev ARGOS_TOKEN=${ARGOS_TOKEN} ARGOS_BRANCH=${ARGOS_BRANCH} ARGOS_COMMIT=${ARGOS_COMMIT} CI=true pnpm test:e2e
         '
       EXIT_CODE=$?
+      set -e
+      dump_agent_logs || true
       stop_dev e2e-runner
       purge_deployments e2e-runner
       restore_argocd_sync
-      exit $EXIT_CODE
+      exit ${EXIT_CODE}
 
 hooks:
   - name: restore-argocd-auto-sync

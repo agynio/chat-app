@@ -1,7 +1,8 @@
 import { argosScreenshot } from '@argos-ci/playwright';
+import * as crypto from 'node:crypto';
 import type { Page } from '@playwright/test';
-import { test, expect } from './fixtures';
-import { createChat, createOrganization } from './chat-api';
+import { test, expect } from './multi-user-fixtures';
+import { createAgent, createChat, createOrganization, resolveIdentityId } from './chat-api';
 import { setSelectedOrganization } from './organization-helpers';
 
 async function expectChatListVisible(page: Page) {
@@ -10,71 +11,84 @@ async function expectChatListVisible(page: Page) {
   await expect(list.or(emptyState)).toBeVisible({ timeout: 15000 });
 }
 
-test('renders chat list on load', async ({ page }) => {
-  const organizationId = await createOrganization(page, `e2e-org-list-${Date.now()}`);
-  await setSelectedOrganization(page, organizationId);
-  const chatsLoaded = page.waitForResponse(
+test('renders chat list on load', async ({ userAPage }) => {
+  const organizationId = await createOrganization(userAPage, `e2e-org-list-${Date.now()}`);
+  await setSelectedOrganization(userAPage, organizationId);
+  const chatsLoaded = userAPage.waitForResponse(
     (resp) => resp.url().includes('GetChats') && resp.status() === 200,
     { timeout: 15000 },
   );
-  await page.goto('/chats');
+  await userAPage.goto('/chats');
   await chatsLoaded;
 
-  await expectChatListVisible(page);
-  await argosScreenshot(page, 'chats-list-loaded');
+  await expectChatListVisible(userAPage);
+  await argosScreenshot(userAPage, 'chats-list-loaded');
 });
 
-test('participant picker shows available options', async ({ page }) => {
-  const organizationId = await createOrganization(page, `e2e-org-picker-${Date.now()}`);
-  await setSelectedOrganization(page, organizationId);
-  const chatsLoaded = page.waitForResponse(
+test('participant picker shows available options', async ({ userAPage }) => {
+  const now = Date.now();
+  const organizationId = await createOrganization(userAPage, `e2e-org-picker-${now}`);
+  await setSelectedOrganization(userAPage, organizationId);
+  const agentName = `e2e-agent-picker-${now}`;
+  await createAgent(userAPage, {
+    organizationId,
+    name: agentName,
+    role: 'assistant',
+    model: crypto.randomUUID(),
+    description: 'E2E participant picker agent',
+    configuration: '{}',
+    image: 'agent-image:latest',
+  });
+  const chatsLoaded = userAPage.waitForResponse(
     (resp) => resp.url().includes('GetChats') && resp.status() === 200,
     { timeout: 15000 },
   );
-  await page.goto('/chats');
+  await userAPage.goto('/chats');
   await chatsLoaded;
 
-  await expectChatListVisible(page);
+  await expectChatListVisible(userAPage);
 
-  const newChatBtn = page.getByTitle('New chat');
+  const newChatBtn = userAPage.getByTitle('New chat');
   await expect(newChatBtn).toBeVisible({ timeout: 15000 });
   await newChatBtn.click();
 
-  const autocomplete = page.getByPlaceholder('Search participants...');
+  const autocomplete = userAPage.getByPlaceholder('Search participants...');
   await expect(autocomplete).toBeVisible({ timeout: 15000 });
   await autocomplete.click();
 
-  await page.waitForTimeout(2000);
+  await expect(userAPage.getByRole('option', { name: agentName })).toBeVisible({ timeout: 15000 });
 
-  await argosScreenshot(page, 'participant-picker-dropdown');
+  await argosScreenshot(userAPage, 'participant-picker-dropdown');
 });
 
-test('redirects root to /chats', async ({ page }) => {
-  await page.goto('/');
+test('redirects root to /chats', async ({ userAPage }) => {
+  await userAPage.goto('/');
 
-  await expect(page).toHaveURL(/\/chats$/);
+  await expect(userAPage).toHaveURL(/\/chats$/);
 });
 
-test('navigates to chat detail', async ({ page }) => {
-  const organizationId = await createOrganization(page, `e2e-org-detail-${Date.now()}`);
-  const chatId = await createChat(page, organizationId);
-  await setSelectedOrganization(page, organizationId);
+test('navigates to chat detail', async ({ userAPage, userBPage }) => {
+  const now = Date.now();
+  const organizationId = await createOrganization(userAPage, `e2e-org-detail-${now}`);
+  const userBId = await resolveIdentityId(userBPage);
+  const chatId = await createChat(userAPage, organizationId, userBId);
+  await setSelectedOrganization(userAPage, organizationId);
 
-  const chatsLoaded = page.waitForResponse(
+  const chatsLoaded = userAPage.waitForResponse(
     (resp) => resp.url().includes('GetChats') && resp.status() === 200,
     { timeout: 15000 },
   );
-  await page.goto('/chats');
+  await userAPage.goto('/chats');
   await chatsLoaded;
 
-  const chatList = page.getByTestId('chat-list');
+  const chatList = userAPage.getByTestId('chat-list');
   await expect(chatList).toBeVisible({ timeout: 15000 });
 
   const firstChat = chatList.locator('.cursor-pointer').first();
   await expect(firstChat).toBeVisible({ timeout: 15000 });
   await firstChat.click();
 
-  await expect(page).toHaveURL(new RegExp(`/chats/${encodeURIComponent(chatId)}`));
-  await expect(page.getByTestId('chat')).toBeVisible({ timeout: 15000 });
-  await argosScreenshot(page, 'chats-list-detail');
+  await expect(userAPage).toHaveURL(new RegExp(`/chats/${encodeURIComponent(chatId)}`));
+  await expect(userAPage.getByTestId('chat')).toBeVisible({ timeout: 15000 });
+  await argosScreenshot(userAPage, 'chats-list-detail');
 });
