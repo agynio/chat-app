@@ -20,6 +20,10 @@ const RequireAuth = withAuthenticationRequired(({ children }: { children: ReactN
 function AuthErrorBoundary({ children }: { children: ReactNode }) {
   const auth = useAuth();
   if (auth.error) {
+    const source = (auth.error as Record<string, unknown>).source;
+    if (source === 'renewSilent') {
+      return <>{children}</>;
+    }
     throw new Error(`OIDC authentication failed: ${auth.error.message}`);
   }
   return <>{children}</>;
