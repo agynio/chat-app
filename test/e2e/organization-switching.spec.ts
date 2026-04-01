@@ -25,14 +25,6 @@ const AGENT_DESCRIPTION = 'E2E org switcher agent';
 const AGENT_CONFIGURATION = '{}';
 const AGENT_IMAGE = 'agent-image:latest';
 
-async function waitForChatsReady(page: Page) {
-  const chatList = page.getByTestId('chat-list');
-  const noOrganizationsScreen = page.getByTestId('no-organizations-screen');
-  const emptyChatState = page.getByText(/No chats (available yet|match the current filter)/);
-  const appReady = chatList.or(noOrganizationsScreen).or(emptyChatState);
-  await baseExpect(appReady).toBeVisible({ timeout: 30000 });
-}
-
 function buildAgentOptions(organizationId: string, name: string) {
   return {
     organizationId,
@@ -103,8 +95,7 @@ base('org switcher displays organizations', async ({ page }) => {
   await signInViaMockAuth(page, uniqueEmail);
   const { orgAId, orgBId, orgAName, orgBName } = await createOrganizations(page);
 
-  await page.goto('/chats');
-  await waitForChatsReady(page);
+  await signInViaMockAuth(page, uniqueEmail);
 
   await openOrganizationMenu(page);
   const orgAItem = page.getByTestId(`org-item-${orgAId}`);
