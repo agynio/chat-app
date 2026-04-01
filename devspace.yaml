@@ -6,7 +6,7 @@ vars:
 
 functions:
   disable_argocd_sync: |-
-    for app in chat-app agents-orchestrator; do
+    for app in chat-app; do
       if kubectl get application "$app" -n argocd >/dev/null 2>&1; then
         echo "Disabling ArgoCD auto-sync for $app..."
         kubectl patch application "$app" -n argocd \
@@ -18,7 +18,7 @@ functions:
       fi
     done
   restore_argocd_sync: &restore_argocd_sync |-
-    for app in chat-app agents-orchestrator; do
+    for app in chat-app; do
       if kubectl get application "$app" -n argocd >/dev/null 2>&1; then
         echo "Re-enabling ArgoCD auto-sync for $app..."
         kubectl patch application "$app" -n argocd \
