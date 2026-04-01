@@ -24,7 +24,11 @@ export const chatApi = {
     return connectPost<CreateChatRequest, CreateChatResponse>(CHAT_SERVICE, 'CreateChat', req);
   },
   getChats: async (req: GetChatsRequest): Promise<GetChatsResponse> => {
-    return connectPost<GetChatsRequest, GetChatsResponse>(CHAT_SERVICE, 'GetChats', req);
+    const resp = await connectPost<GetChatsRequest, GetChatsResponse>(CHAT_SERVICE, 'GetChats', req);
+    return {
+      ...resp,
+      chats: resp.chats ?? [],
+    };
   },
   getMessages: async (req: GetMessagesRequest): Promise<GetMessagesResponse> => {
     const resp = await connectPost<GetMessagesRequest, GetMessagesResponse>(CHAT_SERVICE, 'GetMessages', req);
