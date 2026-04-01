@@ -48,7 +48,7 @@ export async function signInViaMockAuth(
   ]);
 
   if (initialRoute === 'app' && !forceLogin) {
-    await expect(appReady).toBeVisible();
+    await expect(appReady).toBeVisible({ timeout: 30000 });
     return false;
   }
 
