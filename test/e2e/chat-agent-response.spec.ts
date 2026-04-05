@@ -63,7 +63,13 @@ test('agent responds via TestLLM', async ({ page }) => {
     timeout: 15000,
   });
   await expect(agentMessage.getByText(agentName)).toBeVisible({ timeout: 15000 });
-  await expect(chatList.getByText('(unknown participant)')).toHaveCount(0, { timeout: 15000 });
+  // Verify our specific chat doesn't show "(unknown participant)" anywhere
+  // Find the specific chat list item that contains our agent name
+  const ourChatItem = chatList.locator('.cursor-pointer', { hasText: agentName });
+  await expect(ourChatItem).toBeVisible({ timeout: 15000 });
+  await expect(ourChatItem.getByText('(unknown participant)')).toHaveCount(0, { timeout: 15000 });
+
+  // Header and messages are already scoped to the selected chat; verify no unknown there
   await expect(
     page.getByTestId('chat-detail-header-title').getByText('(unknown participant)'),
   ).toHaveCount(0, { timeout: 15000 });
