@@ -262,6 +262,11 @@ type CreateAgentOptions = {
   initImage?: string;
 };
 
+type SetupTestAgentOptions = {
+  endpoint: string;
+  initImage?: string;
+};
+
 async function waitForAgent(page: Page, organizationId: string, agentId: string): Promise<void> {
   const timeoutMs = 20000;
   const start = Date.now();
@@ -290,6 +295,42 @@ export async function createAgent(page: Page, opts: CreateAgentOptions): Promise
   const agentId = response.agent.meta.id;
   await waitForAgent(page, opts.organizationId, agentId);
   return agentId;
+}
+
+export async function setupTestAgent(
+  page: Page,
+  opts: SetupTestAgentOptions,
+): Promise<{ organizationId: string; agentId: string; agentName: string }> {
+  const now = Date.now();
+  const organizationId = await createOrganization(page, `e2e-org-llm-${now}`);
+
+  const providerId = await createLLMProvider(page, {
+    endpoint: opts.endpoint,
+    authMethod: 'AUTH_METHOD_BEARER',
+    token: 'unused',
+    organizationId,
+  });
+
+  const modelId = await createModel(page, {
+    name: `e2e-model-${now}`,
+    llmProviderId: providerId,
+    remoteName: 'simple-hello',
+    organizationId,
+  });
+
+  const agentName = `e2e-codex-agent-${now}`;
+  const agentId = await createAgent(page, {
+    organizationId,
+    name: agentName,
+    role: 'You are a helpful assistant.',
+    model: modelId,
+    description: 'E2E test agent using TestLLM simple-hello',
+    configuration: '{}',
+    image: 'alpine:3.21',
+    initImage: opts.initImage,
+  });
+
+  return { organizationId, agentId, agentName };
 }
 
 export async function createAgentEnv(
