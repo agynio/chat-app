@@ -35,12 +35,17 @@ test('agent responds via TestLLM', async ({ page }) => {
     (resp) => resp.url().includes('GetChats') && resp.status() === 200,
     { timeout: 15000 },
   );
+  const agentsLoaded = page.waitForResponse(
+    (resp) => resp.url().includes('ListAgents') && resp.status() === 200,
+    { timeout: 15000 },
+  );
   const messagesLoaded = page.waitForResponse(
     (resp) => resp.url().includes('GetMessages') && resp.status() === 200,
     { timeout: 15000 },
   );
   await page.goto(`/chats/${chatId}`);
   await chatsLoaded;
+  await agentsLoaded;
   await messagesLoaded;
 
   const chatList = page.getByTestId('chat-list');
