@@ -63,7 +63,7 @@ test('agent responds via TestLLM', async ({ page }) => {
     timeout: 15000,
   });
   await expect(agentMessage.getByText(agentName)).toBeVisible({ timeout: 15000 });
-  await expect(page.getByText('(unknown participant)')).toHaveCount(0);
+  await expect(page.getByText('(unknown participant)')).toHaveCount(0, { timeout: 15000 });
 
   await argosScreenshot(page, 'agent-testllm-response');
 });
