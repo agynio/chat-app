@@ -43,6 +43,7 @@ const MESSAGE_LENGTH_LIMIT_NOTIFICATION = `Chat messages cannot exceed ${MESSAGE
 const DRAFT_SUMMARY_LABEL = '(new chat)';
 const DRAFT_PARTICIPANT_LABEL = '(select participants)';
 const UNKNOWN_PARTICIPANT_LABEL = '(unknown participant)';
+const EMPTY_REMINDER_CONTENT = '(no content)';
 const EMPTY_PARTICIPANTS: DraftParticipant[] = [];
 const EMPTY_RUN_ITEMS: RunMeta[] = [];
 const EMPTY_REMINDERS: ChatReminder[] = [];
@@ -81,7 +82,7 @@ const mapReminders = (items: ChatReminder[]): { id: string; title: string; time:
 const mapReminderData = (items: ChatReminder[]): ChatReminderData[] =>
   items.map((reminder) => ({
     id: reminder.id,
-    content: reminder.note ? <MarkdownContent content={reminder.note} /> : UNKNOWN_PARTICIPANT_LABEL,
+    content: reminder.note ? <MarkdownContent content={reminder.note} /> : EMPTY_REMINDER_CONTENT,
     scheduledTime: formatReminderScheduledTime(reminder.at),
     date: formatReminderDate(reminder.at),
   }));

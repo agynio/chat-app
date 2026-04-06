@@ -1,57 +1,26 @@
 import { argosScreenshot } from '@argos-ci/playwright';
-import type { Page } from '@playwright/test';
 import { test, expect } from './fixtures';
 import {
-  createAgent,
   createChat,
-  createLLMProvider,
-  createModel,
-  createOrganization,
   getMessages,
   resolveIdentityId,
   sendChatMessage,
+  setupTestAgent,
   waitForAgentReply,
 } from './chat-api';
+import { setSelectedOrganization } from './organization-helpers';
 
 const TESTLLM_ENDPOINT = 'https://testllm.dev/v1/org/agynio/suite/codex/responses';
-const INIT_IMAGE = 'ghcr.io/agynio/agent-init-codex:0.7.0';
-
-async function setupTestAgent(page: Page) {
-  const now = Date.now();
-  const organizationId = await createOrganization(page, `e2e-org-llm-${now}`);
-
-  const providerId = await createLLMProvider(page, {
-    endpoint: TESTLLM_ENDPOINT,
-    authMethod: 'AUTH_METHOD_BEARER',
-    token: 'unused',
-    organizationId,
-  });
-
-  const modelId = await createModel(page, {
-    name: `e2e-model-${now}`,
-    llmProviderId: providerId,
-    remoteName: 'simple-hello',
-    organizationId,
-  });
-
-  const agentId = await createAgent(page, {
-    organizationId,
-    name: `e2e-codex-agent-${now}`,
-    role: 'You are a helpful assistant.',
-    model: modelId,
-    description: 'E2E test agent using TestLLM simple-hello',
-    configuration: '{}',
-    image: 'alpine:3.21',
-    initImage: INIT_IMAGE,
-  });
-
-  return { organizationId, agentId };
-}
+const INIT_IMAGE = 'ghcr.io/agynio/agent-init-codex:0.13.0';
 
 test('agent responds via TestLLM', async ({ page }) => {
   test.setTimeout(180000);
 
-  const { organizationId, agentId } = await setupTestAgent(page);
+  const { organizationId, agentId, agentName } = await setupTestAgent(page, {
+    endpoint: TESTLLM_ENDPOINT,
+    initImage: INIT_IMAGE,
+  });
+  await setSelectedOrganization(page, organizationId);
   const userId = await resolveIdentityId(page);
   const chatId = await createChat(page, organizationId, agentId);
 
@@ -62,17 +31,49 @@ test('agent responds via TestLLM', async ({ page }) => {
   const agentReply = await waitForAgentReply(page, chatId, userId, 150000);
   expect(agentReply.body).toContain('How are you');
 
+  const chatsLoaded = page.waitForResponse(
+    (resp) => resp.url().includes('GetChats') && resp.status() === 200,
+    { timeout: 15000 },
+  );
+  const agentsLoaded = page.waitForResponse(
+    (resp) => resp.url().includes('ListAgents') && resp.status() === 200,
+    { timeout: 15000 },
+  );
   const messagesLoaded = page.waitForResponse(
     (resp) => resp.url().includes('GetMessages') && resp.status() === 200,
     { timeout: 15000 },
   );
   await page.goto(`/chats/${chatId}`);
+  await chatsLoaded;
+  await agentsLoaded;
   await messagesLoaded;
+
+  const chatList = page.getByTestId('chat-list');
+  await expect(chatList).toBeVisible({ timeout: 15000 });
+  await expect(chatList.getByText(agentName)).toBeVisible({ timeout: 15000 });
+  await expect(page.getByTestId('chat-detail-header-title')).toContainText(agentName, {
+    timeout: 15000,
+  });
 
   await expect(page.getByTestId('chat-message').filter({ hasText: 'hello' })).toBeVisible({
     timeout: 15000,
   });
-  await expect(page.getByTestId('chat-message').filter({ hasText: 'How are you' })).toBeVisible({
+  const agentMessage = page.getByTestId('chat-message').filter({ hasText: 'How are you' });
+  await expect(agentMessage).toBeVisible({
+    timeout: 15000,
+  });
+  await expect(agentMessage.getByText(agentName)).toBeVisible({ timeout: 15000 });
+  // Verify our specific chat doesn't show "(unknown participant)" anywhere
+  // Find the specific chat list item that contains our agent name
+  const ourChatItem = chatList.locator('.cursor-pointer', { hasText: agentName });
+  await expect(ourChatItem).toBeVisible({ timeout: 15000 });
+  await expect(ourChatItem.getByText('(unknown participant)')).toHaveCount(0, { timeout: 15000 });
+
+  // Header and messages are already scoped to the selected chat; verify no unknown there
+  await expect(
+    page.getByTestId('chat-detail-header-title').getByText('(unknown participant)'),
+  ).toHaveCount(0, { timeout: 15000 });
+  await expect(page.getByTestId('chat-message').filter({ hasText: '(unknown participant)' })).toHaveCount(0, {
     timeout: 15000,
   });
 

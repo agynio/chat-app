@@ -366,7 +366,7 @@ function ChatDetailHeader({
               {createdAtRelative}
             </span>
           </div>
-          <h3 className="mt-1 text-[var(--agyn-dark)]">
+          <h3 className="mt-1 text-[var(--agyn-dark)]" data-testid="chat-detail-header-title">
             {chatSubtitle || chat.title}
           </h3>
         </div>
