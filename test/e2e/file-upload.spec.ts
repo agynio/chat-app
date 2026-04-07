@@ -37,6 +37,7 @@ test('uploads a file and sends a message with attachment', async ({ page }) => {
   const attachmentChip = page.getByTestId('attachment-chip').filter({ hasText: 'test-upload.txt' });
   await expect(attachmentChip).toBeVisible({ timeout: 15000 });
   await expect(attachmentChip).toHaveAttribute('data-status', 'completed', { timeout: 60000 });
+  await argosScreenshot(page, 'file-upload-ready-to-send');
 
   const message = `File upload message ${now}`;
   const sendMessage = page.waitForResponse(
