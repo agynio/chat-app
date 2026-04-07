@@ -34,6 +34,7 @@ export function AttachmentPreviewStrip({
           <div
             key={attachment.clientId}
             data-testid="attachment-chip"
+            data-status={attachment.status}
             className={[
               'relative flex min-w-[180px] items-center gap-2 rounded-[10px] border px-2 py-1.5 text-xs',
               isError

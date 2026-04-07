@@ -1,20 +1,32 @@
-import type { AxiosProgressEvent } from 'axios';
-import { http } from '@/api/http';
+import { uploadFileViaConnect } from '@/api/upload-file-connect';
 import type { FileRecord } from '@/api/types/files';
+import type { UploadProgressHandler } from '@/api/types/upload';
 
-export type UploadProgressHandler = (event: AxiosProgressEvent) => void;
+export type { UploadProgressEvent, UploadProgressHandler } from '@/api/types/upload';
 
-export function uploadFile(
+function parseSizeBytes(sizeBytes: string | bigint): number {
+  const parsed = typeof sizeBytes === 'bigint' ? Number(sizeBytes) : Number.parseInt(sizeBytes, 10);
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`Invalid sizeBytes: ${sizeBytes}`);
+  }
+  return parsed;
+}
+
+export async function uploadFile(
   file: File,
   onUploadProgress?: UploadProgressHandler,
   signal?: AbortSignal,
-) {
-  const formData = new FormData();
-  formData.append('file', file);
+): Promise<FileRecord> {
+  const response = await uploadFileViaConnect(file, onUploadProgress, signal);
+  if (!response.file) {
+    throw new Error('UploadFile response missing file');
+  }
 
-  return http.post<FileRecord>('/api/files/v1/files', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-    onUploadProgress,
-    signal,
-  });
+  return {
+    id: response.file.id,
+    filename: response.file.filename,
+    contentType: response.file.contentType,
+    sizeBytes: parseSizeBytes(response.file.sizeBytes),
+    createdAt: response.file.createdAt,
+  } satisfies FileRecord;
 }
