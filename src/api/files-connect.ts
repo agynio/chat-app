@@ -1,9 +1,5 @@
 import { create, createFileRegistry } from '@bufbuild/protobuf';
 import { FileDescriptorProtoSchema, FieldDescriptorProto_Label, FieldDescriptorProto_Type } from '@bufbuild/protobuf/wkt';
-import { createClient, type Interceptor } from '@connectrpc/connect';
-import { createGrpcWebTransport } from '@connectrpc/connect-web';
-import { getAccessToken } from '@/auth';
-import { config } from '@/config';
 
 // Hand-written descriptor mirroring agynio/api/gateway/v1/files.proto.
 // Update this descriptor whenever the proto schema changes.
@@ -148,15 +144,16 @@ const registry = createFileRegistry(filesDescriptor, () => {
   throw new Error('Unexpected external dependency in files descriptor');
 });
 
-function requireService(typeName: string) {
-  const service = registry.getService(typeName);
-  if (!service) {
-    throw new Error(`Missing service descriptor: ${typeName}`);
+function requireMessage(typeName: string) {
+  const message = registry.getMessage(typeName);
+  if (!message) {
+    throw new Error(`Missing message descriptor: ${typeName}`);
   }
-  return service;
+  return message;
 }
 
-const filesGatewayService = requireService('agynio.api.gateway.v1.FilesGateway');
+export const uploadFileRequestDesc = requireMessage('agynio.api.gateway.v1.UploadFileRequest');
+export const uploadFileResponseDesc = requireMessage('agynio.api.gateway.v1.UploadFileResponse');
 
 export type UploadFileMetadata = {
   filename: string;
@@ -185,20 +182,3 @@ export type FileInfo = {
 export type UploadFileResponse = {
   file?: FileInfo;
 };
-
-const authInterceptor: Interceptor = (next) => async (req) => {
-  const token = await getAccessToken();
-  if (token) {
-    req.header.set('Authorization', `Bearer ${token}`);
-  }
-  return next(req);
-};
-
-const transportBaseUrl = `${config.apiBaseUrl}/api`;
-
-const filesTransport = createGrpcWebTransport({
-  baseUrl: transportBaseUrl,
-  interceptors: [authInterceptor],
-});
-
-export const filesGatewayClient = createClient(filesGatewayService, filesTransport);
