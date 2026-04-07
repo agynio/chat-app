@@ -5,6 +5,8 @@ import { createGrpcWebTransport } from '@connectrpc/connect-web';
 import { getAccessToken } from '@/auth';
 import { config } from '@/config';
 
+// Hand-written descriptor mirroring agynio/api/gateway/v1/files.proto.
+// Update this descriptor whenever the proto schema changes.
 const filesDescriptor = create(FileDescriptorProtoSchema, {
   name: 'agynio/api/gateway/v1/files.proto',
   package: 'agynio.api.gateway.v1',
@@ -142,7 +144,9 @@ const filesDescriptor = create(FileDescriptorProtoSchema, {
   ],
 });
 
-const registry = createFileRegistry(filesDescriptor, () => undefined);
+const registry = createFileRegistry(filesDescriptor, () => {
+  throw new Error('Unexpected external dependency in files descriptor');
+});
 
 function requireService(typeName: string) {
   const service = registry.getService(typeName);
@@ -167,8 +171,7 @@ export type UploadFileChunk = {
 export type UploadFileRequest = {
   payload:
     | { case: 'metadata'; value: UploadFileMetadata }
-    | { case: 'chunk'; value: UploadFileChunk }
-    | { case: undefined; value?: undefined };
+    | { case: 'chunk'; value: UploadFileChunk };
 };
 
 export type FileInfo = {
@@ -191,9 +194,7 @@ const authInterceptor: Interceptor = (next) => async (req) => {
   return next(req);
 };
 
-const defaultBaseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-const apiBaseUrl = config.apiBaseUrl || defaultBaseUrl;
-const transportBaseUrl = apiBaseUrl ? `${apiBaseUrl}/api` : '/api';
+const transportBaseUrl = `${config.apiBaseUrl}/api`;
 
 const filesTransport = createGrpcWebTransport({
   baseUrl: transportBaseUrl,
