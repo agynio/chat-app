@@ -1,13 +1,8 @@
 import { uploadFileViaConnect } from '@/api/upload-file-connect';
 import type { FileRecord } from '@/api/types/files';
+import type { UploadProgressHandler } from '@/api/types/upload';
 
-export type UploadProgressEvent = {
-  loaded: number;
-  total: number;
-  progress?: number;
-};
-
-export type UploadProgressHandler = (event: UploadProgressEvent) => void;
+export type { UploadProgressEvent, UploadProgressHandler } from '@/api/types/upload';
 
 function parseSizeBytes(sizeBytes: string | bigint): number {
   const parsed = typeof sizeBytes === 'bigint' ? Number(sizeBytes) : Number.parseInt(sizeBytes, 10);

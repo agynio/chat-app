@@ -124,20 +124,6 @@ const filesDescriptor = create(FileDescriptorProtoSchema, {
       ],
     },
   ],
-  service: [
-    {
-      name: 'FilesGateway',
-      method: [
-        {
-          name: 'UploadFile',
-          inputType: '.agynio.api.gateway.v1.UploadFileRequest',
-          outputType: '.agynio.api.gateway.v1.UploadFileResponse',
-          clientStreaming: true,
-          serverStreaming: false,
-        },
-      ],
-    },
-  ],
 });
 
 const registry = createFileRegistry(filesDescriptor, () => {

@@ -15,8 +15,6 @@
   },
   "dependencies": {
     "@bufbuild/protobuf": "^2.9.0",
-    "@connectrpc/connect": "^2.1.0",
-    "@connectrpc/connect-web": "^2.1.0",
     "@lexical/code": "^0.38.2",
     "@lexical/link": "^0.38.2",
     "@lexical/list": "^0.38.2",

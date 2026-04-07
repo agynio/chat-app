@@ -7,14 +7,7 @@ import {
   type UploadFileRequest,
   type UploadFileResponse,
 } from '@/api/files-connect';
-
-type UploadProgressEvent = {
-  loaded: number;
-  total: number;
-  progress?: number;
-};
-
-type UploadProgressHandler = (event: UploadProgressEvent) => void;
+import type { UploadProgressHandler } from '@/api/types/upload';
 
 type EndStreamResponse = {
   error?: {
@@ -87,6 +80,84 @@ function buildRequestMessage(payload: UploadFileRequest): Uint8Array {
   return toBinary(uploadFileRequestDesc, message);
 }
 
+function postUploadRequest(
+  body: Uint8Array,
+  token: string | null,
+  onUploadProgress?: UploadProgressHandler,
+  signal?: AbortSignal,
+): Promise<ArrayBuffer> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException('Upload aborted', 'AbortError'));
+      return;
+    }
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${config.apiBaseUrl}${UPLOAD_PATH}`, true);
+    xhr.responseType = 'arraybuffer';
+    xhr.setRequestHeader('Content-Type', CONNECT_CONTENT_TYPE);
+    xhr.setRequestHeader('Connect-Protocol-Version', CONNECT_PROTOCOL_VERSION);
+    if (token) {
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    }
+
+    const handleAbort = () => {
+      xhr.abort();
+    };
+
+    if (signal) {
+      signal.addEventListener('abort', handleAbort, { once: true });
+    }
+
+    const cleanup = () => {
+      if (signal) {
+        signal.removeEventListener('abort', handleAbort);
+      }
+    };
+
+    if (onUploadProgress) {
+      xhr.upload.onprogress = (event) => {
+        const total = event.lengthComputable ? event.total : body.byteLength;
+        const loaded = event.loaded;
+        onUploadProgress({
+          loaded,
+          total,
+          progress: total > 0 ? loaded / total : 0,
+        });
+      };
+    }
+
+    xhr.onload = () => {
+      cleanup();
+      if (xhr.status >= 200 && xhr.status < 300) {
+        if (xhr.response instanceof ArrayBuffer) {
+          resolve(xhr.response);
+          return;
+        }
+        reject(new Error('UploadFile response body was empty'));
+        return;
+      }
+
+      const responseBody = xhr.response instanceof ArrayBuffer
+        ? new TextDecoder().decode(new Uint8Array(xhr.response))
+        : '';
+      reject(new Error(`UploadFile failed with status ${xhr.status}: ${responseBody}`));
+    };
+
+    xhr.onerror = () => {
+      cleanup();
+      reject(new Error('UploadFile network error'));
+    };
+
+    xhr.onabort = () => {
+      cleanup();
+      reject(new DOMException('Upload aborted', 'AbortError'));
+    };
+
+    xhr.send(body);
+  });
+}
+
 export async function uploadFileViaConnect(
   file: File,
   onUploadProgress?: UploadProgressHandler,
@@ -129,38 +200,13 @@ export async function uploadFileViaConnect(
         }),
       ),
     );
-    if (onUploadProgress) {
-      onUploadProgress({
-        loaded: offset,
-        total,
-        progress: total > 0 ? offset / total : 0,
-      });
-    }
   }
 
   const token = await getAccessToken();
-  const headers = new Headers({
-    'Content-Type': CONNECT_CONTENT_TYPE,
-    'Connect-Protocol-Version': CONNECT_PROTOCOL_VERSION,
-  });
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
-
   throwIfAborted(signal);
-  const response = await fetch(`${config.apiBaseUrl}${UPLOAD_PATH}`, {
-    method: 'POST',
-    headers,
-    body: concatEnvelopes(envelopes),
-    signal,
-  });
-
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`UploadFile failed with status ${response.status}: ${body}`);
-  }
-
-  const bodyBuffer = new Uint8Array(await response.arrayBuffer());
+  const bodyBuffer = new Uint8Array(
+    await postUploadRequest(concatEnvelopes(envelopes), token, onUploadProgress, signal),
+  );
   if (bodyBuffer.length === 0) {
     throw new Error('UploadFile response body was empty');
   }
