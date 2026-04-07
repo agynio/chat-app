@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ChatListItem } from '@/components/ChatListItem';
 import type { ChatMessage, ChatQueuedMessageData, ChatReminderData, ChatRun } from '@/components/Chat';
 import { MarkdownContent } from '@/components/MarkdownContent';
+import { MessageAttachments } from '@/components/MessageAttachments';
+import { formatDuration } from '@/components/agents/runTimelineFormatting';
 import ChatsScreen from '@/components/screens/ChatsScreen';
 import { notifyError } from '@/lib/notify';
 import { useUser } from '@/user/user.runtime';
@@ -466,14 +468,11 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
           : agentIdSet.has(message.senderId)
             ? 'assistant'
             : 'user';
-        const attachmentCount = message.fileIds.length;
         const content = (
           <div className="space-y-1">
             <MarkdownContent content={message.body} />
-            {attachmentCount > 0 ? (
-              <p className="text-xs text-[var(--agyn-gray)]">
-                {attachmentCount} attachment{attachmentCount === 1 ? '' : 's'}
-              </p>
+            {message.fileIds.length > 0 ? (
+              <MessageAttachments fileIds={message.fileIds} />
             ) : null}
           </div>
         );

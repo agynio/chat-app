@@ -3,6 +3,7 @@
 
 type RuntimeConfig = {
   API_BASE_URL?: string;
+  MEDIA_PROXY_URL?: string;
   OIDC_AUTHORITY?: string;
   OIDC_CLIENT_ID?: string;
   OIDC_SCOPE?: string;
@@ -10,6 +11,7 @@ type RuntimeConfig = {
 
 type ViteEnv = {
   VITE_API_BASE_URL?: string;
+  VITE_MEDIA_PROXY_URL?: string;
   VITE_OIDC_AUTHORITY?: string;
   VITE_OIDC_CLIENT_ID?: string;
   VITE_OIDC_SCOPE?: string;
@@ -74,6 +76,9 @@ const rawApiBase = requireConfig('API_BASE_URL', readConfigValue('API_BASE_URL',
 const apiBaseUrl = deriveBase(rawApiBase, { stripApi: true });
 const socketBaseUrl = deriveBase(rawApiBase, { stripApi: true });
 
+const rawMediaProxyUrl = readConfigValue('MEDIA_PROXY_URL', 'VITE_MEDIA_PROXY_URL');
+const mediaProxyUrl = rawMediaProxyUrl ? deriveBase(rawMediaProxyUrl, { stripApi: false }) : null;
+
 const rawOidcAuthority = readConfigValue('OIDC_AUTHORITY', 'VITE_OIDC_AUTHORITY');
 const oidcEnabled = Boolean(rawOidcAuthority);
 
@@ -88,6 +93,7 @@ export const oidcConfig: OidcConfig = oidcEnabled
 
 export const config = {
   apiBaseUrl,
+  mediaProxyUrl,
   socketBaseUrl,
 };
 
