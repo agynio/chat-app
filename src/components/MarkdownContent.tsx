@@ -1,5 +1,4 @@
-import ReactMarkdown from 'react-markdown';
-import type { Components } from 'react-markdown';
+import ReactMarkdown, { defaultUrlTransform, type Components } from 'react-markdown';
 import {
   Children,
   cloneElement,
@@ -63,6 +62,14 @@ const getCodeRenderMeta = ({ inline, className }: MarkdownCodeProps) => {
 };
 
 const normalizeAltText = (alt?: string) => alt?.trim().toLowerCase() ?? '';
+const AGYN_PROTOCOL_PREFIX = 'agyn:';
+
+function urlTransform(url: string): string {
+  if (url.startsWith(AGYN_PROTOCOL_PREFIX)) {
+    return url;
+  }
+  return defaultUrlTransform(url);
+}
 
 const resolveSourceFromChildren = (children: ReactNode): string | null => {
   const nodes = Children.toArray(children);
@@ -346,6 +353,7 @@ export function MarkdownContent({ content, className = '' }: MarkdownContentProp
         remarkPlugins={MARKDOWN_REMARK_PLUGINS}
         rehypePlugins={MARKDOWN_REHYPE_PLUGINS}
         components={markdownComponents}
+        urlTransform={urlTransform}
       >
         {content}
       </ReactMarkdown>
