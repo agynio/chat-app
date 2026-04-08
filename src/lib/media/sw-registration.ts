@@ -2,6 +2,7 @@ import { config } from '@/config';
 import { getAccessToken, userManager } from '@/auth';
 
 const TOKEN_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+const SW_SCRIPT_URL = '/sw.js';
 
 type SetTokenMessage = {
   type: 'SET_TOKEN';
@@ -61,7 +62,10 @@ const sendTokenUpdate = async (
 export async function registerMediaServiceWorker(): Promise<void> {
   if (typeof window === 'undefined') return;
   if (!('serviceWorker' in navigator)) return;
-  if (!config.mediaProxyUrl) return;
+  if (!config.mediaProxyUrl) {
+    void unregisterStaleServiceWorker();
+    return;
+  }
 
   const mediaProxyOrigin = resolveMediaProxyOrigin(config.mediaProxyUrl);
   if (!mediaProxyOrigin) {
@@ -71,7 +75,7 @@ export async function registerMediaServiceWorker(): Promise<void> {
 
   let registration: ServiceWorkerRegistration;
   try {
-    registration = await navigator.serviceWorker.register('/sw.js');
+    registration = await navigator.serviceWorker.register(SW_SCRIPT_URL);
   } catch (error) {
     console.warn('[media] failed to register service worker', error);
     return;
@@ -95,4 +99,15 @@ export async function registerMediaServiceWorker(): Promise<void> {
   window.setInterval(() => {
     void sendTokenUpdate(registration, mediaProxyOrigin);
   }, TOKEN_REFRESH_INTERVAL_MS);
+}
+
+async function unregisterStaleServiceWorker(): Promise<void> {
+  try {
+    const registration = await navigator.serviceWorker.getRegistration(SW_SCRIPT_URL);
+    if (registration) {
+      await registration.unregister();
+    }
+  } catch (_error) {
+    // Best-effort cleanup; ignore failures.
+  }
 }

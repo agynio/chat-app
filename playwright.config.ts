@@ -32,7 +32,16 @@ export default defineConfig({
     ignoreHTTPSErrors: true,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
-    serviceWorkers: 'block',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        launchOptions: {
+          args: ['--ignore-certificate-errors'],
+        },
+      },
+    },
+  ],
 });
