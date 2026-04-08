@@ -1,7 +1,13 @@
 import { argosScreenshot } from '@argos-ci/playwright';
 import * as crypto from 'node:crypto';
 import { test, expect } from './fixtures';
-import { createAgent, createChat, createOrganization, sendChatMessage } from './chat-api';
+import {
+  createAgent,
+  createChat,
+  createOrganization,
+  DEFAULT_TEST_INIT_IMAGE,
+  sendChatMessage,
+} from './chat-api';
 import { setSelectedOrganization } from './organization-helpers';
 
 test('creates a chat with an agent and sends a message', async ({ page }) => {
@@ -15,6 +21,7 @@ test('creates a chat with an agent and sends a message', async ({ page }) => {
     description: 'E2E test agent',
     configuration: '{}',
     image: 'alpine:3.21',
+    initImage: DEFAULT_TEST_INIT_IMAGE,
   });
   const chatId = await createChat(page, organizationId, agentId);
   const message = `Hello agent ${now}`;
@@ -45,6 +52,7 @@ test('agent chat appears in chat list', async ({ page }) => {
     description: 'E2E test agent',
     configuration: '{}',
     image: 'alpine:3.21',
+    initImage: DEFAULT_TEST_INIT_IMAGE,
   });
   const chatId = await createChat(page, organizationId, agentId);
   await sendChatMessage(page, chatId, `Hello agent ${now}`);

@@ -3,7 +3,12 @@ import { argosScreenshot } from '@argos-ci/playwright';
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { test as base, expect as baseExpect } from '@playwright/test';
-import { createAgent, createChat, createOrganization } from './chat-api';
+import {
+  createAgent,
+  createChat,
+  createOrganization,
+  DEFAULT_TEST_INIT_IMAGE,
+} from './chat-api';
 import { signInViaMockAuth } from './sign-in-helper';
 
 type OrgSetup = {
@@ -34,6 +39,7 @@ function buildAgentOptions(organizationId: string, name: string) {
     description: AGENT_DESCRIPTION,
     configuration: AGENT_CONFIGURATION,
     image: AGENT_IMAGE,
+    initImage: DEFAULT_TEST_INIT_IMAGE,
   };
 }
 

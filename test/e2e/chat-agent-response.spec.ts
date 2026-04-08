@@ -2,6 +2,7 @@ import { argosScreenshot } from '@argos-ci/playwright';
 import { test, expect } from './fixtures';
 import {
   createChat,
+  DEFAULT_TEST_INIT_IMAGE,
   getMessages,
   resolveIdentityId,
   sendChatMessage,
@@ -11,14 +12,13 @@ import {
 import { setSelectedOrganization } from './organization-helpers';
 
 const TESTLLM_ENDPOINT = 'https://testllm.dev/v1/org/agynio/suite/codex/responses';
-const INIT_IMAGE = 'ghcr.io/agynio/agent-init-codex:0.13.0';
 
 test('agent responds via TestLLM', async ({ page }) => {
   test.setTimeout(180000);
 
   const { organizationId, agentId, agentName } = await setupTestAgent(page, {
     endpoint: TESTLLM_ENDPOINT,
-    initImage: INIT_IMAGE,
+    initImage: DEFAULT_TEST_INIT_IMAGE,
   });
   await setSelectedOrganization(page, organizationId);
   const userId = await resolveIdentityId(page);

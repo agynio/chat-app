@@ -5,6 +5,8 @@ const AGENTS_GATEWAY_PATH = '/api/agynio.api.gateway.v1.AgentsGateway';
 const LLM_GATEWAY_PATH = '/api/agynio.api.gateway.v1.LLMGateway';
 const ORGS_GATEWAY_PATH = '/api/agynio.api.gateway.v1.OrganizationsGateway';
 
+export const DEFAULT_TEST_INIT_IMAGE = 'ghcr.io/agynio/agent-init-codex:latest';
+
 const CONNECT_HEADERS = {
   'Content-Type': 'application/json',
   'Connect-Protocol-Version': '1',

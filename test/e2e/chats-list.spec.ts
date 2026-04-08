@@ -2,7 +2,13 @@ import { argosScreenshot } from '@argos-ci/playwright';
 import * as crypto from 'node:crypto';
 import type { Page } from '@playwright/test';
 import { test, expect } from './multi-user-fixtures';
-import { createAgent, createChat, createOrganization, resolveIdentityId } from './chat-api';
+import {
+  createAgent,
+  createChat,
+  createOrganization,
+  DEFAULT_TEST_INIT_IMAGE,
+  resolveIdentityId,
+} from './chat-api';
 import { setSelectedOrganization } from './organization-helpers';
 
 async function expectChatListVisible(page: Page) {
@@ -38,6 +44,7 @@ test('participant picker shows available options', async ({ userAPage }) => {
     description: 'E2E participant picker agent',
     configuration: '{}',
     image: 'agent-image:latest',
+    initImage: DEFAULT_TEST_INIT_IMAGE,
   });
   const chatsLoaded = userAPage.waitForResponse(
     (resp) => resp.url().includes('GetChats') && resp.status() === 200,
