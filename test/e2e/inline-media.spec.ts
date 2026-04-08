@@ -51,7 +51,7 @@ async function expectInlineImage(
   messageItem: Locator,
   altText: string,
 ): Promise<void> {
-  const image = messageItem.getByTestId('media-image');
+  const image = messageItem.getByTestId('media-image').filter({ hasText: altText });
   await expect(image).toBeVisible({ timeout: 15000 });
 
   const resolved = image.locator(
