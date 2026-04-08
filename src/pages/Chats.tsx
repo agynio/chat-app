@@ -5,7 +5,6 @@ import type { ChatListItem } from '@/components/ChatListItem';
 import type { ChatMessage, ChatQueuedMessageData, ChatReminderData, ChatRun } from '@/components/Chat';
 import { MarkdownContent } from '@/components/MarkdownContent';
 import { MessageAttachments } from '@/components/MessageAttachments';
-import { formatDuration } from '@/components/agents/runTimelineFormatting';
 import ChatsScreen from '@/components/screens/ChatsScreen';
 import { notifyError } from '@/lib/notify';
 import { useUser } from '@/user/user.runtime';
