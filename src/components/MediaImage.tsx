@@ -51,7 +51,7 @@ export function MediaImage({ src, alt = '', title, className = '' }: MediaImageP
 
   if (!proxyUrl) {
     return (
-      <div className={cn('flex flex-col gap-2', className)} data-testid="media-image">
+      <div className={cn('flex flex-col gap-2', className)} data-testid="media-image" data-alt={alt}>
         <div
           className="rounded-[12px] border border-[var(--agyn-border-subtle)] bg-[var(--agyn-bg-light)] p-3 text-xs text-[var(--agyn-gray)]"
           data-testid="media-image-unavailable"
@@ -69,7 +69,7 @@ export function MediaImage({ src, alt = '', title, className = '' }: MediaImageP
   };
 
   return (
-    <div className={cn('flex flex-col gap-2', className)} data-testid="media-image">
+    <div className={cn('flex flex-col gap-2', className)} data-testid="media-image" data-alt={alt}>
       <div className="relative max-w-full">
         {loadState === 'loading' ? (
           <div

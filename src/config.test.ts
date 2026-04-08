@@ -64,6 +64,11 @@ describe('deriveMediaProxyUrl', () => {
     expect(deriveMediaProxyUrl()).toBeNull();
   });
 
+  it('returns null for IPv6 addresses', () => {
+    setLocation('http://[::1]:3000');
+    expect(deriveMediaProxyUrl()).toBeNull();
+  });
+
   it('returns null for bare domains', () => {
     setLocation('https://agyn.dev');
     expect(deriveMediaProxyUrl()).toBeNull();

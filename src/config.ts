@@ -43,7 +43,7 @@ export function deriveMediaProxyUrl(): string | null {
   const { protocol, hostname, port } = window.location;
 
   // Cannot derive from IP addresses
-  if (/^\d/.test(hostname) || hostname.startsWith('[')) return null;
+  if (/^\d/.test(hostname) || hostname.includes(':')) return null;
 
   const dotIndex = hostname.indexOf('.');
   if (dotIndex === -1) return null;
@@ -102,9 +102,12 @@ const apiBaseUrl = deriveBase(rawApiBase, { stripApi: true });
 const socketBaseUrl = deriveBase(rawApiBase, { stripApi: true });
 
 const rawMediaProxyUrl = readConfigValue('MEDIA_PROXY_URL', 'VITE_MEDIA_PROXY_URL');
-const mediaProxyUrl = rawMediaProxyUrl
-  ? deriveBase(rawMediaProxyUrl, { stripApi: false })
-  : deriveMediaProxyUrl();
+const mediaProxyUrl =
+  rawMediaProxyUrl === 'auto'
+    ? deriveMediaProxyUrl()
+    : rawMediaProxyUrl
+      ? deriveBase(rawMediaProxyUrl, { stripApi: false })
+      : null;
 
 const rawOidcAuthority = readConfigValue('OIDC_AUTHORITY', 'VITE_OIDC_AUTHORITY');
 const oidcEnabled = Boolean(rawOidcAuthority);
