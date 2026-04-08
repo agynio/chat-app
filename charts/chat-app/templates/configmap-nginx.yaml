@@ -56,5 +56,11 @@ data:
             add_header Cache-Control "no-cache" always;
             alias /tmp/__config.js;
         }
+
+        location = /sw.js {
+            add_header Cache-Control "no-cache" always;
+            add_header Service-Worker-Allowed "/" always;
+            try_files $uri =404;
+        }
     }
 {{- end }}

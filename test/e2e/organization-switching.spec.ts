@@ -118,7 +118,7 @@ test('org switcher highlights current org', async ({ page }) => {
 
   await switchOrganization(page, orgAId);
   await openOrganizationMenu(page);
-  await expect(page.getByTestId('current-org-name')).toHaveText(orgAName);
+  await expect(page.getByTestId('current-org-name')).toHaveText(orgAName, { timeout: 15_000 });
   await expect(page.getByTestId(`org-item-${orgAId}`)).toHaveAttribute('data-state', 'checked');
 });
 

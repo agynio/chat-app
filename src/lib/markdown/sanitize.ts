@@ -14,13 +14,18 @@ const allowedTagNames: Schema['tagNames'] = [
   'h5',
   'h6',
   'hr',
+  'img',
   'li',
   'ol',
+  'picture',
   'p',
   'pre',
   'strong',
   'u',
   'ul',
+  'video',
+  'audio',
+  'source',
   'table',
   'thead',
   'tbody',
@@ -43,6 +48,7 @@ export const markdownSanitizeSchema: Schema = {
     code: [
       ['className', /^language-[\w-]+$/],
     ],
+    img: ['src', 'alt', 'title', 'width', 'height', 'loading'],
     ol: [
       ['start', /^-?\d+$/],
       ['type', '1', 'a', 'A', 'i', 'I'],
@@ -51,10 +57,14 @@ export const markdownSanitizeSchema: Schema = {
     li: [
       ['value', /^-?\d+$/],
     ],
+    video: ['src', 'controls', 'preload', 'width', 'height', 'poster'],
+    audio: ['src', 'controls', 'preload'],
+    source: ['src', 'type'],
     th: ['align'],
     td: ['align'],
   },
   protocols: {
     href: [...allowedProtocols],
+    src: ['http', 'https', 'agyn'],
   },
 };

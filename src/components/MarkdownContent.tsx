@@ -1,5 +1,4 @@
-import ReactMarkdown from 'react-markdown';
-import type { Components } from 'react-markdown';
+import ReactMarkdown, { defaultUrlTransform, type Components } from 'react-markdown';
 import {
   Children,
   cloneElement,
@@ -10,6 +9,9 @@ import {
 } from 'react';
 import { MARKDOWN_REMARK_PLUGINS, MARKDOWN_REHYPE_PLUGINS } from '@/lib/markdown/config';
 import { cn } from '@/lib/utils';
+import { MediaAudio } from './MediaAudio';
+import { MediaImage } from './MediaImage';
+import { MediaVideo } from './MediaVideo';
 
 interface MarkdownContentProps {
   content: string;
@@ -22,6 +24,22 @@ type MarkdownCodeProps = ComponentPropsWithoutRef<'code'> & {
 };
 
 type MarkdownPreProps = ComponentPropsWithoutRef<'pre'> & {
+  node?: unknown;
+};
+
+type MarkdownImageProps = ComponentPropsWithoutRef<'img'> & {
+  node?: unknown;
+};
+
+type MarkdownVideoProps = ComponentPropsWithoutRef<'video'> & {
+  node?: unknown;
+};
+
+type MarkdownAudioProps = ComponentPropsWithoutRef<'audio'> & {
+  node?: unknown;
+};
+
+type MarkdownSourceProps = ComponentPropsWithoutRef<'source'> & {
   node?: unknown;
 };
 
@@ -41,6 +59,33 @@ const getCodeRenderMeta = ({ inline, className }: MarkdownCodeProps) => {
   const match = /language-(\w+)/.exec(className || '');
   const isInlineCode = inline ?? !match;
   return { match, isInlineCode } as const;
+};
+
+const normalizeAltText = (alt?: string) => alt?.trim().toLowerCase() ?? '';
+const AGYN_PROTOCOL_PREFIX = 'agyn:';
+
+function urlTransform(url: string): string {
+  if (url.startsWith(AGYN_PROTOCOL_PREFIX)) {
+    return url;
+  }
+  return defaultUrlTransform(url);
+}
+
+const resolveSourceFromChildren = (children: ReactNode): string | null => {
+  const nodes = Children.toArray(children);
+  for (const node of nodes) {
+    if (!isValidElement<MarkdownSourceProps>(node)) {
+      continue;
+    }
+    if (node.type !== 'source') {
+      continue;
+    }
+    const src = typeof node.props.src === 'string' ? node.props.src.trim() : '';
+    if (src) {
+      return src;
+    }
+  }
+  return null;
 };
 
 export function MarkdownContent({ content, className = '' }: MarkdownContentProps) {
@@ -141,6 +186,39 @@ export function MarkdownContent({ content, className = '' }: MarkdownContentProp
 
     // Inline code
     code: renderCode,
+
+    img: ({ src, alt, title, className: imageClassName, node: _node }: MarkdownImageProps) => {
+      const normalizedAlt = normalizeAltText(alt);
+      const resolvedSrc = typeof src === 'string' ? src : '';
+
+      if (normalizedAlt === 'video') {
+        return <MediaVideo src={resolvedSrc} className={imageClassName} />;
+      }
+
+      if (normalizedAlt === 'audio') {
+        return <MediaAudio src={resolvedSrc} className={imageClassName} />;
+      }
+
+      return <MediaImage src={resolvedSrc} alt={alt ?? ''} title={title} className={imageClassName} />;
+    },
+
+    video: ({ src, children, className: videoClassName, node: _node }: MarkdownVideoProps) => {
+      const resolvedSrc = typeof src === 'string' && src.trim() ? src : resolveSourceFromChildren(children) ?? '';
+      return <MediaVideo src={resolvedSrc} className={videoClassName} />;
+    },
+
+    audio: ({ src, children, className: audioClassName, node: _node }: MarkdownAudioProps) => {
+      const resolvedSrc = typeof src === 'string' && src.trim() ? src : resolveSourceFromChildren(children) ?? '';
+      return <MediaAudio src={resolvedSrc} className={audioClassName} />;
+    },
+
+    source: ({ node: _node, ..._props }: MarkdownSourceProps) => null,
+
+    picture: ({ children }) => (
+      <span className="block max-w-full">
+        {children}
+      </span>
+    ),
 
     // Code blocks
     pre: ({ children, className: preClassName, style: preStyle, node: _node, ...props }: MarkdownPreProps) => {
@@ -275,6 +353,7 @@ export function MarkdownContent({ content, className = '' }: MarkdownContentProp
         remarkPlugins={MARKDOWN_REMARK_PLUGINS}
         rehypePlugins={MARKDOWN_REHYPE_PLUGINS}
         components={markdownComponents}
+        urlTransform={urlTransform}
       >
         {content}
       </ReactMarkdown>
