@@ -51,8 +51,11 @@ export function MediaImage({ src, alt = '', title, className = '' }: MediaImageP
 
   if (!proxyUrl) {
     return (
-      <div className={cn('flex flex-col gap-2', className)}>
-        <div className="rounded-[12px] border border-[var(--agyn-border-subtle)] bg-[var(--agyn-bg-light)] p-3 text-xs text-[var(--agyn-gray)]">
+      <div className={cn('flex flex-col gap-2', className)} data-testid="media-image">
+        <div
+          className="rounded-[12px] border border-[var(--agyn-border-subtle)] bg-[var(--agyn-bg-light)] p-3 text-xs text-[var(--agyn-gray)]"
+          data-testid="media-image-unavailable"
+        >
           {alt ? `Image unavailable: ${alt}` : 'Image unavailable.'}
         </div>
         <MediaDownloadLink href={downloadUrl} />
@@ -66,12 +69,18 @@ export function MediaImage({ src, alt = '', title, className = '' }: MediaImageP
   };
 
   return (
-    <div className={cn('flex flex-col gap-2', className)}>
+    <div className={cn('flex flex-col gap-2', className)} data-testid="media-image">
       <div className="relative max-w-full">
         {loadState === 'loading' ? (
-          <div className="h-48 w-full animate-pulse rounded-[12px] bg-[var(--agyn-bg-light)]" />
+          <div
+            className="h-48 w-full animate-pulse rounded-[12px] bg-[var(--agyn-bg-light)]"
+            data-testid="media-image-loading"
+          />
         ) : loadState === 'error' ? (
-          <div className="flex flex-col gap-2 rounded-[12px] border border-[var(--agyn-border-subtle)] bg-[var(--agyn-bg-light)] p-3">
+          <div
+            className="flex flex-col gap-2 rounded-[12px] border border-[var(--agyn-border-subtle)] bg-[var(--agyn-bg-light)] p-3"
+            data-testid="media-image-error"
+          >
             <span className="text-xs text-[var(--agyn-gray)]">
               {alt ? `Image failed to load: ${alt}` : 'Image failed to load.'}
             </span>
@@ -91,6 +100,7 @@ export function MediaImage({ src, alt = '', title, className = '' }: MediaImageP
             title={title}
             loading="lazy"
             className="max-h-[360px] w-full rounded-[12px] border border-[var(--agyn-border-subtle)] object-contain"
+            data-testid="media-image-element"
           />
         )}
       </div>

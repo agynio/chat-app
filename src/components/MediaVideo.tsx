@@ -22,23 +22,25 @@ export function MediaVideo({ src, label = 'Video', className = '' }: MediaVideoP
 
   if (!proxyUrl || hasError) {
     return (
-      <MediaFallback
-        filename={label}
-        description={hasError ? 'Video failed to load.' : 'Video unavailable.'}
-        downloadUrl={downloadUrl}
-        className={className}
-      />
+      <div className={cn('flex flex-col gap-2', className)} data-testid="media-video">
+        <MediaFallback
+          filename={label}
+          description={hasError ? 'Video failed to load.' : 'Video unavailable.'}
+          downloadUrl={downloadUrl}
+        />
+      </div>
     );
   }
 
   return (
-    <div className={cn('flex flex-col gap-2', className)}>
+    <div className={cn('flex flex-col gap-2', className)} data-testid="media-video">
       <video
         className="w-full rounded-[12px] border border-[var(--agyn-border-subtle)] bg-black"
         controls
         preload="metadata"
         src={proxyUrl}
         onError={() => setHasError(true)}
+        data-testid="media-video-element"
       />
       <MediaDownloadLink href={downloadUrl} />
     </div>

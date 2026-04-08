@@ -13,7 +13,10 @@ export function MediaDownloadLink({
 }: MediaDownloadLinkProps) {
   if (!href) {
     return (
-      <span className={cn('text-xs text-[var(--agyn-gray)]', className)}>
+      <span
+        className={cn('text-xs text-[var(--agyn-gray)]', className)}
+        data-testid="media-download-link"
+      >
         Download unavailable
       </span>
     );
@@ -28,6 +31,7 @@ export function MediaDownloadLink({
         'text-xs text-[var(--agyn-blue)] hover:text-[var(--agyn-purple)] underline transition-colors',
         className,
       )}
+      data-testid="media-download-link"
     >
       {label}
     </a>

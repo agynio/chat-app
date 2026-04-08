@@ -31,6 +31,7 @@ export function MediaFallback({
         'flex items-center gap-3 rounded-[12px] border border-[var(--agyn-border-subtle)] bg-white p-3',
         className,
       )}
+      data-testid="media-fallback"
     >
       <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-[var(--agyn-bg-light)]">
         <File className="h-5 w-5 text-[var(--agyn-gray)]" aria-hidden="true" />
