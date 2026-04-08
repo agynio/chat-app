@@ -10,15 +10,12 @@ type ClearTokenMessage = {
 
 type MediaProxyMessage = SetTokenMessage | ClearTokenMessage;
 
-let accessToken: string | null = null;
-let mediaProxyOrigin: string | null = null;
-
+// Boundary: validate and normalize incoming messages.
 const isRecord = (value: unknown): value is Record<string, unknown> => {
   return Boolean(value) && typeof value === 'object';
 };
 
-const parseSetTokenMessage = (value: unknown): SetTokenMessage | null => {
-  if (!isRecord(value)) return null;
+const parseSetTokenMessage = (value: Record<string, unknown>): SetTokenMessage | null => {
   if (value.type !== 'SET_TOKEN') return null;
 
   const token = typeof value.token === 'string' ? value.token.trim() : '';
@@ -35,9 +32,19 @@ const parseSetTokenMessage = (value: unknown): SetTokenMessage | null => {
   return { type: 'SET_TOKEN', token, mediaProxyOrigin: normalizedOrigin };
 };
 
-const isClearTokenMessage = (value: unknown): value is ClearTokenMessage => {
-  return isRecord(value) && value.type === 'CLEAR_TOKEN';
+const parseClearTokenMessage = (value: Record<string, unknown>): ClearTokenMessage | null => {
+  if (value.type !== 'CLEAR_TOKEN') return null;
+  return { type: 'CLEAR_TOKEN' };
 };
+
+const parseMediaProxyMessage = (value: unknown): MediaProxyMessage | null => {
+  if (!isRecord(value)) return null;
+  return parseSetTokenMessage(value) ?? parseClearTokenMessage(value);
+};
+
+// Internal: strict logic based on validated inputs.
+let accessToken: string | null = null;
+let mediaProxyOrigin: string | null = null;
 
 const handleMessage = (message: MediaProxyMessage): void => {
   if (message.type === 'CLEAR_TOKEN') {
@@ -69,6 +76,13 @@ const buildAuthorizedRequest = (request: Request, token: string): Request => {
   });
 };
 
+const buildUnauthorizedResponse = () =>
+  new Response('Unauthorized', {
+    status: 401,
+    statusText: 'Unauthorized',
+    headers: { 'Content-Type': 'text/plain' },
+  });
+
 self.addEventListener('install', (event) => {
   event.waitUntil(self.skipWaiting());
 });
@@ -78,13 +92,9 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('message', (event) => {
-  const setMessage = parseSetTokenMessage(event.data);
-  if (setMessage) {
-    handleMessage(setMessage);
-    return;
-  }
-  if (isClearTokenMessage(event.data)) {
-    handleMessage({ type: 'CLEAR_TOKEN' });
+  const message = parseMediaProxyMessage(event.data);
+  if (message) {
+    handleMessage(message);
   }
 });
 
@@ -92,7 +102,7 @@ self.addEventListener('fetch', (event) => {
   if (!shouldProxyRequest(event.request)) return;
 
   if (!accessToken) {
-    event.respondWith(fetch(event.request));
+    event.respondWith(buildUnauthorizedResponse());
     return;
   }
 

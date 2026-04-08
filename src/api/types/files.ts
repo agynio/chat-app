@@ -6,13 +6,13 @@ export type FileRecord = {
   createdAt: string;
 };
 
-export type FileMetadata = {
-  id: string;
-  filename: string;
-  contentType: string;
-  sizeBytes: string | number;
-  createdAt: string;
+export type FileMetadataWire = {
+  id?: string;
+  filename?: string;
+  contentType?: string;
+  sizeBytes?: string | number | bigint;
+  createdAt?: string;
 };
 
 export type GetFileMetadataRequest = { fileId: string };
-export type GetFileMetadataResponse = { file?: FileMetadata };
+export type GetFileMetadataResponse = { file?: FileMetadataWire };

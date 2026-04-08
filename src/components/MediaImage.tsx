@@ -27,9 +27,27 @@ export function MediaImage({ src, alt = '', title, className = '' }: MediaImageP
   const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
+    if (!proxyUrl) return;
     setLoadState('loading');
-    setRetryKey(0);
-  }, [proxyUrl]);
+
+    let cancelled = false;
+    const image = new Image();
+    image.onload = () => {
+      if (!cancelled) {
+        setLoadState('loaded');
+      }
+    };
+    image.onerror = () => {
+      if (!cancelled) {
+        setLoadState('error');
+      }
+    };
+    image.src = proxyUrl;
+
+    return () => {
+      cancelled = true;
+    };
+  }, [proxyUrl, retryKey]);
 
   if (!proxyUrl) {
     return (
@@ -52,8 +70,7 @@ export function MediaImage({ src, alt = '', title, className = '' }: MediaImageP
       <div className="relative max-w-full">
         {loadState === 'loading' ? (
           <div className="h-48 w-full animate-pulse rounded-[12px] bg-[var(--agyn-bg-light)]" />
-        ) : null}
-        {loadState === 'error' ? (
+        ) : loadState === 'error' ? (
           <div className="flex flex-col gap-2 rounded-[12px] border border-[var(--agyn-border-subtle)] bg-[var(--agyn-bg-light)] p-3">
             <span className="text-xs text-[var(--agyn-gray)]">
               {alt ? `Image failed to load: ${alt}` : 'Image failed to load.'}
@@ -73,12 +90,7 @@ export function MediaImage({ src, alt = '', title, className = '' }: MediaImageP
             alt={alt}
             title={title}
             loading="lazy"
-            onLoad={() => setLoadState('loaded')}
-            onError={() => setLoadState('error')}
-            className={cn(
-              'max-h-[360px] w-full rounded-[12px] border border-[var(--agyn-border-subtle)] object-contain',
-              loadState === 'loading' ? 'opacity-0' : 'opacity-100',
-            )}
+            className="max-h-[360px] w-full rounded-[12px] border border-[var(--agyn-border-subtle)] object-contain"
           />
         )}
       </div>

@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import { getFileMetadata } from '@/api/modules/files';
 import type { FileRecord } from '@/api/types/files';
@@ -50,10 +49,8 @@ const renderFileAttachment = (file: FileRecord) => {
 };
 
 export function MessageAttachments({ fileIds, className = '' }: MessageAttachmentsProps) {
-  const resolvedFileIds = useMemo(() => fileIds.filter(Boolean), [fileIds]);
-
   const queries = useQueries({
-    queries: resolvedFileIds.map((fileId) => ({
+    queries: fileIds.map((fileId) => ({
       queryKey: ['files', 'metadata', fileId],
       queryFn: () => getFileMetadata(fileId),
       staleTime: 5 * 60 * 1000,
@@ -61,13 +58,13 @@ export function MessageAttachments({ fileIds, className = '' }: MessageAttachmen
     })),
   });
 
-  if (resolvedFileIds.length === 0) {
+  if (fileIds.length === 0) {
     return null;
   }
 
   return (
     <div className={cn('flex flex-col gap-3', className)} data-testid="message-attachments">
-      {resolvedFileIds.map((fileId, index) => {
+      {fileIds.map((fileId, index) => {
         const query = queries[index];
         const fallbackUrl = buildDownloadUrl(buildAgynFileUrl(fileId));
 

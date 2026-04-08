@@ -28,10 +28,28 @@ describe('proxy-url', () => {
     expect(result).toBe('https://media.agyn.dev/proxy?url=agyn%3A%2F%2Ffile%2F1234');
   });
 
+  it('builds download url for https links', async () => {
+    const { buildDownloadUrl } = await loadProxyModule('https://media.agyn.dev');
+    const result = buildDownloadUrl('https://example.com/archive.zip');
+    expect(result).toBe('https://media.agyn.dev/proxy?url=https%3A%2F%2Fexample.com%2Farchive.zip');
+  });
+
   it('returns null when media proxy is missing', async () => {
     const { buildProxyUrl } = await loadProxyModule(null);
     const result = buildProxyUrl('https://example.com/image.png', { size: 800 });
     expect(result).toBeNull();
+  });
+
+  it('ignores empty or whitespace input', async () => {
+    const { buildProxyUrl, buildDownloadUrl } = await loadProxyModule('https://media.agyn.dev');
+    expect(buildProxyUrl('   ', { size: 800 })).toBeNull();
+    expect(buildDownloadUrl('')).toBeNull();
+  });
+
+  it('skips invalid sizes', async () => {
+    const { buildProxyUrl } = await loadProxyModule('https://media.agyn.dev');
+    const result = buildProxyUrl('https://example.com/image.png', { size: 0 });
+    expect(result).toBe('https://media.agyn.dev/proxy?url=https%3A%2F%2Fexample.com%2Fimage.png');
   });
 
   it('parses agyn file ids', async () => {
@@ -40,6 +58,8 @@ describe('proxy-url', () => {
     expect(parseAgynFileId('agyn://file/550e8400-e29b-41d4-a716-446655440000')).toBe(
       '550e8400-e29b-41d4-a716-446655440000',
     );
+    expect(parseAgynFileId('agyn://file')).toBeNull();
+    expect(parseAgynFileId('agyn://files/1234')).toBeNull();
     expect(isAgynFileUrl('https://example.com/file')).toBe(false);
     expect(parseAgynFileId('https://example.com/file')).toBeNull();
   });

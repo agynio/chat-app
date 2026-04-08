@@ -1,19 +1,11 @@
 import { connectPost } from '@/api/connect';
 import { uploadFileViaConnect } from '@/api/upload-file-connect';
-import type { FileRecord, FileMetadata, GetFileMetadataRequest, GetFileMetadataResponse } from '@/api/types/files';
+import type { FileMetadataWire, FileRecord, GetFileMetadataRequest, GetFileMetadataResponse } from '@/api/types/files';
 import type { UploadProgressHandler } from '@/api/types/upload';
 
 export type { UploadProgressEvent, UploadProgressHandler } from '@/api/types/upload';
 
 const FILES_SERVICE = '/api/agynio.api.gateway.v1.FilesGateway';
-
-type FileMetadataWire = {
-  id?: string;
-  filename?: string;
-  contentType?: string;
-  sizeBytes?: string | number | bigint;
-  createdAt?: string;
-};
 
 function parseSizeBytes(sizeBytes: string | number | bigint): number {
   const parsed = typeof sizeBytes === 'bigint'
@@ -63,7 +55,7 @@ export async function uploadFile(
     throw new Error('UploadFile response missing file');
   }
 
-  return normalizeFileRecord(response.file as FileMetadataWire);
+  return normalizeFileRecord(response.file);
 }
 
 export async function getFileMetadata(fileId: string): Promise<FileRecord> {
@@ -73,10 +65,9 @@ export async function getFileMetadata(fileId: string): Promise<FileRecord> {
     { fileId },
   );
 
-  const file = response.file ?? (response as unknown as FileMetadata);
-  if (!file) {
+  if (!response.file) {
     throw new Error('GetFileMetadata response missing file');
   }
 
-  return normalizeFileRecord(file as FileMetadataWire);
+  return normalizeFileRecord(response.file);
 }

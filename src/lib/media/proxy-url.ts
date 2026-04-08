@@ -17,14 +17,12 @@ const normalizeInput = (value: string): string | null => {
 
 const resolveMediaProxyBase = (): string | null => {
   const base = config.mediaProxyUrl;
-  if (typeof base !== 'string') return null;
-  const trimmed = base.trim();
-  if (!trimmed) return null;
-  return trimmed.replace(/\/+$/, '');
+  if (!base) return null;
+  return base.replace(/\/+$/, '');
 };
 
 const normalizeSize = (size?: number | null): string | null => {
-  if (typeof size !== 'number' || !Number.isFinite(size) || size <= 0) return null;
+  if (size == null || !Number.isFinite(size) || size <= 0) return null;
   return Math.round(size).toString();
 };
 
