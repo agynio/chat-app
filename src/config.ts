@@ -32,6 +32,31 @@ type OidcConfig = OidcConfigEnabled | OidcConfigDisabled;
 
 const runtimeConfig: RuntimeConfig = typeof window !== 'undefined' ? (window.__APP_CONFIG ?? {}) : {};
 
+/**
+ * Derive media proxy base URL from the current page origin by replacing
+ * the first subdomain label with "media".
+ * Returns null when derivation is not possible (no subdomain, IP address, SSR, etc.).
+ */
+export function deriveMediaProxyUrl(): string | null {
+  if (typeof window === 'undefined') return null;
+
+  const { protocol, hostname, port } = window.location;
+
+  // Cannot derive from IP addresses
+  if (/^\d/.test(hostname) || hostname.startsWith('[')) return null;
+
+  const dotIndex = hostname.indexOf('.');
+  if (dotIndex === -1) return null;
+
+  // Require at least two dots to avoid bare domains (e.g. "agyn.dev" → ".dev" has no second dot)
+  const rest = hostname.slice(dotIndex); // ".agyn.dev"
+  if (!rest.includes('.', 1)) return null;
+
+  const derived = `media${rest}`;
+  const portSuffix = port ? `:${port}` : '';
+  return `${protocol}//${derived}${portSuffix}`;
+}
+
 function readConfigValue(runtimeKey: keyof RuntimeConfig, envKey: keyof ViteEnv): string | null {
   const runtimeValue = runtimeConfig[runtimeKey];
   if (typeof runtimeValue === 'string' && runtimeValue.trim()) return runtimeValue.trim();
@@ -77,7 +102,9 @@ const apiBaseUrl = deriveBase(rawApiBase, { stripApi: true });
 const socketBaseUrl = deriveBase(rawApiBase, { stripApi: true });
 
 const rawMediaProxyUrl = readConfigValue('MEDIA_PROXY_URL', 'VITE_MEDIA_PROXY_URL');
-const mediaProxyUrl = rawMediaProxyUrl ? deriveBase(rawMediaProxyUrl, { stripApi: false }) : null;
+const mediaProxyUrl = rawMediaProxyUrl
+  ? deriveBase(rawMediaProxyUrl, { stripApi: false })
+  : deriveMediaProxyUrl();
 
 const rawOidcAuthority = readConfigValue('OIDC_AUTHORITY', 'VITE_OIDC_AUTHORITY');
 const oidcEnabled = Boolean(rawOidcAuthority);
