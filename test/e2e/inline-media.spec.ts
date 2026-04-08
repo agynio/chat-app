@@ -65,16 +65,9 @@ async function expectInlineImage(
   await expect(image).toBeVisible({ timeout: 15000 });
 
   if (hasProxy) {
-    const resolved = image.locator(
-      '[data-testid="media-image-element"], [data-testid="media-image-error"]',
-    );
-    await expect(resolved.first()).toBeVisible({ timeout: 15000 });
     const element = image.getByTestId('media-image-element');
-    if (await element.count()) {
-      await expect(element).toHaveAttribute('alt', altText);
-    } else {
-      await expect(image.getByTestId('media-image-error')).toContainText(altText);
-    }
+    await expect(element).toBeVisible({ timeout: 15000 });
+    await expect(element).toHaveAttribute('alt', altText);
     return;
   }
 
@@ -122,7 +115,7 @@ async function expectInlineAudio(messageItem: Locator, hasProxy: boolean): Promi
 test('renders inline image from markdown with external URL', async ({ page }) => {
   const now = Date.now();
   const anchor = `Inline image external ${now}`;
-  const message = `${anchor}: Here is a photo: ![a sunset over the ocean](https://example.com/photo.png)`;
+  const message = `${anchor}: Here is a photo: ![a sunset over the ocean](https://httpbin.org/image/png)`;
 
   const { messageItem, hasProxy } = await openChatWithMessage(page, message, anchor);
   await expectInlineImage(messageItem, 'a sunset over the ocean', hasProxy);
@@ -154,10 +147,16 @@ test('renders inline image with agyn:// protocol URL', async ({ page }) => {
 test('renders multiple inline images in a single message', async ({ page }) => {
   const now = Date.now();
   const anchor = `Inline image gallery ${now}`;
-  const message = `${anchor}: ![diagram one](https://example.com/one.png) ![diagram two](https://example.com/two.png) ![diagram three](https://example.com/three.png)`;
+  const message = `${anchor}: ![diagram one](https://httpbin.org/image/png) ![diagram two](https://httpbin.org/image/jpeg) ![diagram three](https://httpbin.org/image/svg)`;
 
-  const { messageItem } = await openChatWithMessage(page, message, anchor);
+  const { messageItem, hasProxy } = await openChatWithMessage(page, message, anchor);
   await expect(messageItem.getByTestId('media-image')).toHaveCount(3);
+
+  if (hasProxy) {
+    await expect(messageItem.getByTestId('media-image-element')).toHaveCount(3, { timeout: 15000 });
+  } else {
+    await expect(messageItem.getByTestId('media-image-unavailable')).toHaveCount(3, { timeout: 15000 });
+  }
 });
 
 test('renders video when alt text is "video"', async ({ page }) => {
@@ -181,7 +180,7 @@ test('renders audio when alt text is "audio"', async ({ page }) => {
 test('renders mixed media types in one message', async ({ page }) => {
   const now = Date.now();
   const anchor = `Inline mixed media ${now}`;
-  const message = `${anchor}: ![diagram](https://example.com/diagram.png) ![video](https://example.com/demo.mp4) ![audio](https://example.com/podcast.mp3)`;
+  const message = `${anchor}: ![diagram](https://httpbin.org/image/png) ![video](https://example.com/demo.mp4) ![audio](https://example.com/podcast.mp3)`;
 
   const { messageItem, hasProxy } = await openChatWithMessage(page, message, anchor);
   await expect(messageItem.getByTestId('media-image')).toHaveCount(1);
@@ -197,7 +196,7 @@ test('message with markdown text and inline image renders both', async ({ page }
   const now = Date.now();
   const heading = `Release update ${now}`;
   const anchor = heading;
-  const message = `# ${heading}\n\nThis is **important**: ![release screenshot](https://example.com/release.png)\n\nFinal notes.`;
+  const message = `# ${heading}\n\nThis is **important**: ![release screenshot](https://httpbin.org/image/png)\n\nFinal notes.`;
 
   const { messageItem, hasProxy } = await openChatWithMessage(page, message, anchor);
   await expect(messageItem.getByRole('heading', { name: heading })).toBeVisible({ timeout: 15000 });
