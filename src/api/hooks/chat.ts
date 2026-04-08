@@ -161,7 +161,7 @@ const updateChatPages = (
     ...current,
     pages: current.pages.map((page) => ({
       ...page,
-      chats: (page.chats ?? []).map((chat) => (chat.id === chatId ? { ...chat, ...updates } : chat)),
+      chats: page.chats.map((chat) => (chat.id === chatId ? { ...chat, ...updates } : chat)),
     })),
   };
 };

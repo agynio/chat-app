@@ -39,10 +39,6 @@ export function useChatNotifications({
       void queryClient.invalidateQueries({ queryKey: ['chats', 'list'] });
     });
 
-    const offRunStatusChanged = graphSocket.onChatRunStatusChanged(({ chatId }) => {
-      void queryClient.invalidateQueries({ queryKey: ['chats', chatId, 'runs'] });
-    });
-
     const offReconnect = graphSocket.onReconnected(() => {
       void queryClient.invalidateQueries({ queryKey: ['chats'] });
     });
@@ -51,7 +47,6 @@ export function useChatNotifications({
       offChatCreated();
       offChatUpdated();
       offMessageCreated();
-      offRunStatusChanged();
       offReconnect();
       graphSocket.unsubscribe([room]);
     };

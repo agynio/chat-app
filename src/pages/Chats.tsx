@@ -96,7 +96,6 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
   const selectedChatId = params.chatId ?? selectedChatIdState;
   const previousOrganizationIdRef = useRef<string | null>(selectedOrganizationId ?? null);
 
-
   useEffect(() => {
     if (params.chatId) {
       setSelectedChatIdState(params.chatId);

@@ -293,10 +293,9 @@ function ChatDetailHeader({
 
   useEffect(() => {
     setIsStatusMenuOpen(false);
-  }, [chat.id]);
-
-  useEffect(() => {
     setIsRemindersPopoverOpen(false);
+    summaryCancelRef.current = false;
+    setIsEditingSummary(false);
   }, [chat.id]);
 
   useEffect(() => {
@@ -304,11 +303,6 @@ function ChatDetailHeader({
       setIsRemindersPopoverOpen(false);
     }
   }, [hasReminders]);
-
-  useEffect(() => {
-    summaryCancelRef.current = false;
-    setIsEditingSummary(false);
-  }, [chat.id]);
 
   useEffect(() => {
     if (isEditingSummary) return;
