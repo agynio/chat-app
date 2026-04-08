@@ -377,7 +377,12 @@ function ChatDetailHeader({
         <div className="flex-1">
           <div className="mb-1 flex items-center gap-2">
             <StatusIndicator status={chat.status} size="sm" showTooltip={false} />
-            <span className="text-xs text-[var(--agyn-gray)]">{chatTitle}</span>
+            <span
+              className="text-xs text-[var(--agyn-gray)]"
+              data-testid="chat-detail-header-agent"
+            >
+              {chatTitle}
+            </span>
             <span className="text-xs text-[var(--agyn-gray)]">•</span>
             <span className="text-xs text-[var(--agyn-gray)]" title={createdAtTitle}>
               {createdAtRelative}
