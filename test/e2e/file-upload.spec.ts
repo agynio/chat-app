@@ -59,7 +59,9 @@ test('uploads a file and sends a message with attachment', async ({ page }) => {
 
   const messageItem = page.getByTestId('chat-message').filter({ hasText: message });
   await expect(messageItem).toBeVisible({ timeout: 15000 });
-  await expect(messageItem).toContainText('1 attachment');
+  const attachmentCard = messageItem.getByTestId('message-attachments');
+  await expect(attachmentCard).toContainText('test-upload.txt', { timeout: 15000 });
+  await expect(attachmentCard).toContainText('text/plain');
 
   await argosScreenshot(page, 'file-upload-message-sent');
 });
