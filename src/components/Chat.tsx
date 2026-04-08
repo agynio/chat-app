@@ -1,9 +1,7 @@
-import { memo, type ReactNode, useRef, useEffect, useState, type Ref, type UIEvent } from 'react';
+import { memo, type ReactNode, type Ref, type UIEvent } from 'react';
 import { Message, type MessageRole } from './Message';
-import { RunInfo } from './RunInfo';
 import { QueuedMessage } from './QueuedMessage';
 import { Reminder } from './Reminder';
-import { StatusIndicator, type Status } from './StatusIndicator';
 
 export interface ChatMessage {
   id: string;
@@ -19,12 +17,6 @@ export interface ChatMessage {
 export interface ChatRun {
   id: string;
   messages: ChatMessage[];
-  status: 'finished' | 'running' | 'failed' | 'pending';
-  duration?: string;
-  tokens?: number;
-  cost?: string;
-  timelineHref?: string;
-  onViewRun?: (runId: string) => void;
 }
 
 export interface ChatQueuedMessageData {
@@ -46,8 +38,6 @@ interface ChatProps {
   header?: ReactNode;
   footer?: ReactNode;
   className?: string;
-  defaultCollapsed?: boolean;
-  collapsed?: boolean;
   scrollRef?: Ref<HTMLDivElement>;
   onScroll?: (event: UIEvent<HTMLDivElement>) => void;
   onCancelQueuedMessage?: (queuedMessageId: string) => void;
@@ -69,8 +59,6 @@ function ChatImpl({
   header = EMPTY_HEADER,
   footer = EMPTY_FOOTER,
   className = '',
-  defaultCollapsed = false,
-  collapsed,
   scrollRef,
   onScroll,
   onCancelQueuedMessage,
@@ -78,24 +66,6 @@ function ChatImpl({
   isCancelQueuedMessagesPending = false,
   cancellingReminderIds = EMPTY_REMINDER_IDS,
 }: ChatProps) {
-  const messagesRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-  const [runHeights, setRunHeights] = useState<Map<string, number>>(new Map());
-
-  // Use controlled or uncontrolled state
-  const isCollapsed = collapsed ?? defaultCollapsed;
-
-  // Measure run heights for the sticky run info column
-  useEffect(() => {
-    const newHeights = new Map<string, number>();
-    runs.forEach((run) => {
-      const element = messagesRefs.current.get(run.id);
-      if (element) {
-        newHeights.set(run.id, element.offsetHeight);
-      }
-    });
-    setRunHeights(newHeights);
-  }, [runs]);
-
   const hasQueueOrReminders = queuedMessages.length > 0 || reminders.length > 0;
 
   return (
@@ -120,121 +90,62 @@ function ChatImpl({
         {/* Runs Container */}
         <div className="flex flex-col flex-1 min-w-0">
           {/* Runs */}
-          {runs.map((run, index) => {
-            return (
-              <div key={run.id} className="min-w-0">
-                {/* Run Divider - spans both columns */}
-                {index > 0 && (
-                  <div className="border-t border-[var(--agyn-border-subtle)]" />
-                )}
-                
-                {/* Run content - two columns */}
-                <div className="flex min-w-0">
-                  {/* Messages Column */}
-                  <div className="flex-1 min-w-0 px-6 pt-6 pb-2">
-                    <div
-                      className="min-w-0"
-                      ref={(el) => {
-                        if (el) messagesRefs.current.set(run.id, el);
-                      }}
-                    >
-                      {run.messages.map((message) => (
-                        <Message
-                          key={message.id}
-                          role={message.role}
-                          content={message.content}
-                          timestamp={message.timestamp}
-                          senderLabel={message.senderLabel}
-                          isUnread={message.isUnread}
-                          showDelete={message.showDelete}
-                          onDelete={message.onDelete}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Run Info Column */}
-                  <div className={`flex-shrink-0 border-l border-[var(--agyn-border-subtle)] bg-[var(--agyn-bg-light)]/50 relative transition-all ${isCollapsed ? 'w-8' : 'w-[150px]'}`}>
-                    <div className={isCollapsed ? 'pt-6 pb-6 flex items-center justify-center' : 'pt-6 px-3 pb-6'}>
-                      {isCollapsed ? (
-                        // Collapsed View - Just StatusIndicator
-                        <div
-                          className="relative w-full"
-                          style={{ height: `${runHeights.get(run.id) || 0}px` }}
-                        >
-                          <div className="sticky flex justify-center" style={{ top: '21px' }}>
-                            <StatusIndicator status={run.status as Status} size="sm" />
-                          </div>
-                        </div>
-                      ) : (
-                        // Expanded View - Full Info
-                        <RunInfo
-                          runId={run.id}
-                          status={run.status}
-                          duration={run.duration}
-                          tokens={run.tokens}
-                          cost={run.cost}
-                          height={runHeights.get(run.id) || 0}
-                          runLink={run.timelineHref}
-                          onViewRun={run.onViewRun}
-                        />
-                      )}
-                    </div>
-                  </div>
-                </div>
+          {runs.map((run, index) => (
+            <div key={run.id} className="min-w-0">
+              {index > 0 && <div className="border-t border-[var(--agyn-border-subtle)]" />}
+              <div className="min-w-0 px-6 pt-6 pb-2">
+                {run.messages.map((message) => (
+                  <Message
+                    key={message.id}
+                    role={message.role}
+                    content={message.content}
+                    timestamp={message.timestamp}
+                    senderLabel={message.senderLabel}
+                    isUnread={message.isUnread}
+                    showDelete={message.showDelete}
+                    onDelete={message.onDelete}
+                  />
+                ))}
               </div>
-            );
-          })}
+            </div>
+          ))}
 
           {/* Queue and Reminders Section */}
           {hasQueueOrReminders && (
-            <div className="flex min-w-0">
-              {/* Pending messages in left column */}
-              <div className="flex-1 min-w-0 px-6 pb-6">
-                <div className="pt-6 min-w-0">
-                  {/* Pending Divider */}
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-8 border-t border-[var(--agyn-border-subtle)]" />
-                    <span className="text-xs text-[var(--agyn-gray)] tracking-wider">PENDING</span>
-                    <div className="flex-1 border-t border-[var(--agyn-border-subtle)]" />
-                  </div>
-                  
-                  <div className="space-y-3">
-                    {/* Queued Messages */}
-                    {queuedMessages.map((msg) => (
-                      <QueuedMessage
-                        key={msg.id}
-                        content={msg.content}
-                        onCancel={onCancelQueuedMessage ? () => onCancelQueuedMessage(msg.id) : undefined}
-                        isCancelling={isCancelQueuedMessagesPending}
-                      />
-                    ))}
+            <div className="min-w-0 px-6 pb-6">
+              <div className="pt-6 min-w-0">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 border-t border-[var(--agyn-border-subtle)]" />
+                  <span className="text-xs text-[var(--agyn-gray)] tracking-wider">PENDING</span>
+                  <div className="flex-1 border-t border-[var(--agyn-border-subtle)]" />
+                </div>
 
-                    {/* Reminders */}
-                    {reminders.map((reminder) => (
-                      <Reminder
-                        key={reminder.id}
-                        content={reminder.content}
-                        scheduledTime={reminder.scheduledTime}
-                        date={reminder.date}
-                        onCancel={onCancelReminder ? () => onCancelReminder(reminder.id) : undefined}
-                        isCancelling={cancellingReminderIds.has(reminder.id)}
-                      />
-                    ))}
-                  </div>
+                <div className="space-y-3">
+                  {queuedMessages.map((msg) => (
+                    <QueuedMessage
+                      key={msg.id}
+                      content={msg.content}
+                      onCancel={onCancelQueuedMessage ? () => onCancelQueuedMessage(msg.id) : undefined}
+                      isCancelling={isCancelQueuedMessagesPending}
+                    />
+                  ))}
+
+                  {reminders.map((reminder) => (
+                    <Reminder
+                      key={reminder.id}
+                      content={reminder.content}
+                      scheduledTime={reminder.scheduledTime}
+                      date={reminder.date}
+                      onCancel={onCancelReminder ? () => onCancelReminder(reminder.id) : undefined}
+                      isCancelling={cancellingReminderIds.has(reminder.id)}
+                    />
+                  ))}
                 </div>
               </div>
-
-              {/* Empty space for run info column */}
-              <div className={`flex-shrink-0 border-l border-[var(--agyn-border-subtle)] bg-[var(--agyn-bg-light)]/50 transition-all ${isCollapsed ? 'w-8' : 'w-[150px]'}`} />
             </div>
           )}
 
-          {/* Spacer to fill remaining space */}
-          <div className="flex-1 flex">
-            <div className="flex-1" />
-            <div className={`flex-shrink-0 border-l border-[var(--agyn-border-subtle)] bg-[var(--agyn-bg-light)]/50 transition-all ${isCollapsed ? 'w-8' : 'w-[150px]'}`} />
-          </div>
+          <div className="flex-1" />
         </div>
       </div>
 
@@ -255,8 +166,6 @@ function areEqual(prev: ChatProps, next: ChatProps): boolean {
     prev.reminders === next.reminders &&
     prev.header === next.header &&
     prev.footer === next.footer &&
-    prev.collapsed === next.collapsed &&
-    prev.defaultCollapsed === next.defaultCollapsed &&
     prev.className === next.className &&
     prev.scrollRef === next.scrollRef &&
     prev.onScroll === next.onScroll &&

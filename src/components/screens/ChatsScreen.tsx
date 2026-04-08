@@ -1,14 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type Ref, type UIEvent } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import {
-  Play,
-  Container,
   Bell,
-  PanelRightClose,
-  PanelRight,
   Loader2,
   MessageSquarePlus,
-  Terminal,
   Circle,
   CheckCircle,
   ChevronDown,
@@ -268,63 +263,61 @@ function ChatDraftPanel({
 
 type ChatDetailHeaderProps = {
   chat: ChatListItem;
-  runsCount: number;
-  containers: { id: string; name: string; status: 'running' | 'finished' }[];
   reminders: { id: string; title: string; time: string }[];
   isToggleChatStatusPending: boolean;
+  isUpdateSummaryPending: boolean;
   onToggleChatStatus?: (chatId: string, nextStatus: 'open' | 'closed') => void;
-  isRunsInfoCollapsed: boolean;
-  onToggleRunsInfoCollapsed?: (isCollapsed: boolean) => void;
-  onOpenContainerTerminal?: (containerId: string) => void;
+  onUpdateSummary?: (chatId: string, summary: string) => void;
   onCancelReminder?: (reminderId: string) => void;
   cancellingReminderIds?: ReadonlySet<string>;
 };
 
 function ChatDetailHeader({
   chat,
-  runsCount,
-  containers,
   reminders,
   isToggleChatStatusPending,
+  isUpdateSummaryPending,
   onToggleChatStatus,
-  isRunsInfoCollapsed,
-  onToggleRunsInfoCollapsed,
-  onOpenContainerTerminal,
+  onUpdateSummary,
   onCancelReminder,
   cancellingReminderIds,
 }: ChatDetailHeaderProps) {
   const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
-  const [isContainersPopoverOpen, setIsContainersPopoverOpen] = useState(false);
   const [isRemindersPopoverOpen, setIsRemindersPopoverOpen] = useState(false);
+  const [isEditingSummary, setIsEditingSummary] = useState(false);
+  const [summaryDraft, setSummaryDraft] = useState('');
+  const summaryInputRef = useRef<HTMLInputElement | null>(null);
+  const summaryCancelRef = useRef(false);
 
-  const hasContainers = containers.length > 0;
   const hasReminders = reminders.length > 0;
-
-  const runningContainersCount = useMemo(
-    () => containers.reduce((count, container) => count + (container.status === 'running' ? 1 : 0), 0),
-    [containers],
-  );
 
   useEffect(() => {
     setIsStatusMenuOpen(false);
-  }, [chat.id]);
-
-  useEffect(() => {
-    setIsContainersPopoverOpen(false);
     setIsRemindersPopoverOpen(false);
+    summaryCancelRef.current = false;
+    setIsEditingSummary(false);
   }, [chat.id]);
-
-  useEffect(() => {
-    if (!hasContainers) {
-      setIsContainersPopoverOpen(false);
-    }
-  }, [hasContainers]);
 
   useEffect(() => {
     if (!hasReminders) {
       setIsRemindersPopoverOpen(false);
     }
   }, [hasReminders]);
+
+  useEffect(() => {
+    if (isEditingSummary) return;
+    const nextSummary = chat.subtitle?.trim() ?? '';
+    setSummaryDraft(nextSummary);
+  }, [chat.id, chat.subtitle, isEditingSummary]);
+
+  useEffect(() => {
+    if (!isEditingSummary) return;
+    const frame = requestAnimationFrame(() => {
+      summaryInputRef.current?.focus();
+      summaryInputRef.current?.select();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [isEditingSummary]);
 
   useEffect(() => {
     if (isToggleChatStatusPending) {
@@ -343,6 +336,27 @@ function ChatDetailHeader({
   const currentStatusLabel = chat.isOpen ? 'Open' : 'Resolved';
   const CurrentStatusIcon = chat.isOpen ? Circle : CheckCircle;
   const statusSelectionDisabled = !onToggleChatStatus || isToggleChatStatusPending;
+  const summaryValue = chat.subtitle?.trim() ?? '';
+  const hasSummary = summaryValue.length > 0;
+  const summaryPlaceholder = 'Add a summary';
+
+  const handleSummaryCommit = () => {
+    if (summaryCancelRef.current) {
+      summaryCancelRef.current = false;
+      return;
+    }
+    setIsEditingSummary(false);
+    if (!onUpdateSummary) return;
+    const normalizedSummary = summaryDraft.trim();
+    if (normalizedSummary === summaryValue) return;
+    onUpdateSummary(chat.id, normalizedSummary);
+  };
+
+  const handleSummaryCancel = () => {
+    summaryCancelRef.current = true;
+    setSummaryDraft(summaryValue);
+    setIsEditingSummary(false);
+  };
 
   const handleStatusChange = (nextStatus: 'open' | 'closed') => {
     if (!onToggleChatStatus || isToggleChatStatusPending) return;
@@ -352,7 +366,10 @@ function ChatDetailHeader({
   };
 
   const chatTitle = chat.title?.trim() || UNKNOWN_PARTICIPANT_LABEL;
-  const chatSubtitle = chat.subtitle?.trim();
+  const summaryDisplay = hasSummary ? summaryValue : summaryPlaceholder;
+  const summaryClassName = hasSummary
+    ? 'text-[var(--agyn-dark)]'
+    : 'text-[var(--agyn-gray)]';
 
   return (
     <div className="bg-white border-b border-[var(--agyn-border-subtle)] p-4">
@@ -360,15 +377,54 @@ function ChatDetailHeader({
         <div className="flex-1">
           <div className="mb-1 flex items-center gap-2">
             <StatusIndicator status={chat.status} size="sm" showTooltip={false} />
-            <span className="text-xs text-[var(--agyn-gray)]">{chatTitle}</span>
+            <span
+              className="text-xs text-[var(--agyn-gray)]"
+              data-testid="chat-detail-header-agent"
+            >
+              {chatTitle}
+            </span>
             <span className="text-xs text-[var(--agyn-gray)]">•</span>
             <span className="text-xs text-[var(--agyn-gray)]" title={createdAtTitle}>
               {createdAtRelative}
             </span>
           </div>
-          <h3 className="mt-1 text-[var(--agyn-dark)]" data-testid="chat-detail-header-title">
-            {chatSubtitle || chat.title}
-          </h3>
+          <div className="mt-1" data-testid="chat-detail-header-title">
+            {isEditingSummary ? (
+              <input
+                ref={summaryInputRef}
+                type="text"
+                value={summaryDraft}
+                onChange={(event) => setSummaryDraft(event.target.value)}
+                onBlur={handleSummaryCommit}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    handleSummaryCommit();
+                  }
+                  if (event.key === 'Escape') {
+                    event.preventDefault();
+                    handleSummaryCancel();
+                  }
+                }}
+                className="w-full rounded-md border border-[var(--agyn-border-subtle)] bg-white px-2 py-1 text-[var(--agyn-dark)] text-sm"
+                disabled={isUpdateSummaryPending}
+                aria-busy={isUpdateSummaryPending || undefined}
+              />
+            ) : (
+              <button
+                type="button"
+                className={`text-left text-sm ${summaryClassName} hover:text-[var(--agyn-dark)] transition-colors`}
+                onClick={() => {
+                  if (!onUpdateSummary || isUpdateSummaryPending) return;
+                  setSummaryDraft(summaryValue);
+                  setIsEditingSummary(true);
+                }}
+                disabled={!onUpdateSummary || isUpdateSummaryPending}
+              >
+                {summaryDisplay}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -429,65 +485,6 @@ function ChatDetailHeader({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <div className="flex items-center gap-2">
-            <Play className="h-4 w-4 text-[var(--agyn-gray)]" />
-            <span className="text-sm text-[var(--agyn-dark)]">{runsCount}</span>
-            <span className="text-xs text-[var(--agyn-gray)]">runs</span>
-          </div>
-
-          <Popover
-            open={isContainersPopoverOpen}
-            onOpenChange={(open) => {
-              if (!hasContainers) return;
-              setIsContainersPopoverOpen(open);
-            }}
-          >
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="flex items-center gap-2 rounded-[6px] px-2 py-1 transition-colors hover:bg-[var(--agyn-bg-light)]"
-                aria-haspopup="dialog"
-                aria-expanded={isContainersPopoverOpen}
-              >
-                <Container className="h-4 w-4 text-[var(--agyn-gray)]" />
-                <span className="text-sm text-[var(--agyn-dark)]">{runningContainersCount}</span>
-                <span className="text-xs text-[var(--agyn-gray)]">containers</span>
-              </button>
-            </PopoverTrigger>
-            {hasContainers ? (
-              <PopoverContent
-                className="w-[280px] rounded-[10px] border border-[var(--agyn-border-subtle)] bg-white p-1 shadow-lg"
-                align="end"
-              >
-                <ul className="flex flex-col gap-1">
-                  {containers.map((container) => {
-                    const isRunning = container.status === 'running';
-                    return (
-                      <li
-                        key={container.id}
-                        className={cn(menuItemBaseClasses, 'justify-between')}
-                      >
-                        <span className="min-w-0 flex-1 truncate">{container.name}</span>
-                        <div className="flex items-center gap-2">
-                          <IconButton
-                            variant="ghost"
-                            size="sm"
-                            icon={<Terminal className="h-4 w-4" />}
-                            aria-label="Open terminal"
-                            title="Open terminal"
-                            onClick={() => onOpenContainerTerminal?.(container.id)}
-                            disabled={!isRunning || !onOpenContainerTerminal}
-                          />
-                          <StatusIndicator status={container.status} size="sm" showTooltip={false} />
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </PopoverContent>
-            ) : null}
-          </Popover>
-
           <Popover
             open={isRemindersPopoverOpen}
             onOpenChange={(open) => {
@@ -541,18 +538,6 @@ function ChatDetailHeader({
             ) : null}
           </Popover>
         </div>
-
-        <div className="flex items-center gap-2">
-          <IconButton
-            icon={
-              isRunsInfoCollapsed ? <PanelRight className="h-4 w-4" /> : <PanelRightClose className="h-4 w-4" />
-            }
-            variant="ghost"
-            size="sm"
-            onClick={() => onToggleRunsInfoCollapsed?.(!isRunsInfoCollapsed)}
-            title={isRunsInfoCollapsed ? 'Show runs info' : 'Hide runs info'}
-          />
-        </div>
       </div>
     </div>
   );
@@ -561,8 +546,6 @@ function ChatDetailHeader({
 interface ChatsScreenProps {
   chats: ChatListItem[];
   runs: ChatRun[];
-  runsCount: number;
-  containers: { id: string; name: string; status: 'running' | 'finished' }[];
   reminders: { id: string; title: string; time: string }[];
   chatQueuedMessages?: ChatQueuedMessageData[];
   chatReminders?: ChatReminderData[];
@@ -570,7 +553,6 @@ interface ChatsScreenProps {
   selectedChatId: string | null;
   selectedChat?: ChatListItem;
   inputValue: string;
-  isRunsInfoCollapsed: boolean;
   chatsHasMore?: boolean;
   chatsIsLoading?: boolean;
   isLoading?: boolean;
@@ -581,15 +563,15 @@ interface ChatsScreenProps {
   onChatScroll?: (event: UIEvent<HTMLDivElement>) => void;
   onFilterModeChange?: (mode: 'all' | 'open' | 'closed') => void;
   onSelectChat?: (chatId: string) => void;
-  onToggleRunsInfoCollapsed?: (isCollapsed: boolean) => void;
   onInputValueChange?: (value: string) => void;
   onSendMessage?: (value: string, context: { chatId: string | null }) => void;
   onChatsLoadMore?: () => void;
   onCreateDraft?: () => void;
   onToggleChatStatus?: (chatId: string, nextStatus: 'open' | 'closed') => void;
   isToggleChatStatusPending?: boolean;
+  onUpdateSummary?: (chatId: string, summary: string) => void;
+  isUpdateSummaryPending?: boolean;
   isSendMessagePending?: boolean;
-  onOpenContainerTerminal?: (containerId: string) => void;
   currentUserId: string;
   draftMode?: boolean;
   draftParticipants?: DraftParticipant[];
@@ -612,8 +594,6 @@ interface ChatsScreenProps {
 export default function ChatsScreen({
   chats,
   runs,
-  runsCount,
-  containers,
   reminders,
   chatQueuedMessages = [],
   chatReminders = [],
@@ -621,7 +601,6 @@ export default function ChatsScreen({
   selectedChatId,
   selectedChat,
   inputValue,
-  isRunsInfoCollapsed,
   chatsHasMore = false,
   chatsIsLoading = false,
   isLoading = false,
@@ -630,15 +609,15 @@ export default function ChatsScreen({
   detailError,
   onFilterModeChange,
   onSelectChat,
-  onToggleRunsInfoCollapsed,
   onInputValueChange,
   onSendMessage,
   onChatsLoadMore,
   onCreateDraft,
   onToggleChatStatus,
   isToggleChatStatusPending = false,
+  onUpdateSummary,
+  isUpdateSummaryPending = false,
   isSendMessagePending = false,
-  onOpenContainerTerminal,
   currentUserId,
   draftMode = false,
   draftParticipants = [],
@@ -794,14 +773,11 @@ export default function ChatsScreen({
       <div className="relative flex min-h-0 flex-1 flex-col">
         <ChatDetailHeader
           chat={resolvedSelectedChat}
-          runsCount={runsCount}
-          containers={containers}
           reminders={reminders}
           isToggleChatStatusPending={isToggleChatStatusPending}
+          isUpdateSummaryPending={isUpdateSummaryPending}
           onToggleChatStatus={onToggleChatStatus}
-          isRunsInfoCollapsed={isRunsInfoCollapsed}
-          onToggleRunsInfoCollapsed={onToggleRunsInfoCollapsed}
-          onOpenContainerTerminal={onOpenContainerTerminal}
+          onUpdateSummary={onUpdateSummary}
           onCancelReminder={onCancelReminder}
           cancellingReminderIds={cancellingReminderIds}
         />
@@ -812,7 +788,6 @@ export default function ChatsScreen({
             queuedMessages={chatQueuedMessages}
             reminders={chatReminders}
             className="h-full rounded-none border-none"
-            collapsed={isRunsInfoCollapsed}
             scrollRef={chatScrollRef}
             onScroll={onChatScroll}
             onCancelQueuedMessage={onCancelQueuedMessage}

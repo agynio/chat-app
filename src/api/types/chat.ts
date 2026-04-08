@@ -3,12 +3,16 @@ export type ChatParticipant = {
   joinedAt: string;
 };
 
+export type ChatStatus = 'open' | 'closed';
+
 export type Chat = {
   id: string;
   organizationId: string;
   participants: ChatParticipant[];
   createdAt: string;
   updatedAt: string;
+  status: ChatStatus;
+  summary: string | null;
 };
 
 export type ChatMessage = {
@@ -35,6 +39,9 @@ export type GetMessagesResponse = {
 
 export type SendMessageRequest = { chatId: string; body?: string; fileIds?: string[] };
 export type SendMessageResponse = { message: ChatMessage };
+
+export type UpdateChatRequest = { chatId: string; status?: ChatStatus; summary?: string };
+export type UpdateChatResponse = { chat: Chat };
 
 export type MarkAsReadRequest = { chatId: string; messageIds: string[] };
 export type MarkAsReadResponse = { readCount: number };

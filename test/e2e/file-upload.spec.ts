@@ -2,7 +2,13 @@ import { argosScreenshot } from '@argos-ci/playwright';
 import * as crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { test, expect } from './fixtures';
-import { createAgent, createChat, createOrganization, sendChatMessage } from './chat-api';
+import {
+  createAgent,
+  createChat,
+  createOrganization,
+  DEFAULT_TEST_INIT_IMAGE,
+  sendChatMessage,
+} from './chat-api';
 import { setSelectedOrganization } from './organization-helpers';
 
 const FIXTURE_PATH = fileURLToPath(new URL('./fixtures/test-upload.txt', import.meta.url));
@@ -20,6 +26,7 @@ test('uploads a file and sends a message with attachment', async ({ page }) => {
     description: 'E2E test agent',
     configuration: '{}',
     image: 'alpine:3.21',
+    initImage: DEFAULT_TEST_INIT_IMAGE,
   });
   const chatId = await createChat(page, organizationId, agentId);
   await sendChatMessage(page, chatId, `Upload warmup ${now}`);

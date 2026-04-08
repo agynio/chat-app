@@ -1,11 +1,15 @@
 import { useInfiniteQuery, useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { chatApi } from '@/api/modules/chat';
 import type {
+  Chat,
+  ChatStatus,
   ChatMessage,
   CreateChatRequest,
   CreateChatResponse,
+  GetChatsResponse,
   GetMessagesResponse,
   SendMessageResponse,
+  UpdateChatResponse,
 } from '@/api/types/chat';
 
 const CHAT_PAGE_SIZE = 25;
@@ -133,6 +137,65 @@ export function useCreateChat(organizationId: string | undefined) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chats', 'list', organizationId] });
+    },
+  });
+}
+
+type UpdateChatInput = {
+  chatId: string;
+  status?: ChatStatus;
+  summary?: string;
+};
+
+type UpdateChatContext = {
+  previousChats: Array<[unknown, InfiniteData<GetChatsResponse> | undefined]>;
+};
+
+const updateChatPages = (
+  current: InfiniteData<GetChatsResponse> | undefined,
+  chatId: string,
+  updates: Partial<Chat>,
+): InfiniteData<GetChatsResponse> | undefined => {
+  if (!current) return current;
+  return {
+    ...current,
+    pages: current.pages.map((page) => ({
+      ...page,
+      chats: page.chats.map((chat) => (chat.id === chatId ? { ...chat, ...updates } : chat)),
+    })),
+  };
+};
+
+export function useUpdateChat() {
+  const queryClient = useQueryClient();
+
+  return useMutation<UpdateChatResponse, Error, UpdateChatInput, UpdateChatContext>({
+    mutationFn: ({ chatId, status, summary }) =>
+      chatApi.updateChat({ chatId, status, summary }),
+    onMutate: async ({ chatId, status, summary }) => {
+      const queryKey = ['chats', 'list'];
+      await queryClient.cancelQueries({ queryKey });
+      const previousChats = queryClient.getQueriesData<InfiniteData<GetChatsResponse>>({ queryKey });
+      const updates: Partial<Chat> = {
+        ...(status !== undefined ? { status } : {}),
+        ...(summary !== undefined ? { summary } : {}),
+      };
+      queryClient.setQueriesData<InfiniteData<GetChatsResponse>>({ queryKey }, (current) =>
+        updateChatPages(current, chatId, updates),
+      );
+      return { previousChats };
+    },
+    onError: (_error, _variables, context) => {
+      context?.previousChats.forEach(([key, data]) => {
+        queryClient.setQueryData(key, data);
+      });
+    },
+    onSuccess: (data, variables) => {
+      const queryKey = ['chats', 'list'];
+      queryClient.setQueriesData<InfiniteData<GetChatsResponse>>({ queryKey }, (current) =>
+        updateChatPages(current, variables.chatId, data.chat),
+      );
+      queryClient.invalidateQueries({ queryKey });
     },
   });
 }

@@ -5,6 +5,8 @@ const AGENTS_GATEWAY_PATH = '/api/agynio.api.gateway.v1.AgentsGateway';
 const LLM_GATEWAY_PATH = '/api/agynio.api.gateway.v1.LLMGateway';
 const ORGS_GATEWAY_PATH = '/api/agynio.api.gateway.v1.OrganizationsGateway';
 
+export const DEFAULT_TEST_INIT_IMAGE = 'ghcr.io/agynio/agent-init-codex:latest';
+
 const CONNECT_HEADERS = {
   'Content-Type': 'application/json',
   'Connect-Protocol-Version': '1',
@@ -16,6 +18,10 @@ type CreateChatResponseWire = {
 
 type CreateOrganizationResponseWire = {
   organization?: { id?: string };
+};
+
+type CreateMembershipResponseWire = {
+  membership?: { id?: string };
 };
 
 type ListAccessibleOrganizationsResponseWire = {
@@ -195,6 +201,28 @@ export async function createOrganization(page: Page, name: string): Promise<stri
     throw new Error('CreateOrganization response missing organization id.');
   }
   return response.organization.id;
+}
+
+export async function createMembership(
+  page: Page,
+  organizationId: string,
+  identityId: string,
+  role: 'MEMBERSHIP_ROLE_OWNER' | 'MEMBERSHIP_ROLE_MEMBER' = 'MEMBERSHIP_ROLE_MEMBER',
+): Promise<string> {
+  const response = await postConnect<CreateMembershipResponseWire>(
+    page,
+    ORGS_GATEWAY_PATH,
+    'CreateMembership',
+    { organizationId, identityId, role },
+  );
+  if (!response.membership?.id) {
+    throw new Error('CreateMembership response missing membership id.');
+  }
+  return response.membership.id;
+}
+
+export async function acceptMembership(page: Page, membershipId: string): Promise<void> {
+  await postConnect(page, ORGS_GATEWAY_PATH, 'AcceptMembership', { membershipId });
 }
 
 export async function listAccessibleOrganizations(
