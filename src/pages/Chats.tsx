@@ -3,9 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ChatListItem } from '@/components/ChatListItem';
 import type { ChatMessage, ChatQueuedMessageData, ChatReminderData, ChatRun } from '@/components/Chat';
-import { ContainerTerminalDialog } from '@/components/monitoring/ContainerTerminalDialog';
 import { MarkdownContent } from '@/components/MarkdownContent';
-import { formatDuration } from '@/components/agents/runTimelineFormatting';
 import ChatsScreen from '@/components/screens/ChatsScreen';
 import { notifyError } from '@/lib/notify';
 import { useUser } from '@/user/user.runtime';
@@ -13,28 +11,19 @@ import { useOrganization } from '@/organization/organization.runtime';
 import { useFileAttachments } from '@/hooks/useFileAttachments';
 import { useAgentsList } from '@/api/hooks/agents';
 import { useBatchGetUsers } from '@/api/hooks/users';
-import {
-  useChats,
-  useChatMessages,
-  useCreateChat,
-  useSendMessage,
-  useMarkAsRead,
-} from '@/api/hooks/chat';
-import { useChatRuns } from '@/api/hooks/runs';
+import { useChats, useChatMessages, useCreateChat, useSendMessage, useMarkAsRead, useUpdateChat } from '@/api/hooks/chat';
 import {
   useChatReminders,
-  useChatContainers,
 } from '@/api/hooks/chat-resources';
 import { chatResources } from '@/api/modules/chat-resources';
 import type { ChatMessage as ChatMessageRecord, Chat } from '@/api/types/chat';
-import type { ChatReminder, RunMeta } from '@/api/types/chat-resources';
-import type { ContainerItem } from '@/api/modules/containers';
+import type { ChatReminder } from '@/api/types/chat-resources';
 import { cancelReminder } from '@/features/reminders/api';
 import { clearDraft, CHAT_MESSAGE_MAX_LENGTH } from '@/utils/draftStorage';
 import type { DraftParticipant } from '@/types/chats';
 import type { User } from '@/user/user-types';
+import { useChatNotifications } from '@/hooks/useChatNotifications';
 import { isDraftChatId } from './chats/draftUtils';
-import { compareRunMeta } from './chats/comparators';
 import { formatDate, formatReminderDate, formatReminderScheduledTime, sanitizeSummary } from './chats/formatters';
 import { useChatDrafts } from './chats/useChatDrafts';
 
@@ -45,32 +34,7 @@ const DRAFT_PARTICIPANT_LABEL = '(select participants)';
 const UNKNOWN_PARTICIPANT_LABEL = '(unknown participant)';
 const EMPTY_REMINDER_CONTENT = '(no content)';
 const EMPTY_PARTICIPANTS: DraftParticipant[] = [];
-const EMPTY_RUN_ITEMS: RunMeta[] = [];
 const EMPTY_REMINDERS: ChatReminder[] = [];
-const EMPTY_CONTAINERS: ContainerItem[] = [];
-
-const mapRunStatus = (status: RunMeta['status']): ChatRun['status'] => {
-  if (status === 'terminated') return 'failed';
-  if (status === 'finished') return 'finished';
-  return 'running';
-};
-
-const computeRunDuration = (run: RunMeta): string | undefined => {
-  const start = Date.parse(run.createdAt);
-  if (!Number.isFinite(start)) return undefined;
-  const endCandidate = run.status === 'running' ? Date.now() : Date.parse(run.updatedAt);
-  const end = Number.isFinite(endCandidate) ? endCandidate : start;
-  const ms = Math.max(0, end - start);
-  const label = formatDuration(ms);
-  return label === '—' ? undefined : label;
-};
-
-const mapContainers = (items: ContainerItem[]): { id: string; name: string; status: 'running' | 'finished' }[] =>
-  items.map((container) => ({
-    id: container.containerId,
-    name: container.name,
-    status: container.status === 'running' ? 'running' : 'finished',
-  }));
 
 const mapReminders = (items: ChatReminder[]): { id: string; title: string; time: string }[] =>
   items.map((reminder) => ({
@@ -89,6 +53,11 @@ const mapReminderData = (items: ChatReminder[]): ChatReminderData[] =>
 
 const resolveParticipantLabel = (participantId: string, lookup: Map<string, DraftParticipant>): string => {
   return lookup.get(participantId)?.name ?? UNKNOWN_PARTICIPANT_LABEL;
+};
+
+const resolveChatSummary = (summary: string | null | undefined): string | undefined => {
+  const trimmed = summary?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : undefined;
 };
 
 function NoOrganizationsScreen() {
@@ -122,12 +91,11 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
   const [filterMode, setFilterMode] = useState<'open' | 'closed' | 'all'>('open');
   const [selectedChatIdState, setSelectedChatIdState] = useState<string | null>(params.chatId ?? null);
   const [cancellingReminderIds, setCancellingReminderIds] = useState<ReadonlySet<string>>(() => new Set());
-  const [isRunsInfoCollapsed, setRunsInfoCollapsed] = useState(false);
-  const [selectedContainerId, setSelectedContainerId] = useState<string | null>(null);
   const [deletedMessageIds, setDeletedMessageIds] = useState<ReadonlySet<string>>(() => new Set());
 
   const selectedChatId = params.chatId ?? selectedChatIdState;
   const previousOrganizationIdRef = useRef<string | null>(selectedOrganizationId ?? null);
+
 
   useEffect(() => {
     if (params.chatId) {
@@ -194,6 +162,12 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
   });
 
   const effectiveDraftMode = isDraftSelectedState;
+  const canUpdateChat = Boolean(selectedChatId && !effectiveDraftMode);
+
+  useChatNotifications({
+    identityId: currentUserId,
+    selectedChatId: effectiveDraftMode ? null : selectedChatId ?? null,
+  });
 
   useEffect(() => {
     clearAttachments();
@@ -321,11 +295,11 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
       return {
         id: chat.id,
         title: resolveChatTitle(chat.participants),
-        subtitle: undefined,
+        subtitle: resolveChatSummary(chat.summary),
         createdAt: chat.createdAt,
         updatedAt: chat.updatedAt,
         status: 'pending',
-        isOpen: true,
+        isOpen: chat.status === 'open',
         unreadCount: 0,
       } satisfies ChatListItem;
     });
@@ -359,16 +333,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     fetchNextPage: fetchNextMessagesPage,
   } = chatMessagesQuery;
 
-  const runMetaQuery = useChatRuns(
-    effectiveDraftMode ? undefined : selectedChatId ?? undefined,
-  );
-
   const remindersQuery = useChatReminders(
-    effectiveDraftMode ? undefined : selectedChatId ?? undefined,
-    !effectiveDraftMode,
-  );
-
-  const containersQuery = useChatContainers(
     effectiveDraftMode ? undefined : selectedChatId ?? undefined,
     !effectiveDraftMode,
   );
@@ -387,10 +352,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
 
   const sendMessage = useSendMessage();
   const createChat = useCreateChat(organizationId);
-
-  const runItems = useMemo(() => runMetaQuery.data?.items ?? EMPTY_RUN_ITEMS, [runMetaQuery.data]);
-  const runItemsSorted = useMemo(() => [...runItems].sort(compareRunMeta), [runItems]);
-  const latestRun = runItemsSorted[runItemsSorted.length - 1];
+  const updateChat = useUpdateChat();
 
   const chatMessages = useMemo(() => {
     const pages = chatMessagesQuery.data?.pages ?? [];
@@ -532,27 +494,17 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
 
   const chatRuns = useMemo<ChatRun[]>(() => {
     if (!selectedChatId || effectiveDraftMode) return [];
-    const status = latestRun ? mapRunStatus(latestRun.status) : 'finished';
     return [
       {
         id: selectedChatId,
         messages: chatMessagesForDisplay,
-        status,
-        duration: latestRun ? computeRunDuration(latestRun) : undefined,
       },
     ];
-  }, [selectedChatId, effectiveDraftMode, chatMessagesForDisplay, latestRun]);
+  }, [selectedChatId, effectiveDraftMode, chatMessagesForDisplay]);
 
   const reminders = useMemo(() => remindersQuery.data?.items ?? EMPTY_REMINDERS, [remindersQuery.data]);
   const remindersForScreen = useMemo(() => (effectiveDraftMode ? [] : mapReminders(reminders)), [reminders, effectiveDraftMode]);
   const chatReminders = useMemo(() => (effectiveDraftMode ? [] : mapReminderData(reminders)), [reminders, effectiveDraftMode]);
-
-  const containerItems = useMemo(() => containersQuery.data?.items ?? EMPTY_CONTAINERS, [containersQuery.data]);
-  const containersForScreen = useMemo(() => (effectiveDraftMode ? [] : mapContainers(containerItems)), [containerItems, effectiveDraftMode]);
-  const selectedContainer = useMemo(
-    () => containerItems.find((item) => item.containerId === selectedContainerId) ?? null,
-    [containerItems, selectedContainerId],
-  );
 
   const queuedMessages = useMemo<ChatQueuedMessageData[]>(() => {
     if (effectiveDraftMode) return [];
@@ -610,32 +562,47 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     [cancelReminderMutation],
   );
 
-  const handleOpenContainerTerminal = useCallback(
-    (containerId: string) => {
-      if (!containerItems.some((item) => item.containerId === containerId)) return;
-      setSelectedContainerId(containerId);
-    },
-    [containerItems],
-  );
-
-  const handleCloseContainerTerminal = useCallback(() => {
-    setSelectedContainerId(null);
-  }, []);
-
   const handleFilterChange = useCallback((mode: 'all' | 'open' | 'closed') => {
     if (mode === filterMode) return;
     setFilterMode(mode);
   }, [filterMode]);
+
+  const handleToggleChatStatus = useCallback(
+    (chatId: string, nextStatus: 'open' | 'closed') => {
+      if (updateChat.isPending) return;
+      updateChat.mutate(
+        { chatId, status: nextStatus },
+        {
+          onError: (error) => {
+            notifyError(error instanceof Error ? error.message : 'Failed to update chat status.');
+          },
+        },
+      );
+    },
+    [updateChat],
+  );
+
+  const handleUpdateSummary = useCallback(
+    (chatId: string, summary: string) => {
+      if (updateChat.isPending) return;
+      const normalizedSummary = summary.trim();
+      updateChat.mutate(
+        { chatId, summary: normalizedSummary },
+        {
+          onError: (error) => {
+            notifyError(error instanceof Error ? error.message : 'Failed to update chat summary.');
+          },
+        },
+      );
+    },
+    [updateChat],
+  );
 
   const handleChatsLoadMore = useCallback(() => {
     if (chatsQuery.hasNextPage && !chatsQuery.isFetchingNextPage) {
       void chatsQuery.fetchNextPage();
     }
   }, [chatsQuery]);
-
-  const handleToggleRunsInfoCollapsed = useCallback((collapsed: boolean) => {
-    setRunsInfoCollapsed(collapsed);
-  }, []);
 
   const handleCancelQueuedMessage = useCallback(
     (_queuedMessageId: string) => {
@@ -787,8 +754,6 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
         <ChatsScreen
           chats={chatsForList}
           runs={chatRuns}
-          runsCount={runItems.length}
-          containers={containersForScreen}
           reminders={remindersForScreen}
           chatQueuedMessages={queuedMessages}
           chatReminders={chatReminders}
@@ -796,7 +761,6 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
           selectedChatId={selectedChatId ?? null}
           selectedChat={selectedChat}
           inputValue={inputValue}
-          isRunsInfoCollapsed={isRunsInfoCollapsed}
           chatsHasMore={chatsQuery.hasNextPage ?? false}
           chatsIsLoading={chatsQuery.isFetching}
           isLoading={chatMessagesQuery.isLoading}
@@ -807,14 +771,16 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
           onChatScroll={handleChatScroll}
           onFilterModeChange={handleFilterChange}
           onSelectChat={handleSelectChat}
-          onToggleRunsInfoCollapsed={handleToggleRunsInfoCollapsed}
           onInputValueChange={handleInputValueChange}
           onSendMessage={handleSendMessage}
           onChatsLoadMore={handleChatsLoadMore}
           onCreateDraft={handleCreateDraft}
+          onToggleChatStatus={canUpdateChat ? handleToggleChatStatus : undefined}
+          isToggleChatStatusPending={canUpdateChat ? updateChat.isPending : false}
+          onUpdateSummary={canUpdateChat ? handleUpdateSummary : undefined}
+          isUpdateSummaryPending={canUpdateChat ? updateChat.isPending : false}
           currentUserId={currentUserId}
           isSendMessagePending={sendMessage.isPending || createChat.isPending}
-          onOpenContainerTerminal={handleOpenContainerTerminal}
           draftMode={effectiveDraftMode}
           draftParticipants={draftParticipants}
           draftFetchOptions={draftFetchOptions}
@@ -832,12 +798,6 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
           isUploading={isAttachmentsUploading}
         />
       </div>
-
-      <ContainerTerminalDialog
-        container={selectedContainer}
-        open={Boolean(selectedContainerId)}
-        onClose={handleCloseContainerTerminal}
-      />
     </div>
   );
 }

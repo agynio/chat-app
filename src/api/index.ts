@@ -4,5 +4,3 @@ export { agentsApi } from './modules/agents';
 export { organizationsApi } from './modules/organizations';
 export { chatApi } from './modules/chat';
 export { chatResources } from './modules/chat-resources';
-export { runs } from './modules/runs';
-export { listContainers, createContainerTerminalSession } from './modules/containers';

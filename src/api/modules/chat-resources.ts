@@ -1,6 +1,5 @@
 import { queuedMessagesByChat } from '@/api/mock-data/messages';
 import { chatReminders } from '@/api/mock-data/reminders';
-import { runsByChat } from '@/api/mock-data/runs';
 import type { ChatActivity } from '@/api/types/chat-resources';
 import { UUID_REGEX } from '@/utils/validation';
 
@@ -19,8 +18,6 @@ const resolveQueue = (chatId: string) => {
 };
 
 const resolveActivity = (chatId: string): ChatActivity => {
-  const runs = runsByChat.get(chatId) ?? [];
-  if (runs.some((run) => run.status === 'running')) return 'working';
   const queued = queuedMessagesByChat.get(chatId) ?? [];
   if (queued.length > 0) return 'waiting';
   return 'idle';

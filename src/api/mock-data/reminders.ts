@@ -1,6 +1,5 @@
 import type { ChatReminder } from '@/api/types/chat-resources';
 import { iso } from './time';
-import { runTwoId } from './runs';
 import { chatOneId } from './chats';
 
 export const chatReminders: ChatReminder[] = [
@@ -12,7 +11,6 @@ export const chatReminders: ChatReminder[] = [
     createdAt: iso(-120),
     completedAt: null,
     cancelledAt: null,
-    runId: runTwoId,
     status: 'scheduled',
   },
 ];
