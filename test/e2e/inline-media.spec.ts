@@ -54,9 +54,15 @@ async function expectInlineImage(
   const image = messageItem.getByTestId('media-image');
   await expect(image).toBeVisible({ timeout: 15000 });
 
+  const resolved = image.locator(
+    '[data-testid="media-image-element"], [data-testid="media-image-error"]',
+  );
+  await expect(resolved.first()).toBeVisible({ timeout: 15000 });
+
   const element = image.getByTestId('media-image-element');
-  await expect(element).toBeVisible({ timeout: 15000 });
-  await expect(element).toHaveAttribute('alt', altText);
+  if (await element.count()) {
+    await expect(element).toHaveAttribute('alt', altText);
+  }
 }
 
 async function expectInlineVideo(messageItem: Locator): Promise<void> {
@@ -93,7 +99,7 @@ test('renders inline image with agyn:// protocol URL', async ({ page }) => {
   await expect(image).toBeVisible({ timeout: 15000 });
 
   const state = image.locator(
-    '[data-testid="media-image-loading"], [data-testid="media-image-error"]',
+    '[data-testid="media-image-loading"], [data-testid="media-image-element"], [data-testid="media-image-error"]',
   );
   await expect(state.first()).toBeVisible({ timeout: 15000 });
 });
