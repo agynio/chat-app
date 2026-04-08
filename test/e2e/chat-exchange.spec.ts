@@ -70,3 +70,35 @@ test('two users exchange messages in a shared chat', async ({ userAPage, userBPa
   });
   await argosScreenshot(userAPage, 'two-user-message-exchange');
 });
+
+// Depends on org membership API (AddOrganizationMember).
+test('user B sees shared chat in their chat list', async ({ userAPage, userBPage }) => {
+  const messageFromA = `Hello from User A ${Date.now()}`;
+
+  const userBId = await resolveIdentityId(userBPage);
+  const organizationId = await createOrganization(userAPage, `e2e-org-exchange-${Date.now()}`);
+  const chatId = await createChat(userAPage, organizationId, userBId);
+  await sendChatMessage(userAPage, chatId, messageFromA);
+  await setSelectedOrganization(userBPage, organizationId);
+
+  await userBPage.goto('/chats');
+
+  const chatList = userBPage.getByTestId('chat-list');
+  await expect(chatList).toBeVisible({ timeout: 15000 });
+
+  const firstChat = chatList.locator('.cursor-pointer').first();
+  await expect(firstChat).toBeVisible({ timeout: 15000 });
+
+  const messagesLoaded = userBPage.waitForResponse(
+    (resp) => resp.url().includes('GetMessages') && resp.status() === 200,
+    { timeout: 15000 },
+  );
+  await firstChat.click();
+  await messagesLoaded;
+
+  await expect(userBPage).toHaveURL(/\/chats\/.+/, { timeout: 15000 });
+  await expect(userBPage.getByTestId('chat-message').filter({ hasText: messageFromA })).toBeVisible({
+    timeout: 15000,
+  });
+  await argosScreenshot(userBPage, 'user-b-sees-shared-chat');
+});

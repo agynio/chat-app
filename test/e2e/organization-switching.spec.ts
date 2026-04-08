@@ -169,7 +169,7 @@ base('no-organizations screen', async ({ page }) => {
   const uniqueEmail = `no-orgs-${Date.now()}@agyn.test`;
   const signedIn = await signInViaMockAuth(page, uniqueEmail);
   if (!signedIn) {
-    base.skip(true, 'MockAuth disabled; cannot verify no-org state.');
+    await signInViaMockAuth(page, uniqueEmail, { force: true });
   }
   await baseExpect(page.getByTestId('no-organizations-screen')).toBeVisible({ timeout: 15000 });
 });
