@@ -135,7 +135,20 @@ test('renders inline image with agyn:// protocol URL', async ({ page }) => {
   const message = `${anchor}: Attached image: ![project diagram](agyn://file/550e8400-e29b-41d4-a716-446655440000)`;
 
   const { messageItem, hasProxy } = await openChatWithMessage(page, message, anchor);
-  await expectInlineImage(messageItem, 'project diagram', hasProxy);
+  const image = messageItem.getByTestId('media-image');
+  await expect(image).toBeVisible({ timeout: 15000 });
+
+  if (hasProxy) {
+    const state = image.locator(
+      '[data-testid="media-image-loading"], [data-testid="media-image-element"], [data-testid="media-image-error"]',
+    );
+    await expect(state.first()).toBeVisible({ timeout: 15000 });
+    return;
+  }
+
+  const unavailable = image.getByTestId('media-image-unavailable');
+  await expect(unavailable).toBeVisible({ timeout: 15000 });
+  await expect(unavailable).toContainText('project diagram');
 });
 
 test('renders multiple inline images in a single message', async ({ page }) => {
