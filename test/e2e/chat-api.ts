@@ -20,6 +20,10 @@ type CreateOrganizationResponseWire = {
   organization?: { id?: string };
 };
 
+type CreateMembershipResponseWire = {
+  membership?: { id?: string };
+};
+
 type ListAccessibleOrganizationsResponseWire = {
   organizations?: Array<{ id: string; name: string }>;
 };
@@ -197,6 +201,28 @@ export async function createOrganization(page: Page, name: string): Promise<stri
     throw new Error('CreateOrganization response missing organization id.');
   }
   return response.organization.id;
+}
+
+export async function createMembership(
+  page: Page,
+  organizationId: string,
+  identityId: string,
+  role: 'MEMBERSHIP_ROLE_OWNER' | 'MEMBERSHIP_ROLE_MEMBER' = 'MEMBERSHIP_ROLE_MEMBER',
+): Promise<string> {
+  const response = await postConnect<CreateMembershipResponseWire>(
+    page,
+    ORGS_GATEWAY_PATH,
+    'CreateMembership',
+    { organizationId, identityId, role },
+  );
+  if (!response.membership?.id) {
+    throw new Error('CreateMembership response missing membership id.');
+  }
+  return response.membership.id;
+}
+
+export async function acceptMembership(page: Page, membershipId: string): Promise<void> {
+  await postConnect(page, ORGS_GATEWAY_PATH, 'AcceptMembership', { membershipId });
 }
 
 export async function listAccessibleOrganizations(

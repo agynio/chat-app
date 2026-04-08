@@ -1,6 +1,13 @@
 import { argosScreenshot } from '@argos-ci/playwright';
 import { test, expect } from './multi-user-fixtures';
-import { createChat, createOrganization, resolveIdentityId, sendChatMessage } from './chat-api';
+import {
+  acceptMembership,
+  createChat,
+  createMembership,
+  createOrganization,
+  resolveIdentityId,
+  sendChatMessage,
+} from './chat-api';
 import { setSelectedOrganization } from './organization-helpers';
 
 test('two users exchange messages in a shared chat', async ({ userAPage, userBPage }) => {
@@ -71,12 +78,15 @@ test('two users exchange messages in a shared chat', async ({ userAPage, userBPa
   await argosScreenshot(userAPage, 'two-user-message-exchange');
 });
 
-// Depends on org membership API (AddOrganizationMember).
 test('user B sees shared chat in their chat list', async ({ userAPage, userBPage }) => {
   const messageFromA = `Hello from User A ${Date.now()}`;
 
   const userBId = await resolveIdentityId(userBPage);
   const organizationId = await createOrganization(userAPage, `e2e-org-exchange-${Date.now()}`);
+  // Add User B to the organization
+  const membershipId = await createMembership(userAPage, organizationId, userBId);
+  // Accept in case the invite is pending (User A may not be cluster admin)
+  await acceptMembership(userBPage, membershipId);
   const chatId = await createChat(userAPage, organizationId, userBId);
   await sendChatMessage(userAPage, chatId, messageFromA);
   await setSelectedOrganization(userBPage, organizationId);
