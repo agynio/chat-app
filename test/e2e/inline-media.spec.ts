@@ -111,7 +111,9 @@ test('renders multiple inline images in a single message', async ({ page }) => {
 
   const messageItem = await openChatWithMessage(page, message, anchor);
   await expect(messageItem.getByTestId('media-image')).toHaveCount(3);
-  await expect(messageItem.getByTestId('media-image-element')).toHaveCount(3, { timeout: 15000 });
+  for (const altText of ['diagram one', 'diagram two', 'diagram three']) {
+    await expectInlineImage(messageItem, altText);
+  }
 });
 
 test('renders video when alt text is "video"', async ({ page }) => {
