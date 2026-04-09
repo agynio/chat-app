@@ -11,7 +11,6 @@ import type {
   SendMessageResponse,
   UpdateChatResponse,
 } from '@/api/types/chat';
-
 const CHAT_PAGE_SIZE = 25;
 const MESSAGE_PAGE_SIZE = 30;
 

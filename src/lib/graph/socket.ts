@@ -1,7 +1,7 @@
 // CI trigger: no-op comment to touch UI file
 import { io, type ManagerOptions, type Socket, type SocketOptions } from 'socket.io-client';
 import { getAccessToken, userManager } from '@/auth';
-import { getSocketBaseUrl } from '@/config';
+import { getSocketBaseUrl, getSocketsEnabled } from '@/config';
 import type { NodeStatusEvent, ReminderCountEvent } from './types';
 
 // Strictly typed server-to-client socket events (listener signatures)
@@ -53,8 +53,7 @@ type ChatRemindersPayload = { chatId: string; remindersCount: number };
 type ChatMessageCreatedPayload = { message: MessageSummary; chatId: string };
 type ChatRunStatusChangedPayload = { chatId: string; run: ChatRunSummary };
 
-// TODO: restore production socket connections when backend is available.
-const socketsEnabled = !import.meta.env.PROD;
+const socketsEnabled = getSocketsEnabled();
 
 class GraphSocket {
   // Typed socket instance; null until connected
@@ -131,7 +130,10 @@ class GraphSocket {
     const handleDisconnect = () => {
       for (const fn of this.disconnectCallbacks) fn();
     };
-    const handleConnectError = () => {};
+    const handleConnectError = (error: Error) => {
+      const message = error?.message ?? String(error);
+      console.warn('[graphSocket] connect_error', message);
+    };
     socket.on('connect', handleConnect);
     this.socketCleanup.push(() => socket.off('connect', handleConnect));
     socket.on('disconnect', handleDisconnect);
@@ -259,7 +261,9 @@ class GraphSocket {
   // Subscribe to rooms
   subscribe(rooms: string[]) {
     const sock = this.connect();
-    if (!sock) return;
+    if (socketsEnabled && !sock.connected) {
+      sock.connect();
+    }
     const toJoin: string[] = [];
     for (const room of rooms) {
       if (!room || this.subscribedRooms.has(room)) continue;
