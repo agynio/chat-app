@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChatListItem } from '@/components/ChatListItem';
-import { graphSocket } from '@/lib/graph/socket';
+import { notificationsStream } from '@/lib/notifications/stream';
 import { ChatSoundController } from '@/features/chats/ChatSoundController';
 
 type UseChatSoundNotificationsOptions = {
@@ -102,9 +102,12 @@ export function useChatSoundNotifications({
     const controller = controllerRef.current;
     if (!controller) return;
 
-    const unsubscribe = graphSocket.onChatMessageCreated(({ chatId, message }) => {
-      if (message.kind === 'user') return;
-      controller.handleMessageCreated(chatId);
+    const unsubscribe = notificationsStream.onEnvelope((envelope) => {
+      if (envelope.event !== 'message.created') return;
+      const payload = envelope.payload;
+      const threadId = payload && typeof payload.thread_id === 'string' ? payload.thread_id : null;
+      if (!threadId) return;
+      controller.handleMessageCreated(threadId);
     });
 
     return () => {
