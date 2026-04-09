@@ -11,9 +11,11 @@ import type {
   SendMessageResponse,
   UpdateChatResponse,
 } from '@/api/types/chat';
+import { graphSocket } from '@/lib/graph/socket';
 
 const CHAT_PAGE_SIZE = 25;
 const MESSAGE_PAGE_SIZE = 30;
+const MESSAGE_POLL_INTERVAL_MS = 5000;
 
 export function useChats(organizationId: string | undefined) {
   return useInfiniteQuery({
@@ -33,9 +35,11 @@ export function useChats(organizationId: string | undefined) {
 }
 
 export function useChatMessages(chatId: string | null | undefined) {
+  const queryKey = ['chats', chatId ?? 'none', 'messages', MESSAGE_PAGE_SIZE] as const;
+
   return useInfiniteQuery({
     enabled: Boolean(chatId),
-    queryKey: ['chats', chatId ?? 'none', 'messages', MESSAGE_PAGE_SIZE],
+    queryKey,
     queryFn: ({ pageParam }) =>
       chatApi.getMessages({
         chatId: chatId as string,
@@ -46,6 +50,8 @@ export function useChatMessages(chatId: string | null | undefined) {
     getNextPageParam: (lastPage) => lastPage.nextPageToken ?? undefined,
     staleTime: 5000,
     refetchOnWindowFocus: false,
+    refetchInterval: () => (graphSocket.isConnected() ? false : MESSAGE_POLL_INTERVAL_MS),
+    refetchIntervalInBackground: true,
   });
 }
 

@@ -56,10 +56,6 @@ test('two users exchange messages in a shared chat', async ({ userAPage, userBPa
   const editorB = userBPage.getByTestId('markdown-composer-editor');
   await editorB.click();
   await userBPage.keyboard.type(messageFromB);
-  const userAMessagesRefetch = userAPage.waitForResponse(
-    (resp) => resp.url().includes('GetMessages') && resp.status() === 200,
-    { timeout: 15000 },
-  );
   const userBSendMessage = userBPage.waitForResponse(
     (resp) => resp.url().includes('SendMessage') && resp.status() === 200,
     { timeout: 15000 },
@@ -69,7 +65,6 @@ test('two users exchange messages in a shared chat', async ({ userAPage, userBPa
   await expect(userBPage.getByTestId('chat-message').filter({ hasText: messageFromB })).toBeVisible({
     timeout: 15000,
   });
-  await userAMessagesRefetch;
   await expect(userAPage.getByTestId('chat-message').filter({ hasText: messageFromB })).toBeVisible({
     timeout: 15000,
   });
