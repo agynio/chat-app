@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { graphSocket } from '@/lib/graph/socket';
+import { notificationsStream } from '@/lib/notifications/stream';
 
 type UseChatNotificationsOptions = {
   identityId: string | null | undefined;
@@ -20,35 +20,24 @@ export function useChatNotifications({
 
   useEffect(() => {
     if (!identityId) return;
-    const room = `thread_participant:${identityId}`;
-    graphSocket.subscribe([room]);
-
-    const offChatCreated = graphSocket.onChatCreated(() => {
-      void queryClient.invalidateQueries({ queryKey: ['chats', 'list'] });
-    });
-
-    const offChatUpdated = graphSocket.onChatUpdated(({ chat }) => {
-      void queryClient.invalidateQueries({ queryKey: ['chats', 'list'] });
-      if (selectedChatIdRef.current && selectedChatIdRef.current === chat.id) {
-        void queryClient.invalidateQueries({ queryKey: ['chats', chat.id, 'messages'] });
+    const offMessageCreated = notificationsStream.onEnvelope((envelope) => {
+      if (envelope.event !== 'message.created') return;
+      const payload = envelope.payload;
+      const threadId = payload && typeof payload.thread_id === 'string' ? payload.thread_id : null;
+      if (!threadId) return;
+      if (selectedChatIdRef.current && selectedChatIdRef.current === threadId) {
+        void queryClient.invalidateQueries({ queryKey: ['chats', threadId, 'messages'] });
       }
-    });
-
-    const offMessageCreated = graphSocket.onChatMessageCreated(({ chatId }) => {
-      void queryClient.invalidateQueries({ queryKey: ['chats', chatId, 'messages'] });
       void queryClient.invalidateQueries({ queryKey: ['chats', 'list'] });
     });
 
-    const offReconnect = graphSocket.onReconnected(() => {
+    const offReconnect = notificationsStream.onReconnect(() => {
       void queryClient.invalidateQueries({ queryKey: ['chats'] });
     });
 
     return () => {
-      offChatCreated();
-      offChatUpdated();
       offMessageCreated();
       offReconnect();
-      graphSocket.unsubscribe([room]);
     };
   }, [identityId, queryClient]);
 }
