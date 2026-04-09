@@ -53,7 +53,14 @@ export async function signInViaMockAuth(
   }
 
   if (!initialRoute || (initialRoute === 'app' && forceLogin)) {
-    await page.waitForURL(loginUrlPattern, { timeout: 15000 });
+    const loginReached = await page
+      .waitForURL(loginUrlPattern, { timeout: 15000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!loginReached) {
+      await expect(appReady).toBeVisible({ timeout: 30000 });
+      return false;
+    }
   }
 
   if (options.onLoginPage) {

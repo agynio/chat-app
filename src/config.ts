@@ -4,6 +4,7 @@
 type RuntimeConfig = {
   API_BASE_URL?: string;
   MEDIA_PROXY_URL?: string;
+  SOCKETS_ENABLED?: string;
   OIDC_AUTHORITY?: string;
   OIDC_CLIENT_ID?: string;
   OIDC_SCOPE?: string;
@@ -12,6 +13,7 @@ type RuntimeConfig = {
 type ViteEnv = {
   VITE_API_BASE_URL?: string;
   VITE_MEDIA_PROXY_URL?: string;
+  VITE_SOCKETS_ENABLED?: string;
   VITE_OIDC_AUTHORITY?: string;
   VITE_OIDC_CLIENT_ID?: string;
   VITE_OIDC_SCOPE?: string;
@@ -109,6 +111,11 @@ const mediaProxyUrl =
       ? deriveBase(rawMediaProxyUrl, { stripApi: false })
       : null;
 
+const rawSocketsEnabled = readConfigValue('SOCKETS_ENABLED', 'VITE_SOCKETS_ENABLED');
+const socketsEnabled = rawSocketsEnabled
+  ? !['false', '0', 'off'].includes(rawSocketsEnabled.trim().toLowerCase())
+  : true;
+
 const rawOidcAuthority = readConfigValue('OIDC_AUTHORITY', 'VITE_OIDC_AUTHORITY');
 const oidcEnabled = Boolean(rawOidcAuthority);
 
@@ -125,8 +132,13 @@ export const config = {
   apiBaseUrl,
   mediaProxyUrl,
   socketBaseUrl,
+  socketsEnabled,
 };
 
 export function getSocketBaseUrl(): string {
   return socketBaseUrl;
+}
+
+export function getSocketsEnabled(): boolean {
+  return socketsEnabled;
 }
