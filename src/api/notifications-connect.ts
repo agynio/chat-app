@@ -22,6 +22,12 @@ export type NotificationEnvelope = {
   payload: Record<string, unknown> | null;
 };
 
+export type MessageCreatedNotification = {
+  threadId: string;
+  messageId: string | null;
+  senderId: string | null;
+};
+
 function createEnvelope(payload: Uint8Array, flags = 0x00): Uint8Array {
   const envelope = new Uint8Array(5 + payload.length);
   envelope[0] = flags;
@@ -75,6 +81,19 @@ function parseNotificationEnvelope(value: unknown): NotificationEnvelope | null 
     : [];
   const payload = isRecord(envelope.payload) ? envelope.payload : null;
   return { event, rooms, payload };
+}
+
+export function parseMessageCreatedNotification(
+  envelope: NotificationEnvelope,
+): MessageCreatedNotification | null {
+  if (envelope.event !== 'message.created') return null;
+  const payload = envelope.payload;
+  if (!payload) return null;
+  const threadId = typeof payload.thread_id === 'string' ? payload.thread_id : null;
+  if (!threadId) return null;
+  const messageId = typeof payload.message_id === 'string' ? payload.message_id : null;
+  const senderId = typeof payload.sender_id === 'string' ? payload.sender_id : null;
+  return { threadId, messageId, senderId };
 }
 
 export async function* subscribeNotifications(

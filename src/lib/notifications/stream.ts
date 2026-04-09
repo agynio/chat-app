@@ -1,9 +1,15 @@
-import { subscribeNotifications, type NotificationEnvelope } from '@/api/notifications-connect';
+import {
+  parseMessageCreatedNotification,
+  subscribeNotifications,
+  type MessageCreatedNotification,
+  type NotificationEnvelope,
+} from '@/api/notifications-connect';
 
 const RECONNECT_DELAY_MS = 3000;
 
 type EnvelopeListener = (envelope: NotificationEnvelope) => void;
 type ReconnectListener = () => void;
+type MessageCreatedListener = (notification: MessageCreatedNotification) => void;
 
 class NotificationsStream {
   private abortController: AbortController | null = null;
@@ -18,6 +24,15 @@ class NotificationsStream {
       this.listeners.delete(cb);
       this.maybeDisconnect();
     };
+  }
+
+  onMessageCreated(cb: MessageCreatedListener): () => void {
+    const handler = (envelope: NotificationEnvelope) => {
+      const parsed = parseMessageCreatedNotification(envelope);
+      if (!parsed) return;
+      cb(parsed);
+    };
+    return this.onEnvelope(handler);
   }
 
   onReconnect(cb: ReconnectListener): () => void {

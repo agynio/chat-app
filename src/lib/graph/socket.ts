@@ -261,7 +261,6 @@ class GraphSocket {
   // Subscribe to rooms
   subscribe(rooms: string[]) {
     const sock = this.connect();
-    if (!sock) return;
     if (socketsEnabled && !sock.connected) {
       sock.connect();
     }

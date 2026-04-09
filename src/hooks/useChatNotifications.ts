@@ -20,11 +20,7 @@ export function useChatNotifications({
 
   useEffect(() => {
     if (!identityId) return;
-    const offMessageCreated = notificationsStream.onEnvelope((envelope) => {
-      if (envelope.event !== 'message.created') return;
-      const payload = envelope.payload;
-      const threadId = payload && typeof payload.thread_id === 'string' ? payload.thread_id : null;
-      if (!threadId) return;
+    const offMessageCreated = notificationsStream.onMessageCreated(({ threadId }) => {
       if (selectedChatIdRef.current && selectedChatIdRef.current === threadId) {
         void queryClient.invalidateQueries({ queryKey: ['chats', threadId, 'messages'] });
       }

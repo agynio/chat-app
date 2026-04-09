@@ -102,11 +102,7 @@ export function useChatSoundNotifications({
     const controller = controllerRef.current;
     if (!controller) return;
 
-    const unsubscribe = notificationsStream.onEnvelope((envelope) => {
-      if (envelope.event !== 'message.created') return;
-      const payload = envelope.payload;
-      const threadId = payload && typeof payload.thread_id === 'string' ? payload.thread_id : null;
-      if (!threadId) return;
+    const unsubscribe = notificationsStream.onMessageCreated(({ threadId }) => {
       controller.handleMessageCreated(threadId);
     });
 
