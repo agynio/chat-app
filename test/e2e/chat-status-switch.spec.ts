@@ -1,6 +1,6 @@
 import { argosScreenshot } from '@argos-ci/playwright';
 import { test, expect } from './multi-user-fixtures';
-import { createChat, createOrganization, resolveIdentityId } from './chat-api';
+import { createChat, createOrganization, resolveIdentityId, updateChatStatus } from './chat-api';
 import { setSelectedOrganization } from './organization-helpers';
 
 test('moves chat from open to resolved', async ({ userAPage, userBPage }) => {
@@ -9,6 +9,7 @@ test('moves chat from open to resolved', async ({ userAPage, userBPage }) => {
   await setSelectedOrganization(userAPage, organizationId);
   const userBId = await resolveIdentityId(userBPage);
   const chatId = await createChat(userAPage, organizationId, userBId);
+  await updateChatStatus(userAPage, chatId, 'open');
 
   const chatsLoaded = userAPage.waitForResponse(
     (resp) => resp.url().includes('GetChats') && resp.status() === 200,
@@ -37,7 +38,12 @@ test('moves chat from open to resolved', async ({ userAPage, userBPage }) => {
   await userAPage.getByRole('menuitemradio', { name: 'Resolved' }).click();
   await updateChat;
 
-  await userAPage.getByRole('button', { name: 'Resolved' }).click();
+  const resolvedChatsLoaded = userAPage.waitForResponse(
+    (resp) => resp.url().includes('GetChats') && resp.status() === 200,
+    { timeout: 15000 },
+  );
+  await userAPage.getByRole('button', { name: 'Resolved', exact: true }).click();
+  await resolvedChatsLoaded;
   await expect(chatList.locator('.cursor-pointer')).toHaveCount(1, { timeout: 15000 });
 
   await argosScreenshot(userAPage, 'chat-status-switch-resolved');
