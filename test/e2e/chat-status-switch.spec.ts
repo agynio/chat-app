@@ -31,14 +31,14 @@ test('moves chat from open to resolved', async ({ userAPage, userBPage }) => {
   await expect(statusTrigger).toBeVisible({ timeout: 15000 });
   await expect(statusTrigger).toHaveAttribute('aria-label', 'Chat status: Open');
 
-  await statusTrigger.focus();
-  await statusTrigger.press('Enter');
-  await userAPage.keyboard.press('ArrowDown');
+  await statusTrigger.click();
+  const resolvedOption = userAPage.getByRole('menuitemradio', { name: 'Resolved' });
+  await expect(resolvedOption).toBeVisible({ timeout: 15000 });
   const updateChat = userAPage.waitForResponse(
     (resp) => resp.url().includes('UpdateChat') && resp.status() === 200,
     { timeout: 15000 },
   );
-  await userAPage.keyboard.press('Enter');
+  await resolvedOption.click();
   await updateChat;
 
   const resolvedChatsLoaded = userAPage.waitForResponse(

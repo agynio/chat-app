@@ -431,6 +431,7 @@ function ChatDetailHeader({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <DropdownMenu
+            modal={false}
             open={isStatusMenuOpen}
             onOpenChange={(open) => {
               if (statusSelectionDisabled) {
