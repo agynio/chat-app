@@ -4,6 +4,7 @@ const CHAT_GATEWAY_PATH = '/api/agynio.api.gateway.v1.ChatGateway';
 const AGENTS_GATEWAY_PATH = '/api/agynio.api.gateway.v1.AgentsGateway';
 const LLM_GATEWAY_PATH = '/api/agynio.api.gateway.v1.LLMGateway';
 const ORGS_GATEWAY_PATH = '/api/agynio.api.gateway.v1.OrganizationsGateway';
+const USERS_GATEWAY_PATH = '/api/agynio.api.gateway.v1.UsersGateway';
 
 export const DEFAULT_TEST_INIT_IMAGE = 'ghcr.io/agynio/agent-init-codex:latest';
 
@@ -57,6 +58,10 @@ type GetMessagesResponseWire = {
 type ListAgentsResponseWire = {
   agents?: Array<{ meta?: { id?: string }; name?: string }>;
   nextPageToken?: string;
+};
+
+type BatchGetUsersResponseWire = {
+  users?: Array<{ meta?: { id?: string }; name?: string; email?: string }>;
 };
 
 const CHAT_ORG_STORAGE_KEY = 'ui.organization.chat-map';
@@ -171,6 +176,25 @@ export async function resolveIdentityId(page: Page): Promise<string> {
     throw new Error('/api/me response missing identity_id');
   }
   return payload.identity_id;
+}
+
+export async function resolveUserLabel(page: Page, identityId: string): Promise<string> {
+  const response = await postConnect<BatchGetUsersResponseWire>(
+    page,
+    USERS_GATEWAY_PATH,
+    'BatchGetUsers',
+    { identityIds: [identityId] },
+  );
+  const users = response.users ?? [];
+  const match = users.find((user) => user.meta?.id === identityId);
+  if (!match) {
+    throw new Error(`BatchGetUsers response missing user ${identityId}.`);
+  }
+  const name = typeof match.name === 'string' ? match.name.trim() : '';
+  const email = typeof match.email === 'string' ? match.email.trim() : '';
+  if (name) return name;
+  if (email) return email;
+  throw new Error(`User ${identityId} missing name and email.`);
 }
 
 export async function createChat(

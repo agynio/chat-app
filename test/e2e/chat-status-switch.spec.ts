@@ -1,14 +1,18 @@
 import { argosScreenshot } from '@argos-ci/playwright';
 import { test, expect } from './multi-user-fixtures';
-import { createChat, createOrganization, resolveIdentityId } from './chat-api';
+import { createChat, createOrganization, resolveIdentityId, resolveUserLabel } from './chat-api';
 import { setSelectedOrganization } from './organization-helpers';
+import { signInViaMockAuth } from './sign-in-helper';
 
 test('moves chat from open to resolved', async ({ userAPage, userBPage }) => {
   const now = Date.now();
   const organizationId = await createOrganization(userAPage, `e2e-org-status-${now}`);
   await setSelectedOrganization(userAPage, organizationId);
+  const userBEmail = `e2e-user-b-status-${now}@agyn.test`;
+  await signInViaMockAuth(userBPage, userBEmail, { force: true });
   const userBId = await resolveIdentityId(userBPage);
   const chatId = await createChat(userAPage, organizationId, userBId);
+  const userBLabel = await resolveUserLabel(userAPage, userBId);
 
   const chatsLoaded = userAPage.waitForResponse(
     (resp) => resp.url().includes('GetChats') && resp.status() === 200,
@@ -20,9 +24,9 @@ test('moves chat from open to resolved', async ({ userAPage, userBPage }) => {
   const chatList = userAPage.getByTestId('chat-list');
   await expect(chatList).toBeVisible({ timeout: 15000 });
 
-  const chatItems = chatList.locator('.cursor-pointer');
-  await expect(chatItems).toHaveCount(1, { timeout: 15000 });
-  await chatItems.first().click();
+  const chatItem = chatList.locator('.cursor-pointer', { hasText: userBLabel }).first();
+  await expect(chatItem).toBeVisible({ timeout: 15000 });
+  await chatItem.click();
 
   await expect(userAPage).toHaveURL(new RegExp(`/chats/${encodeURIComponent(chatId)}`));
 
@@ -43,7 +47,8 @@ test('moves chat from open to resolved', async ({ userAPage, userBPage }) => {
   );
   await userAPage.getByRole('button', { name: 'Resolved', exact: true }).click();
   await resolvedChatsLoaded;
-  await expect(chatList.locator('.cursor-pointer')).toHaveCount(1, { timeout: 15000 });
+  const resolvedChatItem = chatList.locator('.cursor-pointer', { hasText: userBLabel }).first();
+  await expect(resolvedChatItem).toBeVisible({ timeout: 15000 });
 
   await argosScreenshot(userAPage, 'chat-status-switch-resolved');
 });
