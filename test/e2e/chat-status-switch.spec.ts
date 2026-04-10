@@ -1,6 +1,6 @@
 import { argosScreenshot } from '@argos-ci/playwright';
 import { test, expect } from './multi-user-fixtures';
-import { createChat, createOrganization, resolveIdentityId, updateChatStatus } from './chat-api';
+import { createChat, createOrganization, resolveIdentityId } from './chat-api';
 import { setSelectedOrganization } from './organization-helpers';
 
 test('moves chat from open to resolved', async ({ userAPage, userBPage }) => {
@@ -9,7 +9,6 @@ test('moves chat from open to resolved', async ({ userAPage, userBPage }) => {
   await setSelectedOrganization(userAPage, organizationId);
   const userBId = await resolveIdentityId(userBPage);
   const chatId = await createChat(userAPage, organizationId, userBId);
-  await updateChatStatus(userAPage, chatId, 'open');
 
   const chatsLoaded = userAPage.waitForResponse(
     (resp) => resp.url().includes('GetChats') && resp.status() === 200,
