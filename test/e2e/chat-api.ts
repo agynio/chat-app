@@ -190,6 +190,17 @@ export async function createChat(
   return chatId;
 }
 
+export async function updateChatStatus(
+  page: Page,
+  chatId: string,
+  status: 'open' | 'closed',
+): Promise<void> {
+  await postConnect(page, CHAT_GATEWAY_PATH, 'UpdateChat', {
+    chatId,
+    status,
+  });
+}
+
 export async function createOrganization(page: Page, name: string): Promise<string> {
   const response = await postConnect<CreateOrganizationResponseWire>(
     page,
