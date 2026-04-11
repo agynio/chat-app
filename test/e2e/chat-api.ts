@@ -51,6 +51,8 @@ type Message = {
   body?: string;
 };
 
+type ProtoChatStatus = 'CHAT_STATUS_OPEN' | 'CHAT_STATUS_CLOSED';
+
 type GetMessagesResponseWire = {
   messages?: Message[];
 };
@@ -219,9 +221,11 @@ export async function updateChatStatus(
   chatId: string,
   status: 'open' | 'closed',
 ): Promise<void> {
+  const protoStatus: ProtoChatStatus =
+    status === 'closed' ? 'CHAT_STATUS_CLOSED' : 'CHAT_STATUS_OPEN';
   await postConnect(page, CHAT_GATEWAY_PATH, 'UpdateChat', {
     chatId,
-    status,
+    status: protoStatus,
   });
 }
 
