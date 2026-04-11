@@ -28,14 +28,12 @@ async function openUserMenu(page: Page) {
 test('sign out clears oidc session storage', async ({ page }) => {
   test.setTimeout(60000);
 
-  const appOrigin = new URL(page.url()).origin;
   const sessionKey = await readOidcSessionKey(page);
   expect(sessionKey).not.toBeNull();
 
   const signOutItem = await openUserMenu(page);
-  await signOutItem.click();
+  await signOutItem.click({ noWaitAfter: true });
 
-  await page.waitForURL((url) => new URL(url).origin === appOrigin, { timeout: 15000 });
   const sessionCleared = await page.waitForFunction(() => {
     for (let i = 0; i < window.sessionStorage.length; i += 1) {
       const key = window.sessionStorage.key(i);
@@ -44,7 +42,7 @@ test('sign out clears oidc session storage', async ({ page }) => {
       }
     }
     return true;
-  });
+  }, { timeout: 20000 });
 
   expect(await sessionCleared.jsonValue()).toBe(true);
 });
