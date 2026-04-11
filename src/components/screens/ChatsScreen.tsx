@@ -431,6 +431,7 @@ function ChatDetailHeader({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <DropdownMenu
+            modal={false}
             open={isStatusMenuOpen}
             onOpenChange={(open) => {
               if (statusSelectionDisabled) {
@@ -465,7 +466,6 @@ function ChatDetailHeader({
               >
                 <DropdownMenuRadioItem
                   value="open"
-                  disabled={statusSelectionDisabled}
                   hideIndicator
                   className="data-[state=checked]:font-medium"
                 >
@@ -474,7 +474,6 @@ function ChatDetailHeader({
                 </DropdownMenuRadioItem>
                 <DropdownMenuRadioItem
                   value="closed"
-                  disabled={statusSelectionDisabled}
                   hideIndicator
                   className="data-[state=checked]:font-medium"
                 >
