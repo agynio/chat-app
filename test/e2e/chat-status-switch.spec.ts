@@ -1,6 +1,6 @@
 import { argosScreenshot } from '@argos-ci/playwright';
 import { test, expect } from './multi-user-fixtures';
-import { createChat, createOrganization, resolveIdentityId, resolveUserLabel } from './chat-api';
+import { createChat, createOrganization, resolveIdentityId, resolveUserLabel, updateChatStatus } from './chat-api';
 import { setSelectedOrganization } from './organization-helpers';
 
 test('moves chat from open to resolved', async ({ userAPage, userBPage }) => {
@@ -23,23 +23,8 @@ test('moves chat from open to resolved', async ({ userAPage, userBPage }) => {
 
   const chatItem = chatList.locator('.cursor-pointer', { hasText: userBLabel }).first();
   await expect(chatItem).toBeVisible({ timeout: 15000 });
-  await chatItem.click();
 
-  await expect(userAPage).toHaveURL(new RegExp(`/chats/${encodeURIComponent(chatId)}`));
-
-  const statusTrigger = userAPage.getByRole('button', { name: /^Chat status:/ });
-  await expect(statusTrigger).toBeVisible({ timeout: 15000 });
-  await expect(statusTrigger).toHaveAttribute('aria-label', 'Chat status: Open');
-
-  await statusTrigger.click();
-  const resolvedOption = userAPage.getByRole('menuitemradio', { name: 'Resolved' });
-  await expect(resolvedOption).toBeVisible({ timeout: 15000 });
-  const updateChat = userAPage.waitForResponse(
-    (resp) => resp.url().includes('UpdateChat') && resp.status() === 200,
-    { timeout: 15000 },
-  );
-  await resolvedOption.dispatchEvent('click');
-  await updateChat;
+  await updateChatStatus(userAPage, chatId, 'closed');
 
   const resolvedChatsLoaded = userAPage.waitForResponse(
     (resp) => resp.url().includes('GetChats') && resp.status() === 200,
