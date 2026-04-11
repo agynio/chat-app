@@ -1,3 +1,4 @@
+import { argosScreenshot } from '@argos-ci/playwright';
 import type { Page } from '@playwright/test';
 import { test, expect } from './fixtures';
 
@@ -45,4 +46,7 @@ test('sign out clears oidc session storage', async ({ page }) => {
   }, { timeout: 20000 });
 
   expect(await sessionCleared.jsonValue()).toBe(true);
+
+  await page.waitForLoadState('networkidle');
+  await argosScreenshot(page, 'sign-out-complete');
 });
