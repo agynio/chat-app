@@ -466,7 +466,6 @@ function ChatDetailHeader({
               >
                 <DropdownMenuRadioItem
                   value="open"
-                  disabled={statusSelectionDisabled}
                   hideIndicator
                   className="data-[state=checked]:font-medium"
                 >
@@ -475,7 +474,6 @@ function ChatDetailHeader({
                 </DropdownMenuRadioItem>
                 <DropdownMenuRadioItem
                   value="closed"
-                  disabled={statusSelectionDisabled}
                   hideIndicator
                   className="data-[state=checked]:font-medium"
                 >
