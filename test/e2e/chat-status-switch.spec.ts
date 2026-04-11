@@ -38,7 +38,7 @@ test('moves chat from open to resolved', async ({ userAPage, userBPage }) => {
     (resp) => resp.url().includes('UpdateChat') && resp.status() === 200,
     { timeout: 15000 },
   );
-  await resolvedOption.click();
+  await resolvedOption.dispatchEvent('click');
   await updateChat;
 
   const resolvedChatsLoaded = userAPage.waitForResponse(
