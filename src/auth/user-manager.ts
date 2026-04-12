@@ -15,6 +15,7 @@ export const userManager = oidcConfig.enabled
         issuer: oidcConfig.authority,
         authorization_endpoint: `${oidcConfig.authority}/authorize`,
         token_endpoint: `${oidcConfig.authority}/token`,
+        end_session_endpoint: `${oidcConfig.authority}/end-session`,
         userinfo_endpoint: `${oidcConfig.authority}/userinfo`,
         jwks_uri: `${oidcConfig.authority}/jwks.json`,
       },
