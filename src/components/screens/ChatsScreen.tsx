@@ -84,7 +84,7 @@ function AppLogo() {
   );
 }
 
-function UserMenu() {
+export function UserMenu() {
   const { user } = useUser();
   const { organizations, selectedOrganizationId, selectOrganization } = useOrganization();
   const userInitials = useMemo(() => getInitials(user?.name ?? user?.email), [user?.name, user?.email]);

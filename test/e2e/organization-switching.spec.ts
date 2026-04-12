@@ -172,4 +172,6 @@ base('no-organizations screen', async ({ page }) => {
     await signInViaMockAuth(page, uniqueEmail, { force: true });
   }
   await baseExpect(page.getByTestId('no-organizations-screen')).toBeVisible({ timeout: 15000 });
+  await baseExpect(page.getByTestId('user-menu-trigger')).toBeVisible({ timeout: 15000 });
+  await argosScreenshot(page, 'no-organizations-screen');
 });
