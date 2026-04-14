@@ -2,7 +2,13 @@ import { argosScreenshot } from '@argos-ci/playwright';
 import * as crypto from 'node:crypto';
 import type { Locator, Page } from '@playwright/test';
 import { expect, test } from './fixtures';
-import { createAgent, createChat, createOrganization, sendChatMessage } from './chat-api';
+import {
+  createAgent,
+  createChat,
+  createOrganization,
+  DEFAULT_TEST_INIT_IMAGE,
+  sendChatMessage,
+} from './chat-api';
 import { setSelectedOrganization } from './organization-helpers';
 
 const AGENT_ROLE = 'assistant';
@@ -19,6 +25,7 @@ function buildAgentOptions(organizationId: string, name: string) {
     description: AGENT_DESCRIPTION,
     configuration: AGENT_CONFIGURATION,
     image: AGENT_IMAGE,
+    initImage: DEFAULT_TEST_INIT_IMAGE,
   };
 }
 
