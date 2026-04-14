@@ -326,7 +326,7 @@ type CreateAgentOptions = {
   description: string;
   configuration: string;
   image: string;
-  initImage?: string;
+  initImage: string;
 };
 
 type SetupTestAgentOptions = {
@@ -349,7 +349,7 @@ async function waitForAgent(page: Page, organizationId: string, agentId: string)
 
 export async function createAgent(page: Page, opts: CreateAgentOptions): Promise<string> {
   const { initImage, ...rest } = opts;
-  const payload = initImage ? { ...rest, initImage } : rest;
+  const payload = { ...rest, initImage };
   const response = await postConnect<CreateAgentResponseWire>(
     page,
     AGENTS_GATEWAY_PATH,
@@ -370,6 +370,7 @@ export async function setupTestAgent(
 ): Promise<{ organizationId: string; agentId: string; agentName: string }> {
   const now = Date.now();
   const organizationId = await createOrganization(page, `e2e-org-llm-${now}`);
+  const initImage = opts.initImage ?? DEFAULT_TEST_INIT_IMAGE;
 
   const providerId = await createLLMProvider(page, {
     endpoint: opts.endpoint,
@@ -394,7 +395,7 @@ export async function setupTestAgent(
     description: 'E2E test agent using TestLLM simple-hello',
     configuration: '{}',
     image: 'alpine:3.21',
-    initImage: opts.initImage,
+    initImage,
   });
 
   return { organizationId, agentId, agentName };
