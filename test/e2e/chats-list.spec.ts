@@ -13,8 +13,7 @@ import { setSelectedOrganization } from './organization-helpers';
 
 async function expectChatListVisible(page: Page) {
   const list = page.getByTestId('chat-list');
-  const emptyState = page.getByText(/No chats (available yet|match the current filter)/);
-  await expect(list.or(emptyState)).toBeVisible({ timeout: 15000 });
+  await expect(list).toBeVisible({ timeout: 15000 });
 }
 
 test('renders chat list on load', async ({ userAPage }) => {

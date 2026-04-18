@@ -71,7 +71,10 @@ export function ChatList({
 
   if (chats.length === 0 && !isLoading) {
     return (
-      <div className={`flex min-h-0 flex-col bg-white rounded-[10px] border border-[var(--agyn-border-subtle)] overflow-hidden ${className}`}>
+      <div
+        className={`flex min-h-0 flex-col bg-white rounded-[10px] border border-[var(--agyn-border-subtle)] overflow-hidden ${className}`}
+        data-testid="chat-list"
+      >
         <div className="flex items-center justify-center py-12 text-[var(--agyn-gray)]">
           {emptyState || <p>No chats found</p>}
         </div>

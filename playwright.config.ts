@@ -2,6 +2,9 @@ import { createArgosReporterOptions } from '@argos-ci/playwright/reporter';
 import { defineConfig, devices } from '@playwright/test';
 
 const BASE_URL = process.env.E2E_BASE_URL;
+const isCI = Boolean(process.env.CI);
+const argosToken = process.env.ARGOS_TOKEN;
+const hasArgosToken = Boolean(argosToken && argosToken.length === 40);
 
 if (!BASE_URL) {
   throw new Error(
@@ -14,18 +17,22 @@ export default defineConfig({
   testDir: './test/e2e',
   timeout: 60000,
   fullyParallel: true,
-  forbidOnly: Boolean(process.env.CI),
+  forbidOnly: isCI,
   retries: 1,
   workers: 2,
   reporter: [
-    process.env.CI ? ['dot'] : ['list'],
+    isCI ? ['dot'] : ['list'],
     ['html', { open: 'never' }],
-    [
-      '@argos-ci/playwright/reporter',
-      createArgosReporterOptions({
-        uploadToArgos: Boolean(process.env.CI),
-      }),
-    ],
+    ...(hasArgosToken
+      ? [
+          [
+            '@argos-ci/playwright/reporter',
+            createArgosReporterOptions({
+              uploadToArgos: isCI,
+            }),
+          ],
+        ]
+      : []),
   ],
   use: {
     baseURL: BASE_URL,
