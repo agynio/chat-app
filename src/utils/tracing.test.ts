@@ -25,4 +25,14 @@ describe('resolveMessageTraceUrl', () => {
   it('returns null when base url is missing', () => {
     expect(resolveMessageTraceUrl(null, 'org-123', 'msg-456')).toBeNull();
   });
+
+  it('returns null when org id is missing', () => {
+    expect(resolveMessageTraceUrl('https://trace.agyn.dev', undefined, 'msg-456')).toBeNull();
+  });
+
+  it('returns a trace url when base and org id are provided', () => {
+    const url = resolveMessageTraceUrl('https://trace.agyn.dev', 'org-123', 'msg-456');
+
+    expect(url).toBe('https://trace.agyn.dev/message/msg-456?orgId=org-123');
+  });
 });

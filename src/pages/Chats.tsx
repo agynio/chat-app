@@ -495,15 +495,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
           traceUrl,
         } satisfies ChatMessage;
       }),
-    [
-      filteredChatMessages,
-      currentUserId,
-      participantLookup,
-      agentIdSet,
-      unreadMessageIdSet,
-      handleDeleteMessage,
-      organizationId,
-    ],
+    [filteredChatMessages, currentUserId, participantLookup, agentIdSet, unreadMessageIdSet, handleDeleteMessage, organizationId],
   );
 
   const chatRuns = useMemo<ChatRun[]>(() => {
