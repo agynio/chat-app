@@ -10,6 +10,7 @@ import { notifyError } from '@/lib/notify';
 import { useUser } from '@/user/user.runtime';
 import { useOrganization } from '@/organization/organization.runtime';
 import { useFileAttachments } from '@/hooks/useFileAttachments';
+import { config } from '@/config';
 import { useAgentsList } from '@/api/hooks/agents';
 import { useBatchGetUsers } from '@/api/hooks/users';
 import { useChats, useChatMessages, useCreateChat, useSendMessage, useMarkAsRead, useUpdateChat } from '@/api/hooks/chat';
@@ -21,6 +22,7 @@ import type { ChatMessage as ChatMessageRecord, Chat } from '@/api/types/chat';
 import type { ChatReminder } from '@/api/types/chat-resources';
 import { cancelReminder } from '@/features/reminders/api';
 import { clearDraft, CHAT_MESSAGE_MAX_LENGTH } from '@/utils/draftStorage';
+import { resolveMessageTraceUrl } from '@/utils/tracing';
 import type { DraftParticipant } from '@/types/chats';
 import type { User } from '@/user/user-types';
 import { useChatNotifications } from '@/hooks/useChatNotifications';
@@ -480,6 +482,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
             ) : null}
           </div>
         );
+        const traceUrl = resolveMessageTraceUrl(config.tracingAppUrl, organizationId, message.id) ?? undefined;
         return {
           id: message.id,
           role,
@@ -489,9 +492,18 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
           isUnread: unreadMessageIdSet.has(message.id),
           showDelete: role === 'user',
           onDelete: role === 'user' ? () => handleDeleteMessage(message.id) : undefined,
+          traceUrl,
         } satisfies ChatMessage;
       }),
-    [filteredChatMessages, currentUserId, participantLookup, agentIdSet, unreadMessageIdSet, handleDeleteMessage],
+    [
+      filteredChatMessages,
+      currentUserId,
+      participantLookup,
+      agentIdSet,
+      unreadMessageIdSet,
+      handleDeleteMessage,
+      organizationId,
+    ],
   );
 
   const chatRuns = useMemo<ChatRun[]>(() => {

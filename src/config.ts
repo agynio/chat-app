@@ -5,6 +5,7 @@ type RuntimeConfig = {
   API_BASE_URL?: string;
   MEDIA_PROXY_URL?: string;
   SOCKETS_ENABLED?: string;
+  TRACING_APP_URL?: string;
   OIDC_AUTHORITY?: string;
   OIDC_CLIENT_ID?: string;
   OIDC_SCOPE?: string;
@@ -14,6 +15,7 @@ type ViteEnv = {
   VITE_API_BASE_URL?: string;
   VITE_MEDIA_PROXY_URL?: string;
   VITE_SOCKETS_ENABLED?: string;
+  VITE_TRACING_APP_URL?: string;
   VITE_OIDC_AUTHORITY?: string;
   VITE_OIDC_CLIENT_ID?: string;
   VITE_OIDC_SCOPE?: string;
@@ -111,6 +113,9 @@ const mediaProxyUrl =
       ? deriveBase(rawMediaProxyUrl, { stripApi: false })
       : null;
 
+const rawTracingAppUrl = readConfigValue('TRACING_APP_URL', 'VITE_TRACING_APP_URL');
+const tracingAppUrl = rawTracingAppUrl ? deriveBase(rawTracingAppUrl, { stripApi: false }) : null;
+
 const rawSocketsEnabled = readConfigValue('SOCKETS_ENABLED', 'VITE_SOCKETS_ENABLED');
 const socketsEnabled = rawSocketsEnabled
   ? !['false', '0', 'off'].includes(rawSocketsEnabled.trim().toLowerCase())
@@ -133,6 +138,7 @@ export const config = {
   mediaProxyUrl,
   socketBaseUrl,
   socketsEnabled,
+  tracingAppUrl,
 };
 
 export function getSocketBaseUrl(): string {

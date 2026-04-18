@@ -13,6 +13,7 @@ interface MessageProps {
   isUnread?: boolean;
   showDelete?: boolean;
   onDelete?: () => void;
+  traceUrl?: string;
   className?: string;
 }
 
@@ -51,6 +52,7 @@ function MessageComponent({
   isUnread = false,
   showDelete = false,
   onDelete,
+  traceUrl,
   className = '',
 }: MessageProps) {
   const config = roleConfig[role];
@@ -86,6 +88,17 @@ function MessageComponent({
               <span className="text-[10px] font-medium uppercase tracking-wide text-[var(--agyn-status-pending)]">
                 Unread
               </span>
+            ) : null}
+            {traceUrl ? (
+              <a
+                href={traceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-[var(--agyn-blue)] hover:text-[var(--agyn-purple)] underline transition-colors"
+                data-testid="message-trace-link"
+              >
+                View trace
+              </a>
             ) : null}
             {showDelete ? (
               <IconButton
