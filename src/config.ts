@@ -5,7 +5,6 @@ type RuntimeConfig = {
   API_BASE_URL?: string;
   MEDIA_PROXY_URL?: string;
   SOCKETS_ENABLED?: string;
-  TRACING_APP_URL?: string;
   OIDC_AUTHORITY?: string;
   OIDC_CLIENT_ID?: string;
   OIDC_SCOPE?: string;
@@ -15,7 +14,6 @@ type ViteEnv = {
   VITE_API_BASE_URL?: string;
   VITE_MEDIA_PROXY_URL?: string;
   VITE_SOCKETS_ENABLED?: string;
-  VITE_TRACING_APP_URL?: string;
   VITE_OIDC_AUTHORITY?: string;
   VITE_OIDC_CLIENT_ID?: string;
   VITE_OIDC_SCOPE?: string;
@@ -36,12 +34,7 @@ type OidcConfig = OidcConfigEnabled | OidcConfigDisabled;
 
 const runtimeConfig: RuntimeConfig = typeof window !== 'undefined' ? (window.__APP_CONFIG ?? {}) : {};
 
-/**
- * Derive media proxy base URL from the current page origin by replacing
- * the first subdomain label with "media".
- * Returns null when derivation is not possible (no subdomain, IP address, SSR, etc.).
- */
-export function deriveMediaProxyUrl(): string | null {
+function deriveSiblingUrl(serviceName: string): string | null {
   if (typeof window === 'undefined') return null;
 
   const { protocol, hostname, port } = window.location;
@@ -56,9 +49,27 @@ export function deriveMediaProxyUrl(): string | null {
   const rest = hostname.slice(dotIndex); // ".agyn.dev"
   if (!rest.includes('.', 1)) return null;
 
-  const derived = `media${rest}`;
+  const derived = `${serviceName}${rest}`;
   const portSuffix = port ? `:${port}` : '';
   return `${protocol}//${derived}${portSuffix}`;
+}
+
+/**
+ * Derive media proxy base URL from the current page origin by replacing
+ * the first subdomain label with "media".
+ * Returns null when derivation is not possible (no subdomain, IP address, SSR, etc.).
+ */
+export function deriveMediaProxyUrl(): string | null {
+  return deriveSiblingUrl('media');
+}
+
+/**
+ * Derive tracing app base URL from the current page origin by replacing
+ * the first subdomain label with "tracing".
+ * Returns null when derivation is not possible (no subdomain, IP address, SSR, etc.).
+ */
+export function deriveTracingAppUrl(): string | null {
+  return deriveSiblingUrl('tracing');
 }
 
 function readConfigValue(runtimeKey: keyof RuntimeConfig, envKey: keyof ViteEnv): string | null {
@@ -113,8 +124,7 @@ const mediaProxyUrl =
       ? deriveBase(rawMediaProxyUrl, { stripApi: false })
       : null;
 
-const rawTracingAppUrl = readConfigValue('TRACING_APP_URL', 'VITE_TRACING_APP_URL');
-const tracingAppUrl = rawTracingAppUrl ? deriveBase(rawTracingAppUrl, { stripApi: false }) : null;
+const tracingAppUrl = deriveTracingAppUrl();
 
 const rawSocketsEnabled = readConfigValue('SOCKETS_ENABLED', 'VITE_SOCKETS_ENABLED');
 const socketsEnabled = rawSocketsEnabled
