@@ -12,6 +12,7 @@ export interface ChatMessage {
   isUnread?: boolean;
   showDelete?: boolean;
   onDelete?: () => void;
+  traceUrl?: string;
 }
 
 export interface ChatRun {
@@ -95,17 +96,18 @@ function ChatImpl({
               {index > 0 && <div className="border-t border-[var(--agyn-border-subtle)]" />}
               <div className="min-w-0 px-6 pt-6 pb-2">
                 {run.messages.map((message) => (
-                  <Message
-                    key={message.id}
-                    role={message.role}
-                    content={message.content}
-                    timestamp={message.timestamp}
-                    senderLabel={message.senderLabel}
-                    isUnread={message.isUnread}
-                    showDelete={message.showDelete}
-                    onDelete={message.onDelete}
-                  />
-                ))}
+                    <Message
+                      key={message.id}
+                      role={message.role}
+                      content={message.content}
+                      timestamp={message.timestamp}
+                      senderLabel={message.senderLabel}
+                      isUnread={message.isUnread}
+                      showDelete={message.showDelete}
+                      onDelete={message.onDelete}
+                      traceUrl={message.traceUrl}
+                    />
+                  ))}
               </div>
             </div>
           ))}

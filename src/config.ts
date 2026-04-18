@@ -34,12 +34,7 @@ type OidcConfig = OidcConfigEnabled | OidcConfigDisabled;
 
 const runtimeConfig: RuntimeConfig = typeof window !== 'undefined' ? (window.__APP_CONFIG ?? {}) : {};
 
-/**
- * Derive media proxy base URL from the current page origin by replacing
- * the first subdomain label with "media".
- * Returns null when derivation is not possible (no subdomain, IP address, SSR, etc.).
- */
-export function deriveMediaProxyUrl(): string | null {
+function deriveSiblingUrl(serviceName: string): string | null {
   if (typeof window === 'undefined') return null;
 
   const { protocol, hostname, port } = window.location;
@@ -54,9 +49,27 @@ export function deriveMediaProxyUrl(): string | null {
   const rest = hostname.slice(dotIndex); // ".agyn.dev"
   if (!rest.includes('.', 1)) return null;
 
-  const derived = `media${rest}`;
+  const derived = `${serviceName}${rest}`;
   const portSuffix = port ? `:${port}` : '';
   return `${protocol}//${derived}${portSuffix}`;
+}
+
+/**
+ * Derive media proxy base URL from the current page origin by replacing
+ * the first subdomain label with "media".
+ * Returns null when derivation is not possible (no subdomain, IP address, SSR, etc.).
+ */
+export function deriveMediaProxyUrl(): string | null {
+  return deriveSiblingUrl('media');
+}
+
+/**
+ * Derive tracing app base URL from the current page origin by replacing
+ * the first subdomain label with "tracing".
+ * Returns null when derivation is not possible (no subdomain, IP address, SSR, etc.).
+ */
+export function deriveTracingAppUrl(): string | null {
+  return deriveSiblingUrl('tracing');
 }
 
 function readConfigValue(runtimeKey: keyof RuntimeConfig, envKey: keyof ViteEnv): string | null {
@@ -111,6 +124,8 @@ const mediaProxyUrl =
       ? deriveBase(rawMediaProxyUrl, { stripApi: false })
       : null;
 
+const tracingAppUrl = deriveTracingAppUrl();
+
 const rawSocketsEnabled = readConfigValue('SOCKETS_ENABLED', 'VITE_SOCKETS_ENABLED');
 const socketsEnabled = rawSocketsEnabled
   ? !['false', '0', 'off'].includes(rawSocketsEnabled.trim().toLowerCase())
@@ -133,6 +148,7 @@ export const config = {
   mediaProxyUrl,
   socketBaseUrl,
   socketsEnabled,
+  tracingAppUrl,
 };
 
 export function getSocketBaseUrl(): string {

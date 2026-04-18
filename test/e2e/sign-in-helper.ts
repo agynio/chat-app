@@ -33,8 +33,7 @@ export async function signInViaMockAuth(
   const loginUrlPattern = /mockauth\.dev\/r\/.*\/oidc/;
   const chatList = page.getByTestId('chat-list');
   const noOrganizationsScreen = page.getByTestId('no-organizations-screen');
-  const emptyChatState = page.getByText(/No chats (available yet|match the current filter)/);
-  const appReady = chatList.or(noOrganizationsScreen).or(emptyChatState);
+  const appReady = chatList.or(noOrganizationsScreen);
 
   const initialRoute = await Promise.race([
     page
