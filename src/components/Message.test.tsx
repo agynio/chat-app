@@ -6,7 +6,7 @@ vi.mock('./MarkdownContent', () => ({
 }));
 
 describe('Message', () => {
-  it('renders a trace link when provided', async () => {
+  it('renders trace actions when provided', async () => {
     const { Message } = await import('./Message');
     const markup = renderToStaticMarkup(
       <Message
@@ -16,16 +16,15 @@ describe('Message', () => {
       />,
     );
 
-    expect(markup).toContain('View trace');
-    expect(markup).toContain('href="https://trace.agyn.dev/message/msg-123?orgId=org-456"');
-    expect(markup).toContain('data-testid="message-trace-link"');
+    expect(markup).toContain('message-actions-trigger');
+    expect(markup).toContain('data-trace-url="https://trace.agyn.dev/message/msg-123?orgId=org-456"');
   });
 
-  it('omits the trace link when not provided', async () => {
+  it('omits the trace action when not provided', async () => {
     const { Message } = await import('./Message');
     const markup = renderToStaticMarkup(<Message role="user" content="Hello" />);
 
-    expect(markup).not.toContain('View trace');
-    expect(markup).not.toContain('message-trace-link');
+    expect(markup).not.toContain('data-trace-url');
+    expect(markup).not.toContain('message-actions-trigger');
   });
 });

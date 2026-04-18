@@ -1,7 +1,14 @@
 import { memo, type ReactNode } from 'react';
-import { User, Bot, Terminal, Settings, Trash2 } from 'lucide-react';
+import { User, Bot, Terminal, Settings, Trash2, MoreHorizontal } from 'lucide-react';
 import { MarkdownContent } from './MarkdownContent';
 import { IconButton } from './IconButton';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu';
 
 export type MessageRole = 'system' | 'user' | 'assistant' | 'tool';
 
@@ -59,6 +66,9 @@ function MessageComponent({
   const Icon = config.icon;
   const deleteDisabled = !onDelete;
   const deleteTitle = deleteDisabled ? 'Delete message (coming soon)' : 'Delete message';
+  const hasTraceAction = Boolean(traceUrl);
+  const hasDeleteAction = showDelete;
+  const hasActions = hasTraceAction || hasDeleteAction;
 
   return (
     <div
@@ -89,27 +99,49 @@ function MessageComponent({
                 Unread
               </span>
             ) : null}
-            {traceUrl ? (
-              <a
-                href={traceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-[var(--agyn-blue)] hover:text-[var(--agyn-purple)] underline transition-colors"
-                data-testid="message-trace-link"
-              >
-                View trace
-              </a>
-            ) : null}
-            {showDelete ? (
-              <IconButton
-                icon={<Trash2 className="h-3 w-3" />}
-                size="xs"
-                variant="ghost"
-                aria-label={deleteTitle}
-                title={deleteTitle}
-                onClick={onDelete}
-                disabled={deleteDisabled}
-              />
+            {hasActions ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <IconButton
+                    icon={<MoreHorizontal className="h-3 w-3" />}
+                    size="xs"
+                    variant="ghost"
+                    aria-label="Message actions"
+                    title="Message actions"
+                    type="button"
+                    data-testid="message-actions-trigger"
+                    data-trace-url={traceUrl}
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  className="rounded-[10px] border border-[var(--agyn-border-subtle)] bg-white p-1 shadow-lg"
+                  align="start"
+                >
+                  {hasTraceAction ? (
+                    <DropdownMenuItem asChild>
+                      <a
+                        href={traceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        data-testid="message-trace-link"
+                      >
+                        View trace
+                      </a>
+                    </DropdownMenuItem>
+                  ) : null}
+                  {hasTraceAction && hasDeleteAction ? <DropdownMenuSeparator /> : null}
+                  {hasDeleteAction ? (
+                    <DropdownMenuItem
+                      disabled={deleteDisabled}
+                      onSelect={() => onDelete?.()}
+                      variant="destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span>{deleteTitle}</span>
+                    </DropdownMenuItem>
+                  ) : null}
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : null}
           </div>
           <div className="text-[var(--agyn-dark)] min-w-0">
