@@ -6,6 +6,7 @@ import {
   MessageSquarePlus,
   Circle,
   CheckCircle,
+  AlertTriangle,
   ChevronDown,
   Trash2,
   LogOut,
@@ -271,6 +272,20 @@ type ChatDetailHeaderProps = {
   onCancelReminder?: (reminderId: string) => void;
   cancellingReminderIds?: ReadonlySet<string>;
 };
+
+function ChatDegradedBanner() {
+  return (
+    <div
+      className="border-b border-[var(--agyn-status-pending)] bg-[var(--agyn-status-pending-bg)] px-4 py-2"
+      data-testid="chat-degraded-banner"
+    >
+      <div className="flex items-center gap-2 text-sm text-[var(--agyn-status-pending)]">
+        <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+        <span>This thread is degraded and is now read-only.</span>
+      </div>
+    </div>
+  );
+}
 
 function ChatDetailHeader({
   chat,
@@ -571,6 +586,7 @@ interface ChatsScreenProps {
   onUpdateSummary?: (chatId: string, summary: string) => void;
   isUpdateSummaryPending?: boolean;
   isSendMessagePending?: boolean;
+  isThreadDegraded?: boolean;
   currentUserId: string;
   draftMode?: boolean;
   draftParticipants?: DraftParticipant[];
@@ -617,6 +633,7 @@ export default function ChatsScreen({
   onUpdateSummary,
   isUpdateSummaryPending = false,
   isSendMessagePending = false,
+  isThreadDegraded = false,
   currentUserId,
   draftMode = false,
   draftParticipants = [],
@@ -680,7 +697,15 @@ export default function ChatsScreen({
     );
   };
 
-  const renderComposer = ({ baseDisabled, trimmedLength }: { baseDisabled: boolean; trimmedLength: number }) => {
+  const renderComposer = ({
+    baseDisabled,
+    trimmedLength,
+    composerDisabled = false,
+  }: {
+    baseDisabled: boolean;
+    trimmedLength: number;
+    composerDisabled?: boolean;
+  }) => {
     const lengthExceeded = trimmedLength > CHAT_MESSAGE_MAX_LENGTH;
     const nearLimit = trimmedLength >= NEAR_LIMIT_THRESHOLD && !lengthExceeded;
     const sendDisabled = baseDisabled || lengthExceeded || isUploading;
@@ -700,6 +725,7 @@ export default function ChatsScreen({
             onSendMessage(inputValue, { chatId: selectedChatId ?? null });
           }}
           sendDisabled={sendDisabled}
+          disabled={composerDisabled}
           isSending={isSendMessagePending}
           attachments={attachments}
           onAttachFiles={onAttachFiles}
@@ -780,6 +806,7 @@ export default function ChatsScreen({
           onCancelReminder={onCancelReminder}
           cancellingReminderIds={cancellingReminderIds}
         />
+        {isThreadDegraded ? <ChatDegradedBanner /> : null}
 
         <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
           <Chat
@@ -797,8 +824,9 @@ export default function ChatsScreen({
         </div>
 
         {renderComposer({
-          baseDisabled: !onSendMessage || !selectedChatId || isSendMessagePending,
+          baseDisabled: !onSendMessage || !selectedChatId || isSendMessagePending || isThreadDegraded,
           trimmedLength: chatTrimmedLength,
+          composerDisabled: isThreadDegraded,
         })}
         {isLoading ? (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80 backdrop-blur-sm">

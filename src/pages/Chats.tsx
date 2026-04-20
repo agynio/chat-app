@@ -7,6 +7,7 @@ import { MarkdownContent } from '@/components/MarkdownContent';
 import { MessageAttachments } from '@/components/MessageAttachments';
 import ChatsScreen, { UserMenu } from '@/components/screens/ChatsScreen';
 import { notifyError } from '@/lib/notify';
+import { isThreadDegradedError } from '@/api/errors';
 import { useUser } from '@/user/user.runtime';
 import { useOrganization } from '@/organization/organization.runtime';
 import { useFileAttachments } from '@/hooks/useFileAttachments';
@@ -100,6 +101,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
   const [selectedChatIdState, setSelectedChatIdState] = useState<string | null>(params.chatId ?? null);
   const [cancellingReminderIds, setCancellingReminderIds] = useState<ReadonlySet<string>>(() => new Set());
   const [deletedMessageIds, setDeletedMessageIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [degradedChatIds, setDegradedChatIds] = useState<ReadonlySet<string>>(() => new Set());
 
   const selectedChatId = params.chatId ?? selectedChatIdState;
   const previousOrganizationIdRef = useRef<string | null>(selectedOrganizationId ?? null);
@@ -118,6 +120,10 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     }
     previousOrganizationIdRef.current = selectedOrganizationId ?? null;
   }, [selectedOrganizationId, navigate]);
+
+  useEffect(() => {
+    setDegradedChatIds(new Set());
+  }, [selectedOrganizationId]);
 
   const {
     attachments,
@@ -170,6 +176,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
 
   const effectiveDraftMode = isDraftSelectedState;
   const canUpdateChat = Boolean(selectedChatId && !effectiveDraftMode);
+  const isThreadDegraded = Boolean(selectedChatId && !effectiveDraftMode && degradedChatIds.has(selectedChatId));
 
   useChatNotifications({
     identityId: currentUserId,
@@ -183,6 +190,27 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
   useEffect(() => {
     setDeletedMessageIds(new Set());
   }, [selectedChatId]);
+
+  const markChatDegraded = useCallback((chatId: string) => {
+    if (!chatId || isDraftChatId(chatId)) return;
+    setDegradedChatIds((prev) => {
+      if (prev.has(chatId)) return prev;
+      const next = new Set(prev);
+      next.add(chatId);
+      return next;
+    });
+  }, []);
+
+  const handleSendMessageError = useCallback(
+    (error: unknown, chatId: string) => {
+      if (isThreadDegradedError(error)) {
+        markChatDegraded(chatId);
+        return;
+      }
+      notifyError(error instanceof Error ? error.message : 'Failed to send message.');
+    },
+    [markChatDegraded],
+  );
 
   const agents = useMemo(() => agentsQuery.data?.agents ?? [], [agentsQuery.data]);
   const agentIdSet = useMemo(() => new Set(agents.map((agent) => agent.meta.id)), [agents]);
@@ -670,6 +698,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
                   onSuccess: () => {
                     setInputValue('');
                   },
+                  onError: (error) => handleSendMessageError(error, newChatId),
                 },
               );
             },
@@ -701,9 +730,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
             latestInputValueRef.current = '';
             void queryClient.invalidateQueries({ queryKey: ['chats', chatId, 'queued'] });
           },
-          onError: (error) => {
-            notifyError(error instanceof Error ? error.message : 'Failed to send message.');
-          },
+          onError: (error) => handleSendMessageError(error, chatId),
         },
       );
     },
@@ -724,6 +751,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
       lastNonDraftIdRef,
       lastPersistedTextRef,
       latestInputValueRef,
+      handleSendMessageError,
     ],
   );
 
@@ -787,6 +815,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
           isUpdateSummaryPending={canUpdateChat ? updateChat.isPending : false}
           currentUserId={currentUserId}
           isSendMessagePending={sendMessage.isPending || createChat.isPending}
+          isThreadDegraded={isThreadDegraded}
           draftMode={effectiveDraftMode}
           draftParticipants={draftParticipants}
           draftFetchOptions={draftFetchOptions}
