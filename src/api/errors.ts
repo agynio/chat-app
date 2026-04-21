@@ -54,16 +54,26 @@ export function resolveConnectErrorDetails(error: unknown): ConnectErrorDetails 
   const payload = resolveConnectPayload(maybeApiError?.response?.data);
   if (!payload) return null;
 
-  const nestedPayload = typeof payload.error === 'object' && payload.error !== null
-    ? (payload.error as ConnectErrorPayload)
-    : payload;
-
-  const code = typeof nestedPayload.code === 'string' ? nestedPayload.code : undefined;
-  const message = typeof nestedPayload.message === 'string'
-    ? nestedPayload.message
-    : typeof nestedPayload.error === 'string'
-      ? nestedPayload.error
+  let code = typeof payload.code === 'string' ? payload.code : undefined;
+  let message = typeof payload.message === 'string'
+    ? payload.message
+    : typeof payload.error === 'string'
+      ? payload.error
       : undefined;
+
+  if ((!code || !message) && typeof payload.error === 'object' && payload.error !== null) {
+    const nestedPayload = payload.error as ConnectErrorPayload;
+    if (!code && typeof nestedPayload.code === 'string') {
+      code = nestedPayload.code;
+    }
+    if (!message) {
+      message = typeof nestedPayload.message === 'string'
+        ? nestedPayload.message
+        : typeof nestedPayload.error === 'string'
+          ? nestedPayload.error
+          : undefined;
+    }
+  }
 
   if (!code && !message) return null;
   return { code, message };

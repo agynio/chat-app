@@ -192,7 +192,6 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
   }, [selectedChatId]);
 
   const markChatDegraded = useCallback((chatId: string) => {
-    if (!chatId || isDraftChatId(chatId)) return;
     setDegradedChatIds((prev) => {
       if (prev.has(chatId)) return prev;
       const next = new Set(prev);

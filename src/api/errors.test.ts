@@ -9,6 +9,20 @@ describe('isThreadDegradedError', () => {
     expect(isThreadDegradedError(error)).toBe(true);
   });
 
+  it('prefers top-level fields over nested error payload', () => {
+    const error = buildError({
+      code: 'failed_precondition',
+      message: 'thread is degraded',
+      error: { code: 'permission_denied', message: 'not degraded' },
+    });
+    expect(isThreadDegradedError(error)).toBe(true);
+  });
+
+  it('falls back to nested error payload', () => {
+    const error = buildError({ error: { code: 'failed_precondition', message: 'thread is degraded' } });
+    expect(isThreadDegradedError(error)).toBe(true);
+  });
+
   it('normalizes camel case codes', () => {
     const error = buildError({ code: 'FailedPrecondition', message: 'thread is degraded' });
     expect(isThreadDegradedError(error)).toBe(true);
