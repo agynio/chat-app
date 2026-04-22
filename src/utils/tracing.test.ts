@@ -3,21 +3,21 @@ import { buildMessageTraceUrl, resolveMessageTraceUrl } from './tracing';
 
 describe('buildMessageTraceUrl', () => {
   it('builds a message trace url with org and message', () => {
-    const url = buildMessageTraceUrl('https://trace.agyn.dev', {
+    const url = buildMessageTraceUrl('https://tracing.agyn.dev', {
       organizationId: 'org-123',
       messageId: 'msg-456',
     });
 
-    expect(url).toBe('https://trace.agyn.dev/message/msg-456?orgId=org-123');
+    expect(url).toBe('https://tracing.agyn.dev/message/msg-456?orgId=org-123');
   });
 
   it('preserves base paths when building', () => {
-    const url = buildMessageTraceUrl('https://trace.agyn.dev/app/', {
+    const url = buildMessageTraceUrl('https://tracing.agyn.dev/app/', {
       organizationId: 'org-123',
       messageId: 'msg-456',
     });
 
-    expect(url).toBe('https://trace.agyn.dev/app/message/msg-456?orgId=org-123');
+    expect(url).toBe('https://tracing.agyn.dev/app/message/msg-456?orgId=org-123');
   });
 });
 
@@ -27,12 +27,12 @@ describe('resolveMessageTraceUrl', () => {
   });
 
   it('returns null when org id is missing', () => {
-    expect(resolveMessageTraceUrl('https://trace.agyn.dev', undefined, 'msg-456')).toBeNull();
+    expect(resolveMessageTraceUrl('https://tracing.agyn.dev', undefined, 'msg-456')).toBeNull();
   });
 
   it('returns a trace url when base and org id are provided', () => {
-    const url = resolveMessageTraceUrl('https://trace.agyn.dev', 'org-123', 'msg-456');
+    const url = resolveMessageTraceUrl('https://tracing.agyn.dev', 'org-123', 'msg-456');
 
-    expect(url).toBe('https://trace.agyn.dev/message/msg-456?orgId=org-123');
+    expect(url).toBe('https://tracing.agyn.dev/message/msg-456?orgId=org-123');
   });
 });

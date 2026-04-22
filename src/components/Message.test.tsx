@@ -12,12 +12,12 @@ describe('Message', () => {
       <Message
         role="user"
         content="Hello"
-        traceUrl="https://trace.agyn.dev/message/msg-123?orgId=org-456"
+        traceUrl="https://tracing.agyn.dev/message/msg-123?orgId=org-456"
       />,
     );
 
     expect(markup).toContain('message-actions-trigger');
-    expect(markup).toContain('data-trace-url="https://trace.agyn.dev/message/msg-123?orgId=org-456"');
+    expect(markup).toContain('data-trace-url="https://tracing.agyn.dev/message/msg-123?orgId=org-456"');
   });
 
   it('omits the trace action when not provided', async () => {
