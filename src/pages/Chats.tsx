@@ -186,10 +186,6 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     clearAttachments();
   }, [clearAttachments, selectedChatId]);
 
-  useEffect(() => {
-    setDeletedMessageIds(new Set());
-  }, [selectedChatId]);
-
   const markChatDegraded = useCallback((chatId: string) => {
     setDegradedChatIds((prev) => {
       if (prev.has(chatId)) return prev;
