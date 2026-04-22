@@ -5,6 +5,11 @@ const BASE_URL = process.env.E2E_BASE_URL;
 const isCI = Boolean(process.env.CI);
 const argosToken = process.env.ARGOS_TOKEN;
 const hasArgosToken = Boolean(argosToken && argosToken.length === 40);
+const isMainBranch =
+  process.env.GITHUB_REF === 'refs/heads/main' ||
+  process.env.GITHUB_REF_NAME === 'main';
+const isPushEvent = process.env.GITHUB_EVENT_NAME === 'push';
+const shouldUploadToArgos = isCI && isMainBranch && isPushEvent;
 
 if (!BASE_URL) {
   throw new Error(
@@ -28,7 +33,8 @@ export default defineConfig({
           [
             '@argos-ci/playwright/reporter',
             createArgosReporterOptions({
-              uploadToArgos: isCI,
+              uploadToArgos: shouldUploadToArgos,
+              ignoreUploadFailures: true,
             }),
           ],
         ]
