@@ -100,6 +100,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
   const [filterMode, setFilterMode] = useState<'open' | 'closed' | 'all'>('open');
   const [selectedChatIdState, setSelectedChatIdState] = useState<string | null>(params.chatId ?? null);
   const [cancellingReminderIds, setCancellingReminderIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [deletedMessageIds, setDeletedMessageIds] = useState<ReadonlySet<string>>(() => new Set());
   const [degradedChatIds, setDegradedChatIds] = useState<ReadonlySet<string>>(() => new Set());
 
   const selectedChatId = params.chatId ?? selectedChatIdState;
@@ -185,6 +186,10 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
   useEffect(() => {
     clearAttachments();
   }, [clearAttachments, selectedChatId]);
+
+  useEffect(() => {
+    setDeletedMessageIds(new Set());
+  }, [selectedChatId]);
 
   const markChatDegraded = useCallback((chatId: string) => {
     setDegradedChatIds((prev) => {
@@ -399,12 +404,17 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     });
   }, [chatMessagesQuery.data]);
 
+  const filteredChatMessages = useMemo(
+    () => chatMessages.filter((message) => !deletedMessageIds.has(message.id)),
+    [chatMessages, deletedMessageIds],
+  );
+
   const unreadCount = chatMessagesQuery.data?.pages?.[0]?.unreadCount ?? 0;
   const unreadMessageIds = useMemo(() => {
     if (!unreadCount) return [] as string[];
-    const sliceStart = Math.max(0, chatMessages.length - unreadCount);
-    return chatMessages.slice(sliceStart).map((message) => message.id);
-  }, [chatMessages, unreadCount]);
+    const sliceStart = Math.max(0, filteredChatMessages.length - unreadCount);
+    return filteredChatMessages.slice(sliceStart).map((message) => message.id);
+  }, [filteredChatMessages, unreadCount]);
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const pendingScrollHeightRef = useRef<number | null>(null);
@@ -437,7 +447,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     if (isAtBottomRef.current) {
       container.scrollTop = container.scrollHeight;
     }
-  }, [chatMessages.length]);
+  }, [filteredChatMessages.length]);
 
   useEffect(() => {
     pendingScrollHeightRef.current = null;
@@ -466,9 +476,23 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
 
   const unreadMessageIdSet = useMemo(() => new Set(unreadMessageIds), [unreadMessageIds]);
 
+  const handleDeleteMessage = useCallback(
+    (messageId: string) => {
+      if (!selectedChatId || effectiveDraftMode) return;
+      setDeletedMessageIds((prev) => {
+        if (prev.has(messageId)) return prev;
+        const next = new Set(prev);
+        next.add(messageId);
+        return next;
+      });
+      // TODO: Wire up message deletion API + rollback once available.
+    },
+    [selectedChatId, effectiveDraftMode],
+  );
+
   const chatMessagesForDisplay = useMemo<ChatMessage[]>(
     () =>
-      chatMessages.map((message) => {
+      filteredChatMessages.map((message) => {
         const senderLabel = message.senderId === currentUserId
           ? 'You'
           : resolveParticipantLabel(message.senderId, participantLookup);
@@ -494,11 +518,11 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
           senderLabel,
           isUnread: unreadMessageIdSet.has(message.id),
           showDelete: role === 'user',
-          onDelete: undefined,
+          onDelete: role === 'user' ? () => handleDeleteMessage(message.id) : undefined,
           traceUrl,
         } satisfies ChatMessage;
       }),
-    [chatMessages, currentUserId, participantLookup, agentIdSet, unreadMessageIdSet, organizationId],
+    [filteredChatMessages, currentUserId, participantLookup, agentIdSet, unreadMessageIdSet, handleDeleteMessage, organizationId],
   );
 
   const chatRuns = useMemo<ChatRun[]>(() => {
