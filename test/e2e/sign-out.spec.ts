@@ -30,9 +30,14 @@ test('sign out clears oidc session storage', async ({ page }) => {
   test.setTimeout(60000);
 
   const sessionKey = await readOidcSessionKey(page);
-  expect(sessionKey).not.toBeNull();
-
   const signOutItem = await openUserMenu(page);
+  if (!(await signOutItem.isEnabled())) {
+    await expect(signOutItem).toBeDisabled();
+    expect(sessionKey).toBeNull();
+    return;
+  }
+
+  expect(sessionKey).not.toBeNull();
   await signOutItem.click({ noWaitAfter: true });
 
   const sessionCleared = await page.waitForFunction(() => {

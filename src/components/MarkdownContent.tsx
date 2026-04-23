@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { MediaAudio } from './MediaAudio';
 import { MediaImage } from './MediaImage';
 import { MediaVideo } from './MediaVideo';
+import { MarkdownDiagram } from './MarkdownDiagram';
 
 interface MarkdownContentProps {
   content: string;
@@ -20,7 +21,7 @@ interface MarkdownContentProps {
 
 type MarkdownCodeProps = ComponentPropsWithoutRef<'code'> & {
   inline?: boolean;
-  node?: unknown;
+  node?: { type?: string } | null;
 };
 
 type MarkdownPreProps = ComponentPropsWithoutRef<'pre'> & {
@@ -55,9 +56,10 @@ type MarkdownOrderedListProps = ComponentPropsWithoutRef<'ol'> & ReactMarkdownLi
 type MarkdownUnorderedListProps = ComponentPropsWithoutRef<'ul'> & ReactMarkdownListInternals;
 type MarkdownListItemProps = ComponentPropsWithoutRef<'li'> & ReactMarkdownListInternals;
 
-const getCodeRenderMeta = ({ inline, className }: MarkdownCodeProps) => {
-  const match = /language-(\w+)/.exec(className || '');
-  const isInlineCode = inline ?? !match;
+const getCodeRenderMeta = ({ inline, className, node }: Pick<MarkdownCodeProps, 'inline' | 'className' | 'node'>) => {
+  const match = /language-([\w-]+)/.exec(className || '');
+  const nodeType = typeof node === 'object' && node ? (node as { type?: string }).type : undefined;
+  const isInlineCode = nodeType ? nodeType === 'inlineCode' : inline ?? !match;
   return { match, isInlineCode } as const;
 };
 
@@ -89,9 +91,16 @@ const resolveSourceFromChildren = (children: ReactNode): string | null => {
 };
 
 export function MarkdownContent({ content, className = '' }: MarkdownContentProps) {
-  const renderCode = ({ inline, className: codeClassName, children, style, ...props }: MarkdownCodeProps) => {
-    const { match, isInlineCode } = getCodeRenderMeta({ inline, className: codeClassName });
+  const renderCode = ({ inline, className: codeClassName, children, style, node, ...props }: MarkdownCodeProps) => {
+    const { match, isInlineCode } = getCodeRenderMeta({ inline, className: codeClassName, node });
     const text = String(children).replace(/\n$/, '');
+
+    if (!isInlineCode && match) {
+      const language = match[1].toLowerCase();
+      if (language === 'mermaid' || language === 'vega-lite') {
+        return <MarkdownDiagram language={language} source={text} />;
+      }
+    }
 
     if (!isInlineCode) {
       return (
@@ -119,6 +128,47 @@ export function MarkdownContent({ content, className = '' }: MarkdownContentProp
         {children}
       </code>
     );
+  };
+
+  const renderImage = ({ src, alt, title, className: imageClassName, node: _node }: MarkdownImageProps) => {
+    const normalizedAlt = normalizeAltText(alt);
+    const resolvedSrc = typeof src === 'string' ? src : '';
+
+    if (normalizedAlt === 'video') {
+      return <MediaVideo src={resolvedSrc} className={imageClassName} />;
+    }
+
+    if (normalizedAlt === 'audio') {
+      return <MediaAudio src={resolvedSrc} className={imageClassName} />;
+    }
+
+    return <MediaImage src={resolvedSrc} alt={alt ?? ''} title={title} className={imageClassName} />;
+  };
+
+  const renderVideo = ({ src, children, className: videoClassName, node: _node }: MarkdownVideoProps) => {
+    const resolvedSrc = typeof src === 'string' && src.trim() ? src : resolveSourceFromChildren(children) ?? '';
+    return <MediaVideo src={resolvedSrc} className={videoClassName} />;
+  };
+
+  const renderAudio = ({ src, children, className: audioClassName, node: _node }: MarkdownAudioProps) => {
+    const resolvedSrc = typeof src === 'string' && src.trim() ? src : resolveSourceFromChildren(children) ?? '';
+    return <MediaAudio src={resolvedSrc} className={audioClassName} />;
+  };
+
+  const inlineMediaComponents = new Set<unknown>([renderImage, renderVideo, renderAudio]);
+  const containsInlineMedia = (node: ReactNode): boolean => {
+    const nodes = Array.isArray(node) ? node : [node];
+    for (const child of nodes) {
+      if (child == null) continue;
+      if (Array.isArray(child)) {
+        if (containsInlineMedia(child)) return true;
+        continue;
+      }
+      if (!isValidElement(child)) continue;
+      if (inlineMediaComponents.has(child.type)) return true;
+      if (child.props?.children && containsInlineMedia(child.props.children)) return true;
+    }
+    return false;
   };
 
   const markdownComponents: Components = {
@@ -155,11 +205,14 @@ export function MarkdownContent({ content, className = '' }: MarkdownContentProp
     ),
 
     // Paragraphs
-    p: ({ children }) => (
-      <p className="text-[var(--agyn-dark)] mb-4 last:mb-0 leading-relaxed">
-        {children}
-      </p>
-    ),
+    p: ({ children, className: paragraphClassName }) => {
+      const Wrapper = containsInlineMedia(children) ? 'div' : 'p';
+      return (
+        <Wrapper className={cn('text-[var(--agyn-dark)] mb-4 last:mb-0 leading-relaxed', paragraphClassName)}>
+          {children}
+        </Wrapper>
+      );
+    },
 
     // Lists
     ul: ({ children, className, node: _node, depth: _depth, ordered: _ordered, ...domProps }: MarkdownUnorderedListProps) => (
@@ -187,30 +240,11 @@ export function MarkdownContent({ content, className = '' }: MarkdownContentProp
     // Inline code
     code: renderCode,
 
-    img: ({ src, alt, title, className: imageClassName, node: _node }: MarkdownImageProps) => {
-      const normalizedAlt = normalizeAltText(alt);
-      const resolvedSrc = typeof src === 'string' ? src : '';
+    img: renderImage,
 
-      if (normalizedAlt === 'video') {
-        return <MediaVideo src={resolvedSrc} className={imageClassName} />;
-      }
+    video: renderVideo,
 
-      if (normalizedAlt === 'audio') {
-        return <MediaAudio src={resolvedSrc} className={imageClassName} />;
-      }
-
-      return <MediaImage src={resolvedSrc} alt={alt ?? ''} title={title} className={imageClassName} />;
-    },
-
-    video: ({ src, children, className: videoClassName, node: _node }: MarkdownVideoProps) => {
-      const resolvedSrc = typeof src === 'string' && src.trim() ? src : resolveSourceFromChildren(children) ?? '';
-      return <MediaVideo src={resolvedSrc} className={videoClassName} />;
-    },
-
-    audio: ({ src, children, className: audioClassName, node: _node }: MarkdownAudioProps) => {
-      const resolvedSrc = typeof src === 'string' && src.trim() ? src : resolveSourceFromChildren(children) ?? '';
-      return <MediaAudio src={resolvedSrc} className={audioClassName} />;
-    },
+    audio: renderAudio,
 
     source: ({ node: _node, ..._props }: MarkdownSourceProps) => null,
 
@@ -224,6 +258,10 @@ export function MarkdownContent({ content, className = '' }: MarkdownContentProp
     pre: ({ children, className: preClassName, style: preStyle, node: _node, ...props }: MarkdownPreProps) => {
       const childArray = Children.toArray(children);
       const firstElement = childArray.find((node): node is ReactElement => isValidElement(node));
+
+      if (firstElement && firstElement.type === MarkdownDiagram) {
+        return firstElement;
+      }
 
       if (firstElement && firstElement.type === 'pre') {
         return firstElement;

@@ -67,6 +67,9 @@ export default defineConfig(({ command }) => ({
   },
   server: {
     allowedHosts: true,
+    watch: {
+      ignored: ['**/test-results/**', '**/playwright-report/**'],
+    },
     proxy: {
       '/socket.io': {
         target: gatewayTarget,

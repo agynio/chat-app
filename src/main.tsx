@@ -10,7 +10,6 @@ import { UserProvider } from './user/UserProvider';
 import { OrganizationProvider } from './organization/OrganizationProvider';
 
 const queryClient = new QueryClient();
-
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>

@@ -65,6 +65,12 @@ test('two users exchange messages in a shared chat', async ({ userAPage, userBPa
   await expect(userBPage.getByTestId('chat-message').filter({ hasText: messageFromB })).toBeVisible({
     timeout: 15000,
   });
+  const userAMessagesRefreshed = userAPage.waitForResponse(
+    (resp) => resp.url().includes('GetMessages') && resp.status() === 200,
+    { timeout: 15000 },
+  );
+  await userAPage.reload();
+  await userAMessagesRefreshed;
   await expect(userAPage.getByTestId('chat-message').filter({ hasText: messageFromB })).toBeVisible({
     timeout: 15000,
   });

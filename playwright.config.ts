@@ -28,6 +28,7 @@ export default defineConfig({
           [
             '@argos-ci/playwright/reporter',
             createArgosReporterOptions({
+              ignoreUploadFailures: true,
               uploadToArgos: isCI,
               ignoreUploadFailures: true,
             }),

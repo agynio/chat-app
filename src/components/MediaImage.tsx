@@ -18,6 +18,7 @@ export function MediaImage({ src, alt = '', title, className = '' }: MediaImageP
     () => (normalizedSrc ? buildProxyUrl(normalizedSrc, { size: INLINE_IMAGE_MAX_SIZE }) : null),
     [normalizedSrc],
   );
+  const displayUrl = proxyUrl ?? (normalizedSrc ? normalizedSrc : null);
   const downloadUrl = useMemo(
     () => (normalizedSrc ? buildDownloadUrl(normalizedSrc) : null),
     [normalizedSrc],
@@ -27,7 +28,7 @@ export function MediaImage({ src, alt = '', title, className = '' }: MediaImageP
   const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
-    if (!proxyUrl) return;
+    if (!displayUrl) return;
     setLoadState('loading');
 
     let cancelled = false;
@@ -42,14 +43,14 @@ export function MediaImage({ src, alt = '', title, className = '' }: MediaImageP
         setLoadState('error');
       }
     };
-    image.src = proxyUrl;
+    image.src = displayUrl;
 
     return () => {
       cancelled = true;
     };
-  }, [proxyUrl, retryKey]);
+  }, [displayUrl, retryKey]);
 
-  if (!proxyUrl) {
+  if (!displayUrl) {
     return (
       <div className={cn('flex flex-col gap-2', className)} data-testid="media-image" data-alt={alt}>
         <div
@@ -95,7 +96,7 @@ export function MediaImage({ src, alt = '', title, className = '' }: MediaImageP
         ) : (
           <img
             key={retryKey}
-            src={proxyUrl}
+            src={displayUrl}
             alt={alt}
             title={title}
             loading="lazy"

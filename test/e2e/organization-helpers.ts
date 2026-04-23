@@ -19,4 +19,8 @@ export async function setSelectedOrganization(page: Page, organizationId: string
   await page.evaluate((orgId) => {
     window.localStorage.setItem('ui.organization.selected', orgId);
   }, organizationId);
+  await page.reload();
+  await page.waitForSelector('[data-testid="chat-list"], [data-testid="no-organizations-screen"]', {
+    timeout: 30000,
+  });
 }

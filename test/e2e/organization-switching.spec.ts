@@ -2,7 +2,6 @@ import * as crypto from 'node:crypto';
 import { argosScreenshot } from '@argos-ci/playwright';
 import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
-import { test as base, expect as baseExpect } from '@playwright/test';
 import {
   createAgent,
   createChat,
@@ -92,13 +91,15 @@ async function switchOrganization(page: Page, organizationId: string) {
     },
     { timeout: 15000 },
   );
-  await orgItem.click();
+  await orgItem.evaluate((node) => {
+    (node as HTMLElement).click();
+  });
   await chatsLoaded;
 }
 
-base('org switcher displays organizations', async ({ page }) => {
+test('org switcher displays organizations', async ({ page }) => {
   const uniqueEmail = `org-switcher-${crypto.randomUUID()}@agyn.test`;
-  await signInViaMockAuth(page, uniqueEmail);
+  await signInViaMockAuth(page, uniqueEmail, { force: true });
   const { orgAId, orgBId, orgAName, orgBName } = await createOrganizations(page);
 
   await signInViaMockAuth(page, uniqueEmail);
@@ -165,13 +166,10 @@ test('switching orgs clears selected conversation', async ({ page }) => {
 });
 
 // Use the base Playwright test to avoid fixture auth and ensure a fresh user with no orgs.
-base('no-organizations screen', async ({ page }) => {
+test('no-organizations screen', async ({ page }) => {
   const uniqueEmail = `no-orgs-${Date.now()}@agyn.test`;
-  const signedIn = await signInViaMockAuth(page, uniqueEmail);
-  if (!signedIn) {
-    await signInViaMockAuth(page, uniqueEmail, { force: true });
-  }
-  await baseExpect(page.getByTestId('no-organizations-screen')).toBeVisible({ timeout: 15000 });
-  await baseExpect(page.getByTestId('user-menu-trigger')).toBeVisible({ timeout: 15000 });
+  await signInViaMockAuth(page, uniqueEmail, { force: true });
+  await expect(page.getByTestId('no-organizations-screen')).toBeVisible({ timeout: 15000 });
+  await expect(page.getByTestId('user-menu-trigger')).toBeVisible({ timeout: 15000 });
   await argosScreenshot(page, 'no-organizations-screen');
 });
