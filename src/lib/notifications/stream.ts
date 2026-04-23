@@ -4,7 +4,6 @@ import {
   type MessageCreatedNotification,
   type NotificationEnvelope,
 } from '@/api/notifications-connect';
-import { isE2eMockEnabled } from '@/lib/e2e/identity';
 
 const RECONNECT_DELAY_MS = 3000;
 
@@ -46,7 +45,6 @@ class NotificationsStream {
   }
 
   private ensureConnected() {
-    if (isE2eMockEnabled()) return;
     if (this.abortController) return;
     this.abortController = new AbortController();
     this.hasConnected = false;

@@ -1,13 +1,7 @@
 import type { Page } from '@playwright/test';
 import { test as base, expect } from '@playwright/test';
-import { attachMockBackend, resetMockBackend } from './mock-backend';
 import { signInViaMockAuth } from './sign-in-helper';
 export { expect };
-
-const useMockBackend = ['1', 'true', 'yes'].includes((process.env.E2E_USE_MOCKS ?? '').toLowerCase());
-if (useMockBackend) {
-  console.log('[mock-backend] fixtures enabled');
-}
 
 async function signInAndLoad(page: Page) {
   await signInViaMockAuth(page);
@@ -15,9 +9,6 @@ async function signInAndLoad(page: Page) {
 
 export const test = base.extend({
   page: async ({ page }, runPage) => {
-    if (useMockBackend) {
-      await attachMockBackend(page.context());
-    }
     page.on('console', (msg) => {
       if (msg.type() === 'error') {
         console.log('[browser-error]', msg.text());
@@ -32,9 +23,3 @@ export const test = base.extend({
     await runPage(page);
   },
 });
-
-if (useMockBackend) {
-  test.beforeEach(() => {
-    resetMockBackend();
-  });
-}

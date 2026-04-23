@@ -4,24 +4,12 @@ import { useAuth } from 'react-oidc-context';
 import { useQuery } from '@tanstack/react-query';
 import { http } from '@/api/http';
 import { oidcConfig } from '@/config';
-import { isE2eMockEnabled, readE2eIdentity } from '@/lib/e2e/identity';
 import type { User, UserContextType } from './user-types';
 import { UserContext } from './user.runtime';
 
 type MeResponse = { identity_id: string; identity_type: string };
 
 const mockUser: User = { name: 'Casey Quinn', email: 'casey@example.com', identityId: 'mock-identity-id' };
-
-function resolveMockIdentityUser(): User {
-  const identity = readE2eIdentity();
-  if (!identity) return mockUser;
-  return {
-    name: identity.name,
-    email: identity.email,
-    avatarUrl: identity.avatarUrl,
-    identityId: identity.id,
-  };
-}
 
 function buildUserFromProfile(profile: UserProfile | null | undefined): User | null {
   if (!profile) return null;
@@ -72,8 +60,7 @@ function OidcUserProvider({ children }: { children: React.ReactNode }) {
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
   if (!oidcConfig.enabled) {
-    const user = isE2eMockEnabled() ? resolveMockIdentityUser() : mockUser;
-    const value: UserContextType = { user, identityStatus: 'success', identityError: null };
+    const value: UserContextType = { user: mockUser, identityStatus: 'success', identityError: null };
     return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
   }
   return <OidcUserProvider>{children}</OidcUserProvider>;

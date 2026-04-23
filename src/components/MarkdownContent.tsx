@@ -21,7 +21,7 @@ interface MarkdownContentProps {
 
 type MarkdownCodeProps = ComponentPropsWithoutRef<'code'> & {
   inline?: boolean;
-  node?: unknown;
+  node?: { type?: string } | null;
 };
 
 type MarkdownPreProps = ComponentPropsWithoutRef<'pre'> & {
@@ -56,9 +56,10 @@ type MarkdownOrderedListProps = ComponentPropsWithoutRef<'ol'> & ReactMarkdownLi
 type MarkdownUnorderedListProps = ComponentPropsWithoutRef<'ul'> & ReactMarkdownListInternals;
 type MarkdownListItemProps = ComponentPropsWithoutRef<'li'> & ReactMarkdownListInternals;
 
-const getCodeRenderMeta = ({ inline, className }: MarkdownCodeProps) => {
+const getCodeRenderMeta = ({ inline, className, node }: Pick<MarkdownCodeProps, 'inline' | 'className' | 'node'>) => {
   const match = /language-([\w-]+)/.exec(className || '');
-  const isInlineCode = inline ?? !match;
+  const nodeType = typeof node === 'object' && node ? (node as { type?: string }).type : undefined;
+  const isInlineCode = nodeType ? nodeType === 'inlineCode' : inline ?? !match;
   return { match, isInlineCode } as const;
 };
 
@@ -90,8 +91,8 @@ const resolveSourceFromChildren = (children: ReactNode): string | null => {
 };
 
 export function MarkdownContent({ content, className = '' }: MarkdownContentProps) {
-  const renderCode = ({ inline, className: codeClassName, children, style, ...props }: MarkdownCodeProps) => {
-    const { match, isInlineCode } = getCodeRenderMeta({ inline, className: codeClassName });
+  const renderCode = ({ inline, className: codeClassName, children, style, node, ...props }: MarkdownCodeProps) => {
+    const { match, isInlineCode } = getCodeRenderMeta({ inline, className: codeClassName, node });
     const text = String(children).replace(/\n$/, '');
 
     if (!isInlineCode && match) {

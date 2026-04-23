@@ -1,14 +1,9 @@
 import type { Browser, Page } from '@playwright/test';
 import { test as base, expect } from '@playwright/test';
-import { attachMockBackend, resetMockBackend } from './mock-backend';
 import { signInViaMockAuth } from './sign-in-helper';
 
 const USER_A_EMAIL = 'e2e-user-a@agyn.test';
 const USER_B_EMAIL = 'e2e-user-b@agyn.test';
-const useMockBackend = ['1', 'true', 'yes'].includes((process.env.E2E_USE_MOCKS ?? '').toLowerCase());
-if (useMockBackend) {
-  console.log('[mock-backend] multi-user enabled');
-}
 
 type MultiUserFixtures = {
   userAPage: Page;
@@ -17,9 +12,6 @@ type MultiUserFixtures = {
 
 async function createUserContext(browser: Browser, email: string) {
   const context = await browser.newContext({ ignoreHTTPSErrors: true });
-  if (useMockBackend) {
-    await attachMockBackend(context);
-  }
   const page = await context.newPage();
   page.on('console', (msg) => {
     if (msg.type() === 'error') console.log('[browser-error]', msg.text());
@@ -41,15 +33,9 @@ export const test = base.extend<MultiUserFixtures>({
   userBPage: async ({ browser, userAPage }, use) => {
     void userAPage;
     const { page, context } = await createUserContext(browser, USER_B_EMAIL);
-    await use(page);
-    await context.close();
+  await use(page);
+  await context.close();
   },
 });
-
-if (useMockBackend) {
-  test.beforeEach(() => {
-    resetMockBackend();
-  });
-}
 
 export { expect, USER_A_EMAIL };

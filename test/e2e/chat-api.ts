@@ -1,5 +1,4 @@
 import type { Page } from '@playwright/test';
-import { getMockBackend } from './mock-backend';
 
 const CHAT_GATEWAY_PATH = '/api/agynio.api.gateway.v1.ChatGateway';
 const AGENTS_GATEWAY_PATH = '/api/agynio.api.gateway.v1.AgentsGateway';
@@ -13,9 +12,6 @@ const CONNECT_HEADERS = {
   'Content-Type': 'application/json',
   'Connect-Protocol-Version': '1',
 };
-
-const E2E_IDENTITY_STORAGE_KEY = 'e2e.identity';
-const useMockBackend = ['1', 'true', 'yes'].includes((process.env.E2E_USE_MOCKS ?? '').toLowerCase());
 
 type CreateChatResponseWire = {
   chat?: { id?: string };
@@ -121,14 +117,6 @@ async function postConnect<T>(
   method: string,
   payload: unknown,
 ): Promise<T> {
-  if (useMockBackend) {
-    const identity = await readMockIdentity(page);
-    if (!identity) {
-      throw new Error('Mock identity is missing for ConnectRPC call.');
-    }
-    return getMockBackend().handleConnect(servicePath, method, payload, identity) as T;
-  }
-
   const session = await readOidcSession(page);
   const token = session?.accessToken ?? null;
   const headers = token ? { ...CONNECT_HEADERS, Authorization: `Bearer ${token}` } : CONNECT_HEADERS;
@@ -172,14 +160,6 @@ async function storeChatOrganization(page: Page, chatId: string, organizationId:
 }
 
 export async function resolveIdentityId(page: Page): Promise<string> {
-  if (useMockBackend) {
-    const identity = await readMockIdentity(page);
-    if (!identity?.id) {
-      throw new Error('Mock identity is missing for resolveIdentityId.');
-    }
-    return identity.id;
-  }
-
   const session = await readOidcSession(page);
   const token = session?.accessToken ?? null;
   const headers: Record<string, string> = token
@@ -198,24 +178,6 @@ export async function resolveIdentityId(page: Page): Promise<string> {
     throw new Error('/api/me response missing identity_id');
   }
   return payload.identity_id;
-}
-
-async function readMockIdentity(page: Page): Promise<{ id: string; email?: string; name?: string } | null> {
-  return page.evaluate((key) => {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) return null;
-    try {
-      const parsed = JSON.parse(raw) as { id?: string; email?: string; name?: string };
-      if (!parsed || typeof parsed.id !== 'string') return null;
-      return {
-        id: parsed.id,
-        email: typeof parsed.email === 'string' ? parsed.email : undefined,
-        name: typeof parsed.name === 'string' ? parsed.name : undefined,
-      };
-    } catch (_error) {
-      return null;
-    }
-  }, E2E_IDENTITY_STORAGE_KEY);
 }
 
 export async function resolveUserLabel(page: Page, identityId: string): Promise<string> {
