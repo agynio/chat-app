@@ -30,6 +30,7 @@ export default defineConfig({
             createArgosReporterOptions({
               ignoreUploadFailures: true,
               uploadToArgos: isCI,
+              ignoreUploadFailures: true,
             }),
           ],
         ]
