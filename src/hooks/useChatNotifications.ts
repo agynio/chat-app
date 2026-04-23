@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { isE2eMockEnabled } from '@/lib/e2e/identity';
 import { notificationsStream } from '@/lib/notifications/stream';
 
 type UseChatNotificationsOptions = {
@@ -19,6 +20,7 @@ export function useChatNotifications({
   }, [selectedChatId]);
 
   useEffect(() => {
+    if (isE2eMockEnabled()) return;
     if (!identityId) return;
     const offMessageCreated = notificationsStream.onMessageCreated(({ threadId }) => {
       if (selectedChatIdRef.current && selectedChatIdRef.current === threadId) {

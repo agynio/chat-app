@@ -1,4 +1,4 @@
-import { argosScreenshot } from '@argos-ci/playwright';
+import { argosScreenshot } from './argos-helpers';
 import * as crypto from 'node:crypto';
 import type { Locator, Page } from '@playwright/test';
 import { expect, test } from './fixtures';
@@ -168,4 +168,51 @@ test('message with markdown text and inline image renders both', async ({ page }
   await expectInlineImage(messageItem, 'release screenshot');
   await expect(messageItem).toContainText('Final notes.');
   await argosScreenshot(page, 'inline-media-markdown');
+});
+
+test('renders Mermaid diagrams inline', async ({ page }) => {
+  const now = Date.now();
+  const anchor = `Mermaid diagram ${now}`;
+  const diagram = [
+    'graph TD',
+    '  A[Client] --> B[API]',
+    '  B --> C[Database]',
+  ].join('\n');
+  const message = `${anchor}\n\n\
+\`\`\`mermaid\n${diagram}\n\`\`\``;
+
+  const messageItem = await openChatWithMessage(page, message, anchor);
+  const mermaid = messageItem.getByTestId('markdown-mermaid');
+  await expect(mermaid).toBeVisible({ timeout: 15000 });
+  await expect(mermaid.locator('svg')).toBeVisible({ timeout: 15000 });
+  await argosScreenshot(page, 'inline-mermaid-diagram');
+});
+
+test('renders Vega-Lite charts inline', async ({ page }) => {
+  const now = Date.now();
+  const anchor = `Vega chart ${now}`;
+  const spec = {
+    $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
+    description: 'Inline bar chart',
+    data: {
+      values: [
+        { category: 'A', amount: 28 },
+        { category: 'B', amount: 55 },
+        { category: 'C', amount: 43 },
+      ],
+    },
+    mark: 'bar',
+    encoding: {
+      x: { field: 'category', type: 'nominal' },
+      y: { field: 'amount', type: 'quantitative' },
+    },
+  };
+  const message = `${anchor}\n\n\
+\`\`\`vega-lite\n${JSON.stringify(spec, null, 2)}\n\`\`\``;
+
+  const messageItem = await openChatWithMessage(page, message, anchor);
+  const chart = messageItem.getByTestId('markdown-vega-lite');
+  await expect(chart).toBeVisible({ timeout: 15000 });
+  await expect(chart.locator('svg')).toBeVisible({ timeout: 15000 });
+  await argosScreenshot(page, 'inline-vega-lite-chart');
 });

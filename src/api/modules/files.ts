@@ -2,10 +2,13 @@ import { connectPost } from '@/api/connect';
 import { uploadFileViaConnect } from '@/api/upload-file-connect';
 import type { FileMetadataWire, FileRecord, GetFileMetadataRequest, GetFileMetadataResponse } from '@/api/types/files';
 import type { UploadProgressHandler } from '@/api/types/upload';
+import { isE2eMockEnabled } from '@/lib/e2e/identity';
+import { getUuid } from '@/utils/getUuid';
 
 export type { UploadProgressEvent, UploadProgressHandler } from '@/api/types/upload';
 
 const FILES_SERVICE = '/api/agynio.api.gateway.v1.FilesGateway';
+const mockFiles = new Map<string, FileRecord>();
 
 function parseSizeBytes(sizeBytes: string | number | bigint): number {
   const parsed = typeof sizeBytes === 'bigint'
@@ -50,6 +53,23 @@ export async function uploadFile(
   onUploadProgress?: UploadProgressHandler,
   signal?: AbortSignal,
 ): Promise<FileRecord> {
+  if (isE2eMockEnabled()) {
+    if (signal?.aborted) {
+      throw new DOMException('Upload aborted', 'AbortError');
+    }
+    const now = new Date().toISOString();
+    const record: FileRecord = {
+      id: getUuid(),
+      filename: file.name,
+      contentType: file.type || 'application/octet-stream',
+      sizeBytes: file.size,
+      createdAt: now,
+    };
+    mockFiles.set(record.id, record);
+    onUploadProgress?.({ loaded: file.size, total: file.size, progress: 1 });
+    return record;
+  }
+
   const response = await uploadFileViaConnect(file, onUploadProgress, signal);
   if (!response.file) {
     throw new Error('UploadFile response missing file');
@@ -59,6 +79,14 @@ export async function uploadFile(
 }
 
 export async function getFileMetadata(fileId: string): Promise<FileRecord> {
+  if (isE2eMockEnabled()) {
+    const record = mockFiles.get(fileId);
+    if (!record) {
+      throw new Error(`File metadata missing for ${fileId}`);
+    }
+    return { ...record };
+  }
+
   const response = await connectPost<GetFileMetadataRequest, GetFileMetadataResponse>(
     FILES_SERVICE,
     'GetFileMetadata',

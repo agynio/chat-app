@@ -1,4 +1,4 @@
-import { argosScreenshot } from '@argos-ci/playwright';
+import { argosScreenshot } from './argos-helpers';
 import { test, expect } from '@playwright/test';
 import { signInViaMockAuth } from './sign-in-helper';
 

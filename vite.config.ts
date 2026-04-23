@@ -11,6 +11,7 @@ const swEntry = path.resolve(__dirname, 'src/sw.ts');
 const swTsconfig = path.resolve(__dirname, 'tsconfig.sw.json');
 const swOutfile = path.resolve(__dirname, 'dist/sw.js');
 const swDevOutfile = path.resolve(__dirname, 'public/sw.js');
+const isE2e = ['1', 'true', 'yes'].includes((process.env.VITE_E2E_MOCKS ?? '').toLowerCase());
 
 async function buildServiceWorker(outfile: string) {
   await build({
@@ -67,6 +68,14 @@ export default defineConfig(({ command }) => ({
   },
   server: {
     allowedHosts: true,
+    hmr: isE2e ? false : undefined,
+    watch: isE2e
+      ? {
+          ignored: ['**/*'],
+        }
+      : {
+          ignored: ['**/test-results/**', '**/playwright-report/**'],
+        },
     proxy: {
       '/socket.io': {
         target: gatewayTarget,

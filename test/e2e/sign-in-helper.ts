@@ -1,7 +1,10 @@
+import * as crypto from 'node:crypto';
 import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 const defaultEmail = 'e2e-tester@agyn.test';
+const E2E_IDENTITY_STORAGE_KEY = 'e2e.identity';
+const useMockBackend = ['1', 'true', 'yes'].includes((process.env.E2E_USE_MOCKS ?? '').toLowerCase());
 
 type SignInOptions = {
   onLoginPage?: (page: Page) => Promise<void>;
@@ -16,6 +19,52 @@ async function clearAuthState(page: Page): Promise<void> {
   await page.context().clearCookies();
 }
 
+function buildMockIdentity(email: string) {
+  const rawName = email.split('@')[0] ?? email;
+  const name = rawName.replace(/[._-]+/g, ' ').trim() || email;
+  return {
+    id: crypto.randomUUID(),
+    email,
+    name,
+  };
+}
+
+async function ensureMockIdentity(page: Page, email: string, force: boolean): Promise<void> {
+  const existing = await page.evaluate((key) => {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw) as { id?: string; email?: string; name?: string };
+      if (!parsed || typeof parsed.id !== 'string') return null;
+      if (typeof parsed.email !== 'string' || typeof parsed.name !== 'string') return null;
+      return parsed;
+    } catch (_error) {
+      return null;
+    }
+  }, E2E_IDENTITY_STORAGE_KEY);
+
+  if (!force && existing && existing.email === email) {
+    return;
+  }
+
+  const identity = buildMockIdentity(email);
+  await page.evaluate(
+    ({ key, identity: next }) => {
+      window.localStorage.setItem(key, JSON.stringify(next));
+    },
+    { key: E2E_IDENTITY_STORAGE_KEY, identity },
+  );
+}
+
+async function enableMockFlags(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    window.__E2E_MOCKS__ = true;
+  });
+  await page.evaluate(() => {
+    window.__E2E_MOCKS__ = true;
+  });
+}
+
 export async function signInViaMockAuth(
   page: Page,
   email?: string,
@@ -23,6 +72,25 @@ export async function signInViaMockAuth(
 ): Promise<boolean> {
   const expectedEmail = email ?? process.env.E2E_OIDC_EMAIL ?? defaultEmail;
   const forceLogin = options.force ?? false;
+
+  if (useMockBackend) {
+    await enableMockFlags(page);
+    await page.goto('/');
+    if (forceLogin) {
+      await clearAuthState(page);
+      await enableMockFlags(page);
+      await page.goto('/');
+    }
+    await ensureMockIdentity(page, expectedEmail, forceLogin);
+    await page.reload();
+    await enableMockFlags(page);
+
+    const chatList = page.getByTestId('chat-list');
+    const noOrganizationsScreen = page.getByTestId('no-organizations-screen');
+    const appReady = chatList.or(noOrganizationsScreen);
+    await expect(appReady).toBeVisible({ timeout: 30000 });
+    return false;
+  }
 
   await page.goto('/');
   if (forceLogin) {

@@ -116,10 +116,12 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     const previousOrganizationId = previousOrganizationIdRef.current;
     if (previousOrganizationId && previousOrganizationId !== selectedOrganizationId) {
       setSelectedChatIdState(null);
-      navigate('/chats');
+      if (params.chatId) {
+        navigate('/chats');
+      }
     }
     previousOrganizationIdRef.current = selectedOrganizationId ?? null;
-  }, [selectedOrganizationId, navigate]);
+  }, [selectedOrganizationId, navigate, params.chatId]);
 
   useEffect(() => {
     setDegradedChatIds(new Set());

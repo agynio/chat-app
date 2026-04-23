@@ -46,6 +46,14 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
 
   React.useEffect(() => {
     if (orgsQuery.isLoading) return;
+    const storedOrganizationId = readStoredOrganizationId();
+    if (storedOrganizationId && storedOrganizationId !== selectedOrganizationId) {
+      const storedIsValid = organizations.some((org) => org.id === storedOrganizationId);
+      if (storedIsValid) {
+        setSelectedOrganizationId(storedOrganizationId);
+        return;
+      }
+    }
     if (organizations.length === 0) {
       if (selectedOrganizationId !== null) {
         setSelectedOrganizationId(null);

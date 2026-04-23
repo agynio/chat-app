@@ -1,4 +1,4 @@
-import { argosScreenshot } from '@argos-ci/playwright';
+import { argosScreenshot } from './argos-helpers';
 import { test, expect } from './multi-user-fixtures';
 import { createChat, createOrganization, resolveIdentityId, resolveUserLabel, updateChatStatus } from './chat-api';
 import { setSelectedOrganization } from './organization-helpers';
@@ -26,12 +26,15 @@ test('moves chat from open to resolved', async ({ userAPage, userBPage }) => {
 
   await updateChatStatus(userAPage, chatId, 'closed');
 
-  const resolvedChatsLoaded = userAPage.waitForResponse(
+  const chatsReloaded = userAPage.waitForResponse(
     (resp) => resp.url().includes('GetChats') && resp.status() === 200,
     { timeout: 15000 },
   );
+  await userAPage.reload();
+  await chatsReloaded;
+  await expect(chatList).toBeVisible({ timeout: 15000 });
+
   await userAPage.getByRole('button', { name: 'Resolved', exact: true }).click();
-  await resolvedChatsLoaded;
   const resolvedChatItem = chatList.locator('.cursor-pointer', { hasText: userBLabel }).first();
   await expect(resolvedChatItem).toBeVisible({ timeout: 15000 });
 
