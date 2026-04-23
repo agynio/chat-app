@@ -65,7 +65,8 @@ function MessageComponent({
   const config = roleConfig[role];
   const Icon = config.icon;
   const deleteDisabled = !onDelete;
-  const deleteTitle = deleteDisabled ? 'Delete message (coming soon)' : 'Delete message';
+  const deleteLabel = 'Delete message';
+  const deleteTitle = deleteDisabled ? 'Delete message (coming soon)' : deleteLabel;
   const hasTraceAction = Boolean(traceUrl);
   const hasDeleteAction = showDelete;
   const hasActions = hasTraceAction || hasDeleteAction;
@@ -135,9 +136,10 @@ function MessageComponent({
                       disabled={deleteDisabled}
                       onSelect={() => onDelete?.()}
                       variant="destructive"
+                      title={deleteTitle}
                     >
                       <Trash2 className="h-4 w-4" />
-                      <span>{deleteTitle}</span>
+                      <span>{deleteLabel}</span>
                     </DropdownMenuItem>
                   ) : null}
                 </DropdownMenuContent>
