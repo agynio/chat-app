@@ -1,7 +1,19 @@
-import { useEffect, useId, useMemo, useRef, useState, type RefObject } from 'react';
+import {
+  Suspense,
+  lazy,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react';
 import { AlertTriangle } from 'lucide-react';
+import type { EmbedOptions } from 'vega-embed';
 import type { VisualizationSpec } from 'vega-lite';
 import { cn } from '@/lib/utils';
+import { sanitizeMarkdownHtml } from '@/lib/markdown/sanitize';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 
@@ -15,8 +27,9 @@ interface MarkdownDiagramProps {
 
 type DiagramState = 'idle' | 'loading' | 'ready' | 'error' | 'blocked';
 
-const MAX_DIAGRAM_CHARS = 8000;
+const MAX_DIAGRAM_CHARS = 200000;
 const INTERSECTION_MARGIN = '200px';
+const LazyVegaLiteRenderer = lazy(() => import('./VegaLiteRenderer'));
 
 const diagramLabels: Record<DiagramLanguage, string> = {
   mermaid: 'Mermaid',
@@ -102,23 +115,10 @@ function buildVegaTheme(isDark: boolean) {
   };
 }
 
-function sanitizeMermaidSvg(svg: string): string {
-  if (typeof window === 'undefined') return svg;
-  try {
-    const parser = new DOMParser();
-    const documentNode = parser.parseFromString(svg, 'image/svg+xml');
-    documentNode.querySelectorAll('script, foreignObject').forEach((node) => node.remove());
-    documentNode.querySelectorAll('*').forEach((node) => {
-      [...node.attributes].forEach((attr) => {
-        if (attr.name.toLowerCase().startsWith('on')) {
-          node.removeAttribute(attr.name);
-        }
-      });
-    });
-    return documentNode.documentElement.outerHTML;
-  } catch (_error) {
-    return svg;
-  }
+function sanitizeSvgMarkup(svg: string): string | null {
+  const sanitized = sanitizeMarkdownHtml(svg);
+  if (!sanitized) return null;
+  return sanitized.includes('<svg') ? sanitized : null;
 }
 
 function validateVegaLiteSpec(source: string): { spec?: VisualizationSpec; error?: string } {
@@ -191,8 +191,6 @@ export function MarkdownDiagram({ language, source, className = '' }: MarkdownDi
   const isDark = useIsDarkMode();
   const diagramId = useId().replace(/[:]/g, '_');
   const { ref: containerRef, inView } = useInView<HTMLDivElement>(INTERSECTION_MARGIN);
-  const vegaRef = useRef<HTMLDivElement | null>(null);
-  const vegaViewRef = useRef<{ finalize: () => void } | null>(null);
   const [state, setState] = useState<DiagramState>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [svgMarkup, setSvgMarkup] = useState<string | null>(null);
@@ -204,9 +202,17 @@ export function MarkdownDiagram({ language, source, className = '' }: MarkdownDi
   }, [language, trimmedSource]);
 
   useEffect(() => {
+    setSvgMarkup(null);
+    setErrorMessage(null);
+
     if (isTooLarge) {
       setState('blocked');
-      setErrorMessage(null);
+      return;
+    }
+
+    if (!trimmedSource) {
+      setState('error');
+      setErrorMessage('Diagram source is empty.');
       return;
     }
 
@@ -221,65 +227,28 @@ export function MarkdownDiagram({ language, source, className = '' }: MarkdownDi
       return;
     }
 
-    if (!trimmedSource) {
-      setState('error');
-      setErrorMessage('Diagram source is empty.');
-      return;
-    }
+    setState('loading');
+
+    if (language !== 'mermaid') return;
 
     let cancelled = false;
-    const render = async () => {
-      setState('loading');
-      setErrorMessage(null);
-
+    const renderMermaid = async () => {
       try {
-        if (language === 'mermaid') {
-          const { default: mermaid } = await import('mermaid');
-          mermaid.initialize({
-            startOnLoad: false,
-            securityLevel: 'strict',
-            theme: isDark ? 'dark' : 'default',
-            flowchart: { htmlLabels: false },
-            sequence: { htmlLabels: false },
-          });
-          const { svg } = await mermaid.render(diagramId, trimmedSource);
-          if (cancelled) return;
-          setSvgMarkup(sanitizeMermaidSvg(svg));
-          setState('ready');
-          return;
-        }
-
-        const { default: embed } = await import('vega-embed');
-        const spec = validation.spec as VisualizationSpec | undefined;
-        if (!spec) {
-          throw new Error('Vega-Lite spec is missing.');
-        }
-        const themedConfig = buildVegaTheme(isDark);
-        const mergedConfig = {
-          ...themedConfig,
-          ...(spec.config ?? {}),
-          axis: { ...themedConfig.axis, ...(spec.config?.axis ?? {}) },
-          legend: { ...themedConfig.legend, ...(spec.config?.legend ?? {}) },
-          title: { ...themedConfig.title, ...(spec.config?.title ?? {}) },
-          view: { ...themedConfig.view, ...(spec.config?.view ?? {}) },
-        };
-        const vegaSpec = { ...spec, config: mergedConfig };
-
-        if (!vegaRef.current) {
-          throw new Error('Vega container missing.');
-        }
-        vegaViewRef.current?.finalize();
-        vegaRef.current.innerHTML = '';
-        const result = await embed(vegaRef.current, vegaSpec, {
-          actions: false,
-          renderer: 'svg',
-          logLevel: 'error',
+        const { default: mermaid } = await import('mermaid');
+        mermaid.initialize({
+          startOnLoad: false,
+          securityLevel: 'strict',
+          theme: isDark ? 'dark' : 'default',
+          flowchart: { htmlLabels: false },
+          sequence: { htmlLabels: false },
         });
-        if (cancelled) {
-          result.view.finalize();
-          return;
+        const { svg } = await mermaid.render(diagramId, trimmedSource);
+        if (cancelled) return;
+        const sanitized = sanitizeSvgMarkup(svg);
+        if (!sanitized) {
+          throw new Error('Mermaid output failed sanitization.');
         }
-        vegaViewRef.current = result.view;
+        setSvgMarkup(sanitized);
         setState('ready');
       } catch (error) {
         if (cancelled) return;
@@ -289,19 +258,36 @@ export function MarkdownDiagram({ language, source, className = '' }: MarkdownDi
       }
     };
 
-    void render();
+    void renderMermaid();
     return () => {
       cancelled = true;
-      vegaViewRef.current?.finalize();
-      vegaViewRef.current = null;
     };
-  }, [diagramId, inView, isDark, isTooLarge, language, trimmedSource, validation]);
+  }, [diagramId, inView, isDark, isTooLarge, language, trimmedSource, validation.error]);
 
   useEffect(() => {
     if (state === 'error' || state === 'blocked') {
       setIsSourceOpen(true);
     }
   }, [state]);
+
+  const handleVegaSvg = useCallback((svg: string) => {
+    const sanitized = sanitizeSvgMarkup(svg);
+    if (!sanitized) {
+      setSvgMarkup(null);
+      setErrorMessage('Vega-Lite output failed sanitization.');
+      setState('error');
+      return;
+    }
+    setSvgMarkup(sanitized);
+    setState('ready');
+  }, []);
+
+  const handleVegaError = useCallback((error: unknown) => {
+    const message = error instanceof Error ? error.message : 'Diagram failed to render.';
+    setSvgMarkup(null);
+    setErrorMessage(message);
+    setState('error');
+  }, []);
 
   const fallbackNotice = isTooLarge
     ? `Diagram exceeds ${MAX_DIAGRAM_CHARS.toLocaleString()} characters. Rendering is skipped.`
@@ -311,6 +297,41 @@ export function MarkdownDiagram({ language, source, className = '' }: MarkdownDi
   const showAlert = Boolean(fallbackNotice || (state === 'error' && errorMessage));
   const alertTitle = fallbackNotice ? 'Diagram too large' : `${diagramLabel} render failed`;
   const alertDescription = fallbackNotice ?? errorMessage ?? '';
+  const shouldForceSourceOpen = state !== 'ready';
+  const sourceOpen = shouldForceSourceOpen || isSourceOpen;
+  const handleSourceToggle = (open: boolean) => {
+    if (shouldForceSourceOpen) return;
+    setIsSourceOpen(open);
+  };
+  const shouldRenderVega =
+    language === 'vega-lite' &&
+    state === 'loading' &&
+    inView &&
+    !isTooLarge &&
+    !validation.error &&
+    Boolean(trimmedSource);
+  const vegaSpec = useMemo(() => {
+    const spec = validation.spec as VisualizationSpec | undefined;
+    if (!spec) return undefined;
+    const themedConfig = buildVegaTheme(isDark);
+    const mergedConfig = {
+      ...themedConfig,
+      ...(spec.config ?? {}),
+      axis: { ...themedConfig.axis, ...(spec.config?.axis ?? {}) },
+      legend: { ...themedConfig.legend, ...(spec.config?.legend ?? {}) },
+      title: { ...themedConfig.title, ...(spec.config?.title ?? {}) },
+      view: { ...themedConfig.view, ...(spec.config?.view ?? {}) },
+    };
+    return { ...spec, config: mergedConfig };
+  }, [isDark, validation.spec]);
+  const vegaOptions: EmbedOptions = useMemo(
+    () => ({
+      actions: false,
+      renderer: 'svg',
+      logLevel: 'error',
+    }),
+    [],
+  );
 
   return (
     <div
@@ -327,7 +348,7 @@ export function MarkdownDiagram({ language, source, className = '' }: MarkdownDi
 
       <div
         ref={containerRef}
-        className="rounded-[12px] border border-[var(--agyn-border-subtle)] bg-white p-3"
+        className="rounded-[12px] border border-[var(--border)] bg-[var(--background)] p-3"
         data-state={state}
       >
         {state === 'loading' || state === 'idle' ? (
@@ -339,21 +360,31 @@ export function MarkdownDiagram({ language, source, className = '' }: MarkdownDi
         {state === 'blocked' ? (
           <div className="text-xs text-[var(--agyn-gray)]">Rendering skipped.</div>
         ) : null}
-        {state === 'ready' && language === 'mermaid' && svgMarkup ? (
+        {state === 'ready' && svgMarkup ? (
           <div
             className="max-w-full overflow-x-auto"
             dangerouslySetInnerHTML={{ __html: svgMarkup }}
           />
         ) : null}
-        {language === 'vega-lite' ? <div className="max-w-full overflow-x-auto" ref={vegaRef} /> : null}
+        {language === 'vega-lite' && shouldRenderVega && vegaSpec ? (
+          <Suspense fallback={null}>
+            <LazyVegaLiteRenderer
+              spec={vegaSpec}
+              options={vegaOptions}
+              onSvgReady={handleVegaSvg}
+              onError={handleVegaError}
+            />
+          </Suspense>
+        ) : null}
       </div>
 
-      <Collapsible open={isSourceOpen} onOpenChange={setIsSourceOpen}>
+      <Collapsible open={sourceOpen} onOpenChange={handleSourceToggle}>
         <CollapsibleTrigger
           className="self-start text-xs text-[var(--agyn-blue)] hover:text-[var(--agyn-purple)] underline"
           type="button"
+          disabled={shouldForceSourceOpen}
         >
-          {isSourceOpen ? 'Hide source' : 'View source'}
+          {sourceOpen ? 'Hide source' : 'View source'}
         </CollapsibleTrigger>
         <CollapsibleContent className="mt-2">
           <pre className="w-full overflow-x-auto rounded-[10px] bg-[var(--agyn-bg-light)] p-3">

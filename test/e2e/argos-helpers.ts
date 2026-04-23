@@ -39,7 +39,6 @@ async function waitForStablePage(page: Page): Promise<void> {
 }
 
 export async function argosScreenshot(page: Page, name: string): Promise<void> {
-  let lastError: unknown;
   for (let attempt = 0; attempt < SCREENSHOT_RETRIES; attempt += 1) {
     try {
       await waitForStablePage(page);
@@ -49,9 +48,7 @@ export async function argosScreenshot(page: Page, name: string): Promise<void> {
       if (!isNavigationError(error) || attempt === SCREENSHOT_RETRIES - 1) {
         throw error;
       }
-      lastError = error;
       await page.waitForTimeout(RETRY_DELAY_MS);
     }
   }
-  throw lastError;
 }

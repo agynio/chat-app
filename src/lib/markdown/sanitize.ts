@@ -1,4 +1,8 @@
 import type { Schema } from 'hast-util-sanitize';
+import rehypeParse from 'rehype-parse';
+import rehypeSanitize from 'rehype-sanitize';
+import rehypeStringify from 'rehype-stringify';
+import { unified } from 'unified';
 
 const allowedTagNames: Schema['tagNames'] = [
   'a',
@@ -56,7 +60,6 @@ const allowedTagNames: Schema['tagNames'] = [
   'use',
   'title',
   'desc',
-  'style',
 ];
 
 const allowedProtocols: string[] = ['http', 'https', 'mailto'];
@@ -277,14 +280,29 @@ export const markdownSanitizeSchema: Schema = {
     radialGradient: ['id', 'cx', 'cy', 'r', 'fx', 'fy', 'gradientUnits', 'gradientTransform'],
     stop: ['offset', 'stopColor', 'stopOpacity'],
     symbol: ['id', 'viewBox', 'preserveAspectRatio'],
-    use: ['href', 'xlinkHref', 'x', 'y', 'width', 'height'],
+    use: ['xlinkHref', 'x', 'y', 'width', 'height'],
     title: ['id'],
     desc: ['id'],
-    style: ['type'],
   },
   protocols: {
     href: [...allowedProtocols],
     src: ['http', 'https', 'agyn'],
-    xlinkHref: [...allowedProtocols],
+    xlinkHref: ['#'],
   },
 };
+
+export function sanitizeMarkdownHtml(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  try {
+    const file = unified()
+      .use(rehypeParse, { fragment: true })
+      .use(rehypeSanitize, markdownSanitizeSchema)
+      .use(rehypeStringify)
+      .processSync(trimmed);
+    const sanitized = String(file).trim();
+    return sanitized ? sanitized : null;
+  } catch (_error) {
+    return null;
+  }
+}
