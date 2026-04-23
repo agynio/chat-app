@@ -53,6 +53,19 @@ function useIsDarkMode(): boolean {
   return isDark;
 }
 
+function isElementInView(element: HTMLElement, margin: number): boolean {
+  if (typeof window === 'undefined') return true;
+  const rect = element.getBoundingClientRect();
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+  const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+  return (
+    rect.bottom >= -margin &&
+    rect.top <= viewportHeight + margin &&
+    rect.right >= -margin &&
+    rect.left <= viewportWidth + margin
+  );
+}
+
 function useInView<T extends HTMLElement>(rootMargin: string): { ref: RefObject<T>; inView: boolean } {
   const ref = useRef<T>(null);
   const [inView, setInView] = useState(false);
@@ -62,6 +75,14 @@ function useInView<T extends HTMLElement>(rootMargin: string): { ref: RefObject<
     const target = ref.current;
     if (!target) return;
     if (typeof IntersectionObserver === 'undefined') {
+      setInView(true);
+      return;
+    }
+
+    const parsedMargin = Number.parseFloat(rootMargin);
+    const margin = Number.isFinite(parsedMargin) ? parsedMargin : 0;
+
+    if (isElementInView(target, margin)) {
       setInView(true);
       return;
     }
@@ -77,7 +98,21 @@ function useInView<T extends HTMLElement>(rootMargin: string): { ref: RefObject<
     );
 
     observer.observe(target);
-    return () => observer.disconnect();
+
+    const checkInView = () => {
+      if (!isElementInView(target, margin)) return;
+      setInView(true);
+      observer.disconnect();
+    };
+
+    const timeoutId = window.setTimeout(checkInView, 500);
+    const rafId = window.requestAnimationFrame(checkInView);
+
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(timeoutId);
+      window.cancelAnimationFrame(rafId);
+    };
   }, [inView, rootMargin]);
 
   return { ref, inView };
