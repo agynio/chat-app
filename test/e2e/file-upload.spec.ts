@@ -1,4 +1,4 @@
-import { argosScreenshot } from './argos-helpers';
+import { argosScreenshot } from '@argos-ci/playwright';
 import * as crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { test, expect } from './fixtures';

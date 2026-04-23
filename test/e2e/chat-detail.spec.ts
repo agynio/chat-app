@@ -1,4 +1,4 @@
-import { argosScreenshot } from './argos-helpers';
+import { argosScreenshot } from '@argos-ci/playwright';
 import { test, expect } from './multi-user-fixtures';
 import { createChat, createOrganization, resolveIdentityId, sendChatMessage } from './chat-api';
 import { setSelectedOrganization } from './organization-helpers';
