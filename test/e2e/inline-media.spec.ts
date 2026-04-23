@@ -213,7 +213,10 @@ test('renders Vega-Lite charts inline', async ({ page }) => {
   const messageItem = await openChatWithMessage(page, message, anchor);
   const chart = messageItem.getByTestId('markdown-vega-lite');
   await expect(chart).toBeVisible({ timeout: 15000 });
-  await expect(chart.locator('svg')).toBeVisible({ timeout: 15000 });
+  await chart.scrollIntoViewIfNeeded();
+  const chartContainer = chart.locator('div[data-state]').first();
+  await expect(chartContainer).toHaveAttribute('data-state', 'ready', { timeout: 30000 });
+  await expect(chartContainer.locator('svg')).toBeVisible({ timeout: 30000 });
   await argosScreenshot(page, 'inline-vega-lite-chart');
 });
 
