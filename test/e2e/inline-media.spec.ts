@@ -186,6 +186,10 @@ test('renders Mermaid diagrams inline', async ({ page }) => {
   await expect(mermaid).toBeVisible({ timeout: 15000 });
   const svg = mermaid.locator('svg');
   await expect(svg).toBeVisible({ timeout: 15000 });
+  await expect(svg.locator('style')).not.toHaveCount(0);
+  await expect(svg.locator('foreignObject')).toHaveCount(0);
+  await expect(svg.locator('filter')).not.toHaveCount(0);
+  await expect(svg.locator('feDropShadow')).not.toHaveCount(0);
   const textAnchors = await svg.evaluate((node) => {
     return Array.from(node.querySelectorAll('text')).map((text) =>
       window.getComputedStyle(text).textAnchor,

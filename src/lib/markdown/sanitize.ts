@@ -1,11 +1,11 @@
-import type { Element, ElementContent, Root, RootContent } from 'hast';
+import type { Element, Properties, Root, Text } from 'hast';
 import type { Schema } from 'hast-util-sanitize';
 import rehypeParse from 'rehype-parse';
 import rehypeSanitize from 'rehype-sanitize';
 import rehypeStringify from 'rehype-stringify';
 import { unified } from 'unified';
 
-const markdownTagNames: Schema['tagNames'] = [
+const htmlTagNames: Schema['tagNames'] = [
   'a',
   'blockquote',
   'br',
@@ -66,239 +66,235 @@ const svgTagNames: Schema['tagNames'] = [
   'desc',
 ];
 
-const diagramSvgTagNames: Schema['tagNames'] = [...svgTagNames, 'style'];
-const allowedTagNames: Schema['tagNames'] = [...markdownTagNames, ...svgTagNames];
+const diagramTagNames: Schema['tagNames'] = [
+  ...svgTagNames,
+  'style',
+  'filter',
+  'feDropShadow',
+];
 
 const allowedProtocols: string[] = ['http', 'https', 'mailto'];
 
-const markdownAttributes: Schema['attributes'] = {
-  a: [
-    'href',
-    ['target', '_blank', '_self'],
-    ['rel', 'noopener', 'noreferrer', 'nofollow'],
-  ],
-  code: [
-    ['className', /^language-[\w-]+$/],
-  ],
-  img: ['src', 'alt', 'title', 'width', 'height', 'loading'],
-  ol: [
-    ['start', /^-?\d+$/],
-    ['type', '1', 'a', 'A', 'i', 'I'],
-    'reversed',
-  ],
-  li: [
-    ['value', /^-?\d+$/],
-  ],
-  video: ['src', 'controls', 'preload', 'width', 'height', 'poster'],
-  audio: ['src', 'controls', 'preload'],
-  source: ['src', 'type'],
-  th: ['align'],
-  td: ['align'],
-};
-
-const svgAttributes: Schema['attributes'] = {
-  svg: [
-    'className',
-    'id',
-    'role',
-    'aria-label',
-    'aria-hidden',
-    'focusable',
-    'width',
-    'height',
-    'viewBox',
-    'preserveAspectRatio',
-    'xmlns',
-    'xmlnsXLink',
-    'xmlnsXlink',
-    'style',
-  ],
-  g: [
-    'className',
-    'id',
-    'transform',
-    'fill',
-    'fillOpacity',
-    'stroke',
-    'strokeWidth',
-    'strokeDasharray',
-    'strokeLinecap',
-    'strokeLinejoin',
-    'strokeMiterlimit',
-    'strokeOpacity',
-    'opacity',
-    'style',
-    'clipPath',
-  ],
-  path: [
-    'className',
-    'id',
-    'd',
-    'fill',
-    'fillOpacity',
-    'stroke',
-    'strokeWidth',
-    'strokeDasharray',
-    'strokeLinecap',
-    'strokeLinejoin',
-    'strokeMiterlimit',
-    'strokeOpacity',
-    'opacity',
-    'style',
-    'markerEnd',
-    'markerStart',
-    'markerMid',
-    'transform',
-  ],
-  rect: [
-    'className',
-    'id',
-    'x',
-    'y',
-    'width',
-    'height',
-    'rx',
-    'ry',
-    'fill',
-    'fillOpacity',
-    'stroke',
-    'strokeWidth',
-    'strokeOpacity',
-    'opacity',
-    'style',
-    'transform',
-  ],
-  circle: [
-    'className',
-    'id',
-    'cx',
-    'cy',
-    'r',
-    'fill',
-    'fillOpacity',
-    'stroke',
-    'strokeWidth',
-    'strokeOpacity',
-    'opacity',
-    'style',
-    'transform',
-  ],
-  ellipse: [
-    'className',
-    'id',
-    'cx',
-    'cy',
-    'rx',
-    'ry',
-    'fill',
-    'fillOpacity',
-    'stroke',
-    'strokeWidth',
-    'strokeOpacity',
-    'opacity',
-    'style',
-    'transform',
-  ],
-  line: [
-    'className',
-    'id',
-    'x1',
-    'y1',
-    'x2',
-    'y2',
-    'stroke',
-    'strokeWidth',
-    'strokeDasharray',
-    'strokeOpacity',
-    'opacity',
-    'style',
-    'transform',
-  ],
-  polyline: [
-    'className',
-    'id',
-    'points',
-    'fill',
-    'fillOpacity',
-    'stroke',
-    'strokeWidth',
-    'strokeDasharray',
-    'strokeOpacity',
-    'opacity',
-    'style',
-    'transform',
-  ],
-  polygon: [
-    'className',
-    'id',
-    'points',
-    'fill',
-    'fillOpacity',
-    'stroke',
-    'strokeWidth',
-    'strokeDasharray',
-    'strokeOpacity',
-    'opacity',
-    'style',
-    'transform',
-  ],
-  text: [
-    'className',
-    'id',
-    'x',
-    'y',
-    'dx',
-    'dy',
-    'textAnchor',
-    'dominantBaseline',
-    'alignmentBaseline',
-    'fontFamily',
-    'fontSize',
-    'fontWeight',
-    'fill',
-    'fillOpacity',
-    'opacity',
-    'style',
-    'transform',
-  ],
-  tspan: [
-    'className',
-    'id',
-    'x',
-    'y',
-    'dx',
-    'dy',
-    'textAnchor',
-    'dominantBaseline',
-    'alignmentBaseline',
-    'fontFamily',
-    'fontSize',
-    'fontWeight',
-    'fill',
-    'fillOpacity',
-    'opacity',
-    'style',
-    'transform',
-  ],
-  defs: ['id'],
-  clipPath: ['id', 'clipPathUnits'],
-  mask: ['id', 'maskUnits', 'maskContentUnits'],
-  pattern: ['id', 'x', 'y', 'width', 'height', 'patternUnits', 'patternContentUnits'],
-  marker: ['id', 'markerWidth', 'markerHeight', 'refX', 'refY', 'orient', 'markerUnits', 'viewBox'],
-  linearGradient: ['id', 'x1', 'y1', 'x2', 'y2', 'gradientUnits', 'gradientTransform'],
-  radialGradient: ['id', 'cx', 'cy', 'r', 'fx', 'fy', 'gradientUnits', 'gradientTransform'],
-  stop: ['offset', 'stopColor', 'stopOpacity'],
-  symbol: ['id', 'viewBox', 'preserveAspectRatio'],
-  use: ['xLinkHref', 'xlinkHref', 'x', 'y', 'width', 'height'],
-  title: ['id'],
-  desc: ['id'],
-};
-
 export const markdownSanitizeSchema: Schema = {
-  tagNames: allowedTagNames,
+  tagNames: [...htmlTagNames, ...svgTagNames],
   attributes: {
-    ...markdownAttributes,
-    ...svgAttributes,
+    a: [
+      'href',
+      ['target', '_blank', '_self'],
+      ['rel', 'noopener', 'noreferrer', 'nofollow'],
+    ],
+    code: [
+      ['className', /^language-[\w-]+$/],
+    ],
+    img: ['src', 'alt', 'title', 'width', 'height', 'loading'],
+    ol: [
+      ['start', /^-?\d+$/],
+      ['type', '1', 'a', 'A', 'i', 'I'],
+      'reversed',
+    ],
+    li: [
+      ['value', /^-?\d+$/],
+    ],
+    video: ['src', 'controls', 'preload', 'width', 'height', 'poster'],
+    audio: ['src', 'controls', 'preload'],
+    source: ['src', 'type'],
+    th: ['align'],
+    td: ['align'],
+    svg: [
+      'className',
+      'id',
+      'role',
+      'aria-label',
+      'aria-hidden',
+      'focusable',
+      'width',
+      'height',
+      'viewBox',
+      'preserveAspectRatio',
+      'xmlns',
+      'xmlnsXLink',
+      'xmlnsXlink',
+      'style',
+    ],
+    g: [
+      'className',
+      'id',
+      'transform',
+      'fill',
+      'fillOpacity',
+      'stroke',
+      'strokeWidth',
+      'strokeDasharray',
+      'strokeLinecap',
+      'strokeLinejoin',
+      'strokeMiterlimit',
+      'strokeOpacity',
+      'opacity',
+      'style',
+      'clipPath',
+    ],
+    path: [
+      'className',
+      'id',
+      'd',
+      'fill',
+      'fillOpacity',
+      'stroke',
+      'strokeWidth',
+      'strokeDasharray',
+      'strokeLinecap',
+      'strokeLinejoin',
+      'strokeMiterlimit',
+      'strokeOpacity',
+      'opacity',
+      'style',
+      'markerEnd',
+      'markerStart',
+      'markerMid',
+      'transform',
+    ],
+    rect: [
+      'className',
+      'id',
+      'x',
+      'y',
+      'width',
+      'height',
+      'rx',
+      'ry',
+      'fill',
+      'fillOpacity',
+      'stroke',
+      'strokeWidth',
+      'strokeOpacity',
+      'opacity',
+      'style',
+      'transform',
+    ],
+    circle: [
+      'className',
+      'id',
+      'cx',
+      'cy',
+      'r',
+      'fill',
+      'fillOpacity',
+      'stroke',
+      'strokeWidth',
+      'strokeOpacity',
+      'opacity',
+      'style',
+      'transform',
+    ],
+    ellipse: [
+      'className',
+      'id',
+      'cx',
+      'cy',
+      'rx',
+      'ry',
+      'fill',
+      'fillOpacity',
+      'stroke',
+      'strokeWidth',
+      'strokeOpacity',
+      'opacity',
+      'style',
+      'transform',
+    ],
+    line: [
+      'className',
+      'id',
+      'x1',
+      'y1',
+      'x2',
+      'y2',
+      'stroke',
+      'strokeWidth',
+      'strokeDasharray',
+      'strokeOpacity',
+      'opacity',
+      'style',
+      'transform',
+    ],
+    polyline: [
+      'className',
+      'id',
+      'points',
+      'fill',
+      'fillOpacity',
+      'stroke',
+      'strokeWidth',
+      'strokeDasharray',
+      'strokeOpacity',
+      'opacity',
+      'style',
+      'transform',
+    ],
+    polygon: [
+      'className',
+      'id',
+      'points',
+      'fill',
+      'fillOpacity',
+      'stroke',
+      'strokeWidth',
+      'strokeDasharray',
+      'strokeOpacity',
+      'opacity',
+      'style',
+      'transform',
+    ],
+    text: [
+      'className',
+      'id',
+      'x',
+      'y',
+      'dx',
+      'dy',
+      'textAnchor',
+      'dominantBaseline',
+      'alignmentBaseline',
+      'fontFamily',
+      'fontSize',
+      'fontWeight',
+      'fill',
+      'fillOpacity',
+      'opacity',
+      'style',
+      'transform',
+    ],
+    tspan: [
+      'className',
+      'id',
+      'x',
+      'y',
+      'dx',
+      'dy',
+      'textAnchor',
+      'dominantBaseline',
+      'alignmentBaseline',
+      'fontFamily',
+      'fontSize',
+      'fontWeight',
+      'fill',
+      'fillOpacity',
+      'opacity',
+      'style',
+      'transform',
+    ],
+    defs: ['id'],
+    clipPath: ['id', 'clipPathUnits'],
+    mask: ['id', 'maskUnits', 'maskContentUnits'],
+    pattern: ['id', 'x', 'y', 'width', 'height', 'patternUnits', 'patternContentUnits'],
+    marker: ['id', 'markerWidth', 'markerHeight', 'refX', 'refY', 'orient', 'markerUnits', 'viewBox'],
+    linearGradient: ['id', 'x1', 'y1', 'x2', 'y2', 'gradientUnits', 'gradientTransform'],
+    radialGradient: ['id', 'cx', 'cy', 'r', 'fx', 'fy', 'gradientUnits', 'gradientTransform'],
+    stop: ['offset', 'stopColor', 'stopOpacity'],
+    symbol: ['id', 'viewBox', 'preserveAspectRatio'],
+    use: ['xLinkHref', 'xlinkHref', 'x', 'y', 'width', 'height'],
+    title: ['id'],
+    desc: ['id'],
   },
   protocols: {
     href: [...allowedProtocols],
@@ -308,97 +304,184 @@ export const markdownSanitizeSchema: Schema = {
   },
 };
 
+const diagramBaseAttributes: NonNullable<Schema['attributes']> = markdownSanitizeSchema.attributes ?? {};
 const diagramSanitizeSchema: Schema = {
-  tagNames: diagramSvgTagNames,
+  tagNames: diagramTagNames,
   attributes: {
-    ...svgAttributes,
-    style: ['type'],
+    ...diagramBaseAttributes,
+    svg: [...(diagramBaseAttributes.svg ?? []), 'ariaRoleDescription', 'data*'],
+    g: [...(diagramBaseAttributes.g ?? []), 'data*', 'filter'],
+    path: [...(diagramBaseAttributes.path ?? []), 'data*', 'filter'],
+    rect: [...(diagramBaseAttributes.rect ?? []), 'data*', 'filter'],
+    circle: [...(diagramBaseAttributes.circle ?? []), 'data*', 'filter'],
+    ellipse: [...(diagramBaseAttributes.ellipse ?? []), 'data*', 'filter'],
+    line: [...(diagramBaseAttributes.line ?? []), 'data*', 'filter'],
+    polyline: [...(diagramBaseAttributes.polyline ?? []), 'data*', 'filter'],
+    polygon: [...(diagramBaseAttributes.polygon ?? []), 'data*', 'filter'],
+    text: [...(diagramBaseAttributes.text ?? []), 'data*', 'fontStyle', 'filter'],
+    tspan: [...(diagramBaseAttributes.tspan ?? []), 'data*', 'fontStyle', 'filter'],
+    filter: [
+      'id',
+      'x',
+      'y',
+      'width',
+      'height',
+      'filterUnits',
+      'primitiveUnits',
+      'colorInterpolationFilters',
+    ],
+    feDropShadow: ['dx', 'dy', 'stdDeviation', 'floodColor', 'floodOpacity', 'in', 'result'],
+    style: ['type', 'media'],
   },
-  protocols: {
-    xLinkHref: ['#'],
-    xlinkHref: ['#'],
-  },
+  protocols: markdownSanitizeSchema.protocols,
 };
 
 const cssCommentPattern = /\/\*[\s\S]*?\*\//g;
-const cssEscapePattern = /\\/;
-const cssImportPattern = /@import\s+[^;]+;?/gi;
-const cssFontFacePattern = /@font-face\s*{[\s\S]*?}/gi;
 const cssUrlPattern = /url\(([^)]+)\)/gi;
+const cssUnsafeAtRulePattern = /@import|@font-face/i;
+const cssLocalUrlPattern = /^#[\w:.-]+$/;
 
-function isSafeSvgUrl(value: string): boolean {
+function stripCssComments(css: string): string {
+  return css.replace(cssCommentPattern, '');
+}
+
+function isSafeLocalUrlReference(value: string): boolean {
   const trimmed = value.trim().replace(/^['"]|['"]$/g, '');
-  return trimmed.startsWith('#');
+  return cssLocalUrlPattern.test(trimmed);
 }
 
-function sanitizeSvgCss(value: string): string {
-  if (cssEscapePattern.test(value)) {
-    return '';
+function isSafeSvgCss(css: string): boolean {
+  if (!css) return true;
+  if (css.includes('\\')) return false;
+  const normalized = stripCssComments(css).toLowerCase();
+  if (cssUnsafeAtRulePattern.test(normalized)) return false;
+  if (!normalized.includes('url(')) return true;
+  const matches = [...normalized.matchAll(cssUrlPattern)];
+  if (matches.length === 0) return false;
+  return matches.every((match) => isSafeLocalUrlReference(match[1] ?? ''));
+}
+
+function assertSafeSvgCss(css: string): void {
+  if (!isSafeSvgCss(css)) {
+    throw new Error('Unsafe diagram CSS');
   }
-  const withoutComments = value.replace(cssCommentPattern, '');
-  const withoutAtRules = withoutComments.replace(cssImportPattern, '').replace(cssFontFacePattern, '');
-  return withoutAtRules.replace(cssUrlPattern, (match, urlValue) => {
-    return isSafeSvgUrl(urlValue) ? match : '';
-  });
 }
 
-function sanitizeSvgStyles(node: Root | Element): void {
-  if (node.type === 'element') {
-    const properties = node.properties;
-    const styleValue = properties?.style;
-    if (typeof styleValue === 'string') {
-      const sanitized = sanitizeSvgCss(styleValue);
-      if (sanitized.trim()) {
-        node.properties = { ...(properties ?? {}), style: sanitized };
-      } else {
-        const nextProperties = { ...(properties ?? {}) };
-        delete nextProperties.style;
-        node.properties = nextProperties;
+function assertSafePresentationAttributes(properties: Properties | undefined): void {
+  if (!properties) return;
+  const styleValue = properties.style;
+  if (typeof styleValue === 'string') {
+    assertSafeSvgCss(styleValue);
+  }
+
+  for (const [name, value] of Object.entries(properties)) {
+    if (name === 'style') continue;
+    if (typeof value !== 'string') continue;
+    const normalized = value.toLowerCase();
+    if (!normalized.includes('url(')) continue;
+    if (value.includes('\\')) {
+      throw new Error('Unsafe diagram URL');
+    }
+    const matches = [...normalized.matchAll(cssUrlPattern)];
+    if (matches.length === 0) {
+      throw new Error('Unsafe diagram URL');
+    }
+    for (const match of matches) {
+      if (!isSafeLocalUrlReference(match[1] ?? '')) {
+        throw new Error('Unsafe diagram URL');
       }
     }
-
-    if (node.tagName === 'style') {
-      for (const child of node.children) {
-        if (child.type === 'text') {
-          child.value = sanitizeSvgCss(child.value);
-        }
-      }
-    }
-  }
-
-  for (const child of node.children) {
-    if (child.type === 'element') {
-      sanitizeSvgStyles(child);
-    }
   }
 }
 
-function rehypeDiagramCssFilter() {
-  return (tree: Root) => {
-    sanitizeSvgStyles(tree);
+function collectStyleText(node: Element): string {
+  return (node.children ?? [])
+    .filter((child): child is Text => child.type === 'text')
+    .map((child) => (typeof child.value === 'string' ? child.value : ''))
+    .join('');
+}
+
+function isElement(node: unknown): node is Element {
+  return Boolean(node) && typeof node === 'object' && (node as Element).type === 'element';
+}
+
+function isStyleElement(node: Element): boolean {
+  return node.tagName === 'style';
+}
+
+function findFirstSvg(tree: Root): Element | null {
+  let svg: Element | null = null;
+
+  const visit = (node: Root | Element) => {
+    if (svg) return;
+    for (const child of node.children ?? []) {
+      if (!isElement(child)) continue;
+      if (child.tagName === 'svg') {
+        svg = child;
+        return;
+      }
+      visit(child);
+      if (svg) return;
+    }
   };
+
+  visit(tree);
+  return svg;
 }
 
-function findFirstSvg(node: Root | Element): Element | null {
-  if (node.type === 'element' && node.tagName === 'svg') {
-    return node;
-  }
+function ensureSafeDiagramTree(tree: Root): void {
+  const visit = (node: Root | Element) => {
+    for (const child of node.children ?? []) {
+      if (!isElement(child)) continue;
+      if (isStyleElement(child)) {
+        const css = collectStyleText(child);
+        assertSafeSvgCss(css);
+      }
+      assertSafePresentationAttributes(child.properties);
+      visit(child);
+    }
+  };
 
-  const children = node.children as Array<RootContent | ElementContent>;
-  for (const child of children) {
-    if (child.type !== 'element') continue;
-    const match = findFirstSvg(child);
-    if (match) return match;
-  }
+  visit(tree);
+}
 
-  return null;
+function moveTopLevelStylesIntoSvg(tree: Root, svg: Element): void {
+  const topLevelStyles = (tree.children ?? []).filter(
+    (child): child is Element => isElement(child) && isStyleElement(child),
+  );
+
+  if (topLevelStyles.length === 0) return;
+  const svgChildren = svg.children ?? [];
+  svg.children = [...topLevelStyles, ...svgChildren];
 }
 
 function rehypeDiagramSvgRoot() {
   return (tree: Root) => {
-    const svgElement = findFirstSvg(tree);
-    tree.children = svgElement ? [svgElement] : [];
+    ensureSafeDiagramTree(tree);
+    const svg = findFirstSvg(tree);
+    if (!svg) {
+      throw new Error('Diagram output missing svg root');
+    }
+    moveTopLevelStylesIntoSvg(tree, svg);
+    tree.children = [svg];
   };
+}
+
+export function sanitizeDiagramSvg(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  try {
+    const file = unified()
+      .use(rehypeParse, { fragment: true })
+      .use(rehypeSanitize, diagramSanitizeSchema)
+      .use(rehypeDiagramSvgRoot)
+      .use(rehypeStringify)
+      .processSync(trimmed);
+    const sanitized = String(file).trim();
+    return sanitized ? sanitized : null;
+  } catch (_error) {
+    return null;
+  }
 }
 
 export function sanitizeMarkdownHtml(value: string): string | null {
@@ -412,24 +495,6 @@ export function sanitizeMarkdownHtml(value: string): string | null {
       .processSync(trimmed);
     const sanitized = String(file).trim();
     return sanitized ? sanitized : null;
-  } catch (_error) {
-    return null;
-  }
-}
-
-export function sanitizeDiagramSvg(value: string): string | null {
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  try {
-    const file = unified()
-      .use(rehypeParse, { fragment: true })
-      .use(rehypeSanitize, diagramSanitizeSchema)
-      .use(rehypeDiagramCssFilter)
-      .use(rehypeDiagramSvgRoot)
-      .use(rehypeStringify)
-      .processSync(trimmed);
-    const sanitized = String(file).trim();
-    return sanitized.startsWith('<svg') ? sanitized : null;
   } catch (_error) {
     return null;
   }

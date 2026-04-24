@@ -272,6 +272,7 @@ export function MarkdownDiagram({ language, source, className = '' }: MarkdownDi
           startOnLoad: false,
           securityLevel: 'strict',
           theme: isDark ? 'dark' : 'default',
+          htmlLabels: false,
           flowchart: { htmlLabels: false },
           sequence: { htmlLabels: false },
         });
