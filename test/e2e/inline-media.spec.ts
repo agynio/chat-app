@@ -185,6 +185,13 @@ test('renders Mermaid diagrams inline', async ({ page }) => {
   const mermaid = messageItem.getByTestId('markdown-mermaid');
   await expect(mermaid).toBeVisible({ timeout: 15000 });
   await expect(mermaid.locator('svg')).toBeVisible({ timeout: 15000 });
+  const labels = mermaid.locator('text');
+  const labelCount = await labels.count();
+  expect(labelCount).toBeGreaterThan(0);
+  const textAnchor = await labels
+    .first()
+    .evaluate((node) => window.getComputedStyle(node).textAnchor);
+  expect(textAnchor).toBe('middle');
   await argosScreenshot(page, 'inline-mermaid-diagram');
 });
 
