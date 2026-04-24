@@ -321,6 +321,7 @@ export function MarkdownDiagram({ language, source, className = '' }: MarkdownDi
   const showAlert = Boolean(fallbackNotice || (state === 'error' && errorMessage));
   const alertTitle = fallbackNotice ? 'Diagram too large' : `${diagramLabel} render failed`;
   const alertDescription = fallbackNotice ?? errorMessage ?? '';
+  const shouldShowSource = state !== 'ready';
   const shouldRenderVega =
     language === 'vega-lite' &&
     state === 'loading' &&
@@ -391,6 +392,15 @@ export function MarkdownDiagram({ language, source, className = '' }: MarkdownDi
           </Suspense>
         ) : null}
       </div>
+      {shouldShowSource ? (
+        <pre className="w-full min-w-0 max-w-full overflow-x-auto rounded-[10px] bg-[var(--agyn-bg-light)] p-3 font-mono text-sm leading-relaxed text-[var(--agyn-dark)]">
+          <code
+            className={`language-${language} block whitespace-pre-wrap font-mono text-sm leading-relaxed text-[var(--agyn-dark)]`}
+          >
+            {trimmedSource}
+          </code>
+        </pre>
+      ) : null}
     </div>
   );
 }
