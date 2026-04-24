@@ -73,6 +73,8 @@ const diagramTagNames: Schema['tagNames'] = [
   'feDropShadow',
 ];
 
+const diagramTagNameSet = new Set(diagramTagNames);
+
 const allowedProtocols: string[] = ['http', 'https', 'mailto'];
 
 export const markdownSanitizeSchema: Schema = {
@@ -337,12 +339,17 @@ const diagramSanitizeSchema: Schema = {
 };
 
 const cssCommentPattern = /\/\*[\s\S]*?\*\//g;
-const cssUrlPattern = /url\(([^)]+)\)/gi;
+const cssUrlPattern = /url\s*\(([^)]+)\)/gi;
 const cssUnsafeAtRulePattern = /@import|@font-face/i;
 const cssLocalUrlPattern = /^#[\w:.-]+$/;
 
 function stripCssComments(css: string): string {
   return css.replace(cssCommentPattern, '');
+}
+
+function collectCssUrlMatches(value: string): RegExpMatchArray[] {
+  cssUrlPattern.lastIndex = 0;
+  return [...value.matchAll(cssUrlPattern)];
 }
 
 function isSafeLocalUrlReference(value: string): boolean {
@@ -355,9 +362,8 @@ function isSafeSvgCss(css: string): boolean {
   if (css.includes('\\')) return false;
   const normalized = stripCssComments(css).toLowerCase();
   if (cssUnsafeAtRulePattern.test(normalized)) return false;
-  if (!normalized.includes('url(')) return true;
-  const matches = [...normalized.matchAll(cssUrlPattern)];
-  if (matches.length === 0) return false;
+  const matches = collectCssUrlMatches(normalized);
+  if (matches.length === 0) return true;
   return matches.every((match) => isSafeLocalUrlReference(match[1] ?? ''));
 }
 
@@ -378,14 +384,11 @@ function assertSafePresentationAttributes(properties: Properties | undefined): v
     if (name === 'style') continue;
     if (typeof value !== 'string') continue;
     const normalized = value.toLowerCase();
-    if (!normalized.includes('url(')) continue;
     if (value.includes('\\')) {
       throw new Error('Unsafe diagram URL');
     }
-    const matches = [...normalized.matchAll(cssUrlPattern)];
-    if (matches.length === 0) {
-      throw new Error('Unsafe diagram URL');
-    }
+    const matches = collectCssUrlMatches(normalized);
+    if (matches.length === 0) continue;
     for (const match of matches) {
       if (!isSafeLocalUrlReference(match[1] ?? '')) {
         throw new Error('Unsafe diagram URL');
@@ -407,6 +410,26 @@ function isElement(node: unknown): node is Element {
 
 function isStyleElement(node: Element): boolean {
   return node.tagName === 'style';
+}
+
+function ensureDiagramTagNames(tree: Root): void {
+  const visit = (node: Root | Element) => {
+    for (const child of node.children ?? []) {
+      if (!isElement(child)) continue;
+      if (!diagramTagNameSet.has(child.tagName)) {
+        throw new Error('Unsupported diagram markup');
+      }
+      visit(child);
+    }
+  };
+
+  visit(tree);
+}
+
+function rehypeDiagramTagValidator() {
+  return (tree: Root) => {
+    ensureDiagramTagNames(tree);
+  };
 }
 
 function findFirstSvg(tree: Root): Element | null {
@@ -473,6 +496,7 @@ export function sanitizeDiagramSvg(value: string): string | null {
   try {
     const file = unified()
       .use(rehypeParse, { fragment: true })
+      .use(rehypeDiagramTagValidator)
       .use(rehypeSanitize, diagramSanitizeSchema)
       .use(rehypeDiagramSvgRoot)
       .use(rehypeStringify)

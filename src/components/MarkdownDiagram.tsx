@@ -273,8 +273,6 @@ export function MarkdownDiagram({ language, source, className = '' }: MarkdownDi
           securityLevel: 'strict',
           theme: isDark ? 'dark' : 'default',
           htmlLabels: false,
-          flowchart: { htmlLabels: false },
-          sequence: { htmlLabels: false },
         });
         const { svg } = await mermaid.render(diagramId, trimmedSource);
         if (cancelled) return;

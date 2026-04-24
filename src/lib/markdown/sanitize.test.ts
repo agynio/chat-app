@@ -71,6 +71,16 @@ describe('sanitizeDiagramSvg', () => {
     const input = '<svg><rect style="fill:url(https://evil.test)" /></svg>';
     expect(sanitizeDiagramSvg(input)).toBeNull();
   });
+
+  it('rejects unsupported tags like foreignObject', () => {
+    const input = '<svg><foreignObject><div>Bad</div></foreignObject></svg>';
+    expect(sanitizeDiagramSvg(input)).toBeNull();
+  });
+
+  it('rejects external urls in presentation attributes', () => {
+    const input = '<svg><path filter="url (https://evil.test)" /></svg>';
+    expect(sanitizeDiagramSvg(input)).toBeNull();
+  });
 });
 
 describe('sanitizeMarkdownHtml', () => {
