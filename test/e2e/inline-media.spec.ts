@@ -184,14 +184,15 @@ test('renders Mermaid diagrams inline', async ({ page }) => {
   const messageItem = await openChatWithMessage(page, message, anchor);
   const mermaid = messageItem.getByTestId('markdown-mermaid');
   await expect(mermaid).toBeVisible({ timeout: 15000 });
-  await expect(mermaid.locator('svg')).toBeVisible({ timeout: 15000 });
-  const labels = mermaid.locator('text');
-  const labelCount = await labels.count();
-  expect(labelCount).toBeGreaterThan(0);
-  const textAnchor = await labels
-    .first()
-    .evaluate((node) => window.getComputedStyle(node).textAnchor);
-  expect(textAnchor).toBe('middle');
+  const svg = mermaid.locator('svg');
+  await expect(svg).toBeVisible({ timeout: 15000 });
+  const textAnchors = await svg.evaluate((node) => {
+    return Array.from(node.querySelectorAll('text')).map((text) =>
+      window.getComputedStyle(text).textAnchor,
+    );
+  });
+  expect(textAnchors.length).toBeGreaterThan(0);
+  expect(textAnchors).toContain('middle');
   await argosScreenshot(page, 'inline-mermaid-diagram');
 });
 

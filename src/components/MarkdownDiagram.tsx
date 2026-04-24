@@ -151,9 +151,7 @@ function buildVegaTheme(isDark: boolean) {
 }
 
 function sanitizeSvgMarkup(svg: string): string | null {
-  const sanitized = sanitizeDiagramSvg(svg);
-  if (!sanitized) return null;
-  return sanitized.includes('<svg') ? sanitized : null;
+  return sanitizeDiagramSvg(svg);
 }
 
 function validateVegaLiteSpec(source: string): { spec?: VisualizationSpec; error?: string } {

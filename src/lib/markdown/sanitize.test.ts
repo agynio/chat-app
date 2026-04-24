@@ -33,6 +33,72 @@ describe('sanitizeDiagramSvg', () => {
     expect(sanitized).not.toContain('@font-face');
     expect(sanitized).not.toContain('https://evil.com');
   });
+
+  it('drops CSS containing escapes', () => {
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <style>
+          .escaped { fill: u\\72 l(https://evil.com/escaped.png); }
+        </style>
+        <rect style="fill: u\\72 l(#gradient);"></rect>
+        <text class="escaped">Unsafe</text>
+      </svg>
+    `;
+
+    const sanitized = sanitizeDiagramSvg(svg);
+    expect(sanitized).not.toBeNull();
+    if (!sanitized) {
+      throw new Error('sanitizeDiagramSvg returned null');
+    }
+
+    const styleMatch = sanitized.match(/<style[^>]*>([\s\S]*?)<\/style>/);
+    expect(styleMatch?.[1].trim() ?? '').toBe('');
+    expect(sanitized).not.toContain('u\\72 l');
+    expect(sanitized).not.toContain('https://evil.com');
+    expect(sanitized).not.toContain('style="');
+  });
+
+  it('strips url values hidden with comments', () => {
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <style>
+          .commented { fill: u/**/rl(https://evil.com/commented.png); }
+        </style>
+        <text>Safe</text>
+      </svg>
+    `;
+
+    const sanitized = sanitizeDiagramSvg(svg);
+    expect(sanitized).not.toBeNull();
+    if (!sanitized) {
+      throw new Error('sanitizeDiagramSvg returned null');
+    }
+
+    expect(sanitized).toContain('<style>');
+    expect(sanitized).not.toContain('https://evil.com');
+    expect(sanitized).not.toContain('url(');
+  });
+
+  it('extracts only the sanitized svg root', () => {
+    const svg = `
+      <style>.global { color: red; }</style>
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <text>Safe</text>
+      </svg>
+      <div>Ignored</div>
+    `;
+
+    const sanitized = sanitizeDiagramSvg(svg);
+    expect(sanitized).not.toBeNull();
+    if (!sanitized) {
+      throw new Error('sanitizeDiagramSvg returned null');
+    }
+
+    expect(sanitized.startsWith('<svg')).toBe(true);
+    expect(sanitized).toContain('<text>Safe</text>');
+    expect(sanitized).not.toContain('<style>');
+    expect(sanitized).not.toContain('<div>');
+  });
 });
 
 describe('sanitizeMarkdownHtml', () => {

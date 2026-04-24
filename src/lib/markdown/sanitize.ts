@@ -1,3 +1,4 @@
+import type { Element, ElementContent, Root, RootContent } from 'hast';
 import type { Schema } from 'hast-util-sanitize';
 import rehypeParse from 'rehype-parse';
 import rehypeSanitize from 'rehype-sanitize';
@@ -319,14 +320,8 @@ const diagramSanitizeSchema: Schema = {
   },
 };
 
-type HastNode = {
-  type: string;
-  tagName?: string;
-  properties?: Record<string, unknown>;
-  children?: HastNode[];
-  value?: string;
-};
-
+const cssCommentPattern = /\/\*[\s\S]*?\*\//g;
+const cssEscapePattern = /\\/;
 const cssImportPattern = /@import\s+[^;]+;?/gi;
 const cssFontFacePattern = /@font-face\s*{[\s\S]*?}/gi;
 const cssUrlPattern = /url\(([^)]+)\)/gi;
@@ -337,42 +332,72 @@ function isSafeSvgUrl(value: string): boolean {
 }
 
 function sanitizeSvgCss(value: string): string {
-  const withoutAtRules = value.replace(cssImportPattern, '').replace(cssFontFacePattern, '');
+  if (cssEscapePattern.test(value)) {
+    return '';
+  }
+  const withoutComments = value.replace(cssCommentPattern, '');
+  const withoutAtRules = withoutComments.replace(cssImportPattern, '').replace(cssFontFacePattern, '');
   return withoutAtRules.replace(cssUrlPattern, (match, urlValue) => {
     return isSafeSvgUrl(urlValue) ? match : '';
   });
 }
 
-function sanitizeSvgStyles(node: HastNode): void {
+function sanitizeSvgStyles(node: Root | Element): void {
   if (node.type === 'element') {
-    const properties = node.properties ?? {};
-    const styleValue = properties.style;
+    const properties = node.properties;
+    const styleValue = properties?.style;
     if (typeof styleValue === 'string') {
       const sanitized = sanitizeSvgCss(styleValue);
       if (sanitized.trim()) {
-        properties.style = sanitized;
+        node.properties = { ...(properties ?? {}), style: sanitized };
       } else {
-        delete properties.style;
+        const nextProperties = { ...(properties ?? {}) };
+        delete nextProperties.style;
+        node.properties = nextProperties;
       }
     }
 
     if (node.tagName === 'style') {
-      for (const child of node.children ?? []) {
-        if (child.type === 'text' && typeof child.value === 'string') {
+      for (const child of node.children) {
+        if (child.type === 'text') {
           child.value = sanitizeSvgCss(child.value);
         }
       }
     }
   }
 
-  for (const child of node.children ?? []) {
-    sanitizeSvgStyles(child);
+  for (const child of node.children) {
+    if (child.type === 'element') {
+      sanitizeSvgStyles(child);
+    }
   }
 }
 
 function rehypeDiagramCssFilter() {
-  return (tree: HastNode) => {
+  return (tree: Root) => {
     sanitizeSvgStyles(tree);
+  };
+}
+
+function findFirstSvg(node: Root | Element): Element | null {
+  if (node.type === 'element' && node.tagName === 'svg') {
+    return node;
+  }
+
+  const children = node.children as Array<RootContent | ElementContent>;
+  for (const child of children) {
+    if (child.type !== 'element') continue;
+    const match = findFirstSvg(child);
+    if (match) return match;
+  }
+
+  return null;
+}
+
+function rehypeDiagramSvgRoot() {
+  return (tree: Root) => {
+    const svgElement = findFirstSvg(tree);
+    tree.children = svgElement ? [svgElement] : [];
   };
 }
 
@@ -400,10 +425,11 @@ export function sanitizeDiagramSvg(value: string): string | null {
       .use(rehypeParse, { fragment: true })
       .use(rehypeSanitize, diagramSanitizeSchema)
       .use(rehypeDiagramCssFilter)
+      .use(rehypeDiagramSvgRoot)
       .use(rehypeStringify)
       .processSync(trimmed);
     const sanitized = String(file).trim();
-    return sanitized ? sanitized : null;
+    return sanitized.startsWith('<svg') ? sanitized : null;
   } catch (_error) {
     return null;
   }
