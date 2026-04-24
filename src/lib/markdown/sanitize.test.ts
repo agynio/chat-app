@@ -56,6 +56,28 @@ describe('sanitizeDiagramSvg', () => {
     expect(sanitized).toContain('font-style="italic"');
   });
 
+  it('does not prefix diagram ids', () => {
+    const input = [
+      '<style>#mermaid-diagram{fill:#fff;}</style>',
+      '<svg id="mermaid-diagram" viewBox="0 0 10 10">',
+      '  <defs>',
+      '    <marker id="marker-1" />',
+      '  </defs>',
+      '  <g id="node-1">',
+      '    <rect id="node-rect" width="10" height="10" />',
+      '  </g>',
+      '</svg>',
+    ].join('');
+    const sanitized = sanitizeDiagramSvg(input);
+
+    expect(sanitized).not.toBeNull();
+    if (!sanitized) return;
+    expect(sanitized).toContain('id="mermaid-diagram"');
+    expect(sanitized).toContain('id="marker-1"');
+    expect(sanitized).toContain('id="node-rect"');
+    expect(sanitized).not.toContain('user-content-');
+  });
+
   it('fails closed on unsafe css', () => {
     const input = [
       '<style>',

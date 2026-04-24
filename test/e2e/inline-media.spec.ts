@@ -220,6 +220,22 @@ test('renders Mermaid diagrams inline', async ({ page }) => {
     });
   });
   expect(labelsInsideNodes).toBe(true);
+  const nodeColors = await svg.evaluate((node) => {
+    const shape = node.querySelector('g.node rect, g.node polygon, g.node ellipse, g.node circle');
+    if (!shape) return null;
+    const style = window.getComputedStyle(shape);
+    return {
+      fill: style.fill,
+      stroke: style.stroke,
+    };
+  });
+  expect(nodeColors).not.toBeNull();
+  if (nodeColors) {
+    expect(nodeColors.fill).not.toBe('none');
+    expect(nodeColors.fill).not.toBe('rgb(0, 0, 0)');
+    expect(nodeColors.stroke).not.toBe('none');
+    expect(nodeColors.stroke).not.toBe('rgb(0, 0, 0)');
+  }
   await argosScreenshot(page, 'inline-mermaid-diagram');
 });
 
