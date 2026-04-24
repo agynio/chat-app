@@ -186,6 +186,10 @@ test('renders Mermaid diagrams inline', async ({ page }) => {
   await expect(mermaid).toBeVisible({ timeout: 15000 });
   const svg = mermaid.locator('svg');
   await expect(svg).toBeVisible({ timeout: 15000 });
+  await expect(svg.locator('style')).not.toHaveCount(0);
+  await expect(svg.locator('foreignObject')).toHaveCount(0);
+  await expect(svg.locator('filter')).not.toHaveCount(0);
+  await expect(svg.locator('feDropShadow')).not.toHaveCount(0);
   const textAnchors = await svg.evaluate((node) => {
     return Array.from(node.querySelectorAll('text')).map((text) =>
       window.getComputedStyle(text).textAnchor,
@@ -193,6 +197,29 @@ test('renders Mermaid diagrams inline', async ({ page }) => {
   });
   expect(textAnchors.length).toBeGreaterThan(0);
   expect(textAnchors).toContain('middle');
+  const labelsInsideNodes = await svg.evaluate((node) => {
+    const groups = Array.from(node.querySelectorAll('g.node'));
+    const candidates = groups
+      .map((group) => ({
+        text: group.querySelector('text'),
+        shape: group.querySelector('rect, polygon, ellipse, circle'),
+      }))
+      .filter((entry) => entry.text && entry.shape);
+    if (candidates.length === 0) return false;
+    return candidates.every(({ text, shape }) => {
+      if (!text || !shape) return false;
+      const textBox = text.getBBox();
+      const shapeBox = shape.getBBox();
+      const padding = Math.max(4, Math.min(shapeBox.width, shapeBox.height) * 0.05);
+      return (
+        textBox.x >= shapeBox.x - padding &&
+        textBox.y >= shapeBox.y - padding &&
+        textBox.x + textBox.width <= shapeBox.x + shapeBox.width + padding &&
+        textBox.y + textBox.height <= shapeBox.y + shapeBox.height + padding
+      );
+    });
+  });
+  expect(labelsInsideNodes).toBe(true);
   await argosScreenshot(page, 'inline-mermaid-diagram');
 });
 

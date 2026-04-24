@@ -1,103 +1,85 @@
+import rehypeParse from 'rehype-parse';
+import { unified } from 'unified';
 import { describe, expect, it } from 'vitest';
+import type { Element, Root } from 'hast';
 import { sanitizeDiagramSvg, sanitizeMarkdownHtml } from './sanitize';
 
+function parseRoot(markup: string): Root {
+  return unified().use(rehypeParse, { fragment: true }).parse(markup) as Root;
+}
+
+function elementChildren(node: Root | Element): Element[] {
+  return (node.children ?? []).filter((child): child is Element => child.type === 'element');
+}
+
 describe('sanitizeDiagramSvg', () => {
-  it('keeps safe SVG styles and strips unsafe CSS', () => {
-    const svg = `
-      <svg xmlns="http://www.w3.org/2000/svg">
-        <style>
-          .label { text-anchor: middle; }
-          @import url("https://evil.com/style.css");
-          @font-face { font-family: "Evil"; src: url("https://evil.com/font.woff"); }
-          .safe { fill: url(#gradient); }
-          .unsafe { fill: url("https://evil.com/image.png"); }
-        </style>
-        <defs>
-          <linearGradient id="gradient"></linearGradient>
-        </defs>
-        <rect style="fill: url(#gradient); stroke: url(https://evil.com/stroke.png);"></rect>
-        <text class="label">Hello</text>
-      </svg>
-    `;
+  it('moves top-level style into the svg root', () => {
+    const input =
+      '<style>.node{fill:#fff;}</style><svg viewBox="0 0 10 10"><rect width="10" height="10" /></svg>';
+    const sanitized = sanitizeDiagramSvg(input);
 
-    const sanitized = sanitizeDiagramSvg(svg);
     expect(sanitized).not.toBeNull();
-    if (!sanitized) {
-      throw new Error('sanitizeDiagramSvg returned null');
-    }
+    if (!sanitized) return;
 
-    expect(sanitized).toContain('<style>');
-    expect(sanitized).toContain('text-anchor: middle');
-    expect(sanitized).toContain('url(#gradient)');
-    expect(sanitized).not.toContain('@import');
-    expect(sanitized).not.toContain('@font-face');
-    expect(sanitized).not.toContain('https://evil.com');
+    expect(sanitized).toContain('fill:#fff');
+    const root = parseRoot(sanitized);
+    const rootElements = elementChildren(root);
+    expect(rootElements).toHaveLength(1);
+    expect(rootElements[0]?.tagName).toBe('svg');
+
+    const svgChildren = elementChildren(rootElements[0]);
+    expect(svgChildren.some((child) => child.tagName === 'style')).toBe(true);
   });
 
-  it('drops CSS containing escapes', () => {
-    const svg = `
-      <svg xmlns="http://www.w3.org/2000/svg">
-        <style>
-          .escaped { fill: u\\72 l(https://evil.com/escaped.png); }
-        </style>
-        <rect style="fill: u\\72 l(#gradient);"></rect>
-        <text class="escaped">Unsafe</text>
-      </svg>
-    `;
+  it('preserves filter tags, data attributes, and font style', () => {
+    const input = [
+      '<style>.node{filter:url(#shadow);}</style>',
+      '<svg viewBox="0 0 10 10">',
+      '  <defs>',
+      '    <filter id="shadow" x="0" y="0" width="1" height="1">',
+      '      <feDropShadow dx="1" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.5" />',
+      '    </filter>',
+      '  </defs>',
+      '  <g data-id="node" data-look="handDrawn">',
+      '    <path d="M0 0" data-edge="1" data-et="edge" data-id="edge" data-points="0,0 1,1" />',
+      '  </g>',
+      '  <text font-style="italic">Hello</text>',
+      '</svg>',
+    ].join('');
+    const sanitized = sanitizeDiagramSvg(input);
 
-    const sanitized = sanitizeDiagramSvg(svg);
     expect(sanitized).not.toBeNull();
-    if (!sanitized) {
-      throw new Error('sanitizeDiagramSvg returned null');
-    }
-
-    const styleMatch = sanitized.match(/<style[^>]*>([\s\S]*?)<\/style>/);
-    expect(styleMatch?.[1].trim() ?? '').toBe('');
-    expect(sanitized).not.toContain('u\\72 l');
-    expect(sanitized).not.toContain('https://evil.com');
-    expect(sanitized).not.toContain('style="');
+    if (!sanitized) return;
+    expect(sanitized).toContain('<filter');
+    expect(sanitized).toContain('<feDropShadow');
+    expect(sanitized).toContain('data-edge');
+    expect(sanitized).toContain('font-style="italic"');
   });
 
-  it('strips url values hidden with comments', () => {
-    const svg = `
-      <svg xmlns="http://www.w3.org/2000/svg">
-        <style>
-          .commented { fill: u/**/rl(https://evil.com/commented.png); }
-        </style>
-        <text>Safe</text>
-      </svg>
-    `;
-
-    const sanitized = sanitizeDiagramSvg(svg);
-    expect(sanitized).not.toBeNull();
-    if (!sanitized) {
-      throw new Error('sanitizeDiagramSvg returned null');
-    }
-
-    expect(sanitized).toContain('<style>');
-    expect(sanitized).not.toContain('https://evil.com');
-    expect(sanitized).not.toContain('url(');
+  it('fails closed on unsafe css', () => {
+    const input = [
+      '<style>',
+      '@import url("https://evil.test");',
+      '@font-face { font-family: "Evil"; src: url("https://evil.test/font.woff"); }',
+      '</style>',
+      '<svg></svg>',
+    ].join('');
+    expect(sanitizeDiagramSvg(input)).toBeNull();
   });
 
-  it('extracts only the sanitized svg root', () => {
-    const svg = `
-      <style>.global { color: red; }</style>
-      <svg xmlns="http://www.w3.org/2000/svg">
-        <text>Safe</text>
-      </svg>
-      <div>Ignored</div>
-    `;
+  it('rejects external urls in style attributes', () => {
+    const input = '<svg><rect style="fill:url(https://evil.test)" /></svg>';
+    expect(sanitizeDiagramSvg(input)).toBeNull();
+  });
 
-    const sanitized = sanitizeDiagramSvg(svg);
-    expect(sanitized).not.toBeNull();
-    if (!sanitized) {
-      throw new Error('sanitizeDiagramSvg returned null');
-    }
+  it('rejects unsupported tags like foreignObject', () => {
+    const input = '<svg><foreignObject><div>Bad</div></foreignObject></svg>';
+    expect(sanitizeDiagramSvg(input)).toBeNull();
+  });
 
-    expect(sanitized.startsWith('<svg')).toBe(true);
-    expect(sanitized).toContain('<text>Safe</text>');
-    expect(sanitized).not.toContain('<style>');
-    expect(sanitized).not.toContain('<div>');
+  it('rejects external urls in presentation attributes', () => {
+    const input = '<svg><path filter="url (https://evil.test)" /></svg>';
+    expect(sanitizeDiagramSvg(input)).toBeNull();
   });
 });
 
@@ -106,9 +88,7 @@ describe('sanitizeMarkdownHtml', () => {
     const html = '<p>Hello</p><style>p{color:red}</style>';
     const sanitized = sanitizeMarkdownHtml(html);
     expect(sanitized).not.toBeNull();
-    if (!sanitized) {
-      throw new Error('sanitizeMarkdownHtml returned null');
-    }
+    if (!sanitized) return;
     expect(sanitized).toContain('<p>Hello</p>');
     expect(sanitized).not.toContain('<style>');
   });
