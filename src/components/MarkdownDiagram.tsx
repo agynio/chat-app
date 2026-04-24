@@ -13,7 +13,7 @@ import { AlertTriangle } from 'lucide-react';
 import type { EmbedOptions } from 'vega-embed';
 import type { VisualizationSpec } from 'vega-lite';
 import { cn } from '@/lib/utils';
-import { sanitizeMarkdownHtml } from '@/lib/markdown/sanitize';
+import { sanitizeDiagramSvg } from '@/lib/markdown/sanitize';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 
@@ -151,9 +151,7 @@ function buildVegaTheme(isDark: boolean) {
 }
 
 function sanitizeSvgMarkup(svg: string): string | null {
-  const sanitized = sanitizeMarkdownHtml(svg);
-  if (!sanitized) return null;
-  return sanitized.includes('<svg') ? sanitized : null;
+  return sanitizeDiagramSvg(svg);
 }
 
 function validateVegaLiteSpec(source: string): { spec?: VisualizationSpec; error?: string } {
