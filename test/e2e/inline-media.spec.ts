@@ -283,10 +283,9 @@ test('blocks Vega-Lite specs with external data urls', async ({ page }) => {
   await expect(
     chart.getByText('External data URLs are not allowed. Use inline values.'),
   ).toBeVisible({ timeout: 15000 });
-  await expect(chart.locator('code')).toContainText('"url"');
 });
 
-test('shows error banner and raw code for invalid diagrams', async ({ page }) => {
+test('shows error banner for invalid diagrams', async ({ page }) => {
   const now = Date.now();
   const mermaidAnchor = `Mermaid error ${now}`;
   const vegaAnchor = `Vega error ${now}`;
@@ -310,10 +309,8 @@ test('shows error banner and raw code for invalid diagrams', async ({ page }) =>
 
   const mermaid = messageItem.getByTestId('markdown-mermaid');
   await expect(mermaid.getByText('Mermaid render failed')).toBeVisible({ timeout: 15000 });
-  await expect(mermaid.locator('code')).toContainText('graph TD');
 
   const vega = messageItem.getByTestId('markdown-vega-lite');
   await expect(vega.getByText('Vega-Lite render failed')).toBeVisible({ timeout: 15000 });
   await expect(vega.getByText('Vega-Lite spec must be valid JSON.')).toBeVisible({ timeout: 15000 });
-  await expect(vega.locator('code')).toContainText('"data"');
 });

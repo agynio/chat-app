@@ -15,7 +15,6 @@ import type { VisualizationSpec } from 'vega-lite';
 import { cn } from '@/lib/utils';
 import { sanitizeDiagramSvg } from '@/lib/markdown/sanitize';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 
 type DiagramLanguage = 'mermaid' | 'vega-lite';
 
@@ -227,7 +226,6 @@ export function MarkdownDiagram({ language, source, className = '' }: MarkdownDi
   const [state, setState] = useState<DiagramState>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [svgMarkup, setSvgMarkup] = useState<string | null>(null);
-  const [isSourceOpen, setIsSourceOpen] = useState(isTooLarge);
 
   const validation = useMemo(() => {
     if (language !== 'vega-lite') return { spec: undefined, error: undefined };
@@ -296,12 +294,6 @@ export function MarkdownDiagram({ language, source, className = '' }: MarkdownDi
     };
   }, [diagramId, inView, isDark, isTooLarge, language, trimmedSource, validation.error]);
 
-  useEffect(() => {
-    if (state === 'error' || state === 'blocked') {
-      setIsSourceOpen(true);
-    }
-  }, [state]);
-
   const handleVegaSvg = useCallback((svg: string) => {
     const sanitized = sanitizeSvgMarkup(svg);
     if (!sanitized) {
@@ -329,12 +321,6 @@ export function MarkdownDiagram({ language, source, className = '' }: MarkdownDi
   const showAlert = Boolean(fallbackNotice || (state === 'error' && errorMessage));
   const alertTitle = fallbackNotice ? 'Diagram too large' : `${diagramLabel} render failed`;
   const alertDescription = fallbackNotice ?? errorMessage ?? '';
-  const shouldForceSourceOpen = state !== 'ready';
-  const sourceOpen = shouldForceSourceOpen || isSourceOpen;
-  const handleSourceToggle = (open: boolean) => {
-    if (shouldForceSourceOpen) return;
-    setIsSourceOpen(open);
-  };
   const shouldRenderVega =
     language === 'vega-lite' &&
     state === 'loading' &&
@@ -378,11 +364,7 @@ export function MarkdownDiagram({ language, source, className = '' }: MarkdownDi
         </Alert>
       ) : null}
 
-      <div
-        ref={containerRef}
-        className="rounded-[12px] border border-[var(--border)] bg-[var(--background)] p-3"
-        data-state={state}
-      >
+      <div ref={containerRef} className="w-full" data-state={state}>
         {state === 'loading' || state === 'idle' ? (
           <div className="text-xs text-[var(--agyn-gray)]">Loading {diagramLabel} diagram...</div>
         ) : null}
@@ -409,23 +391,6 @@ export function MarkdownDiagram({ language, source, className = '' }: MarkdownDi
           </Suspense>
         ) : null}
       </div>
-
-      <Collapsible open={sourceOpen} onOpenChange={handleSourceToggle}>
-        <CollapsibleTrigger
-          className="self-start text-xs text-[var(--agyn-blue)] hover:text-[var(--agyn-purple)] underline"
-          type="button"
-          disabled={shouldForceSourceOpen}
-        >
-          {sourceOpen ? 'Hide source' : 'View source'}
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2">
-          <pre className="w-full overflow-x-auto rounded-[10px] bg-[var(--agyn-bg-light)] p-3">
-            <code className={`language-${language} block whitespace-pre-wrap font-mono text-xs text-[var(--agyn-dark)]`}>
-              {trimmedSource}
-            </code>
-          </pre>
-        </CollapsibleContent>
-      </Collapsible>
     </div>
   );
 }
