@@ -16,6 +16,10 @@ type EndStreamResponse = {
   };
 };
 
+type SubscribeRequest = {
+  rooms: string[];
+};
+
 export type NotificationEnvelope = {
   event: string;
   rooms: string[];
@@ -54,6 +58,17 @@ function concatBuffers(a: Uint8Array, b: Uint8Array): Uint8Array {
   combined.set(a, 0);
   combined.set(b, a.length);
   return combined;
+}
+
+function buildSubscribePayload(rooms: readonly string[]): Uint8Array {
+  const filteredRooms = rooms
+    .map((room) => room.trim())
+    .filter((room) => room.length > 0);
+  if (filteredRooms.length === 0) {
+    throw new Error('Notifications subscribe requires at least one room');
+  }
+  const payload: SubscribeRequest = { rooms: filteredRooms };
+  return textEncoder.encode(JSON.stringify(payload));
 }
 
 function parseEndStream(data: Uint8Array): void {
@@ -98,6 +113,7 @@ export function parseMessageCreatedNotification(
 
 export async function* subscribeNotifications(
   signal: AbortSignal,
+  rooms: readonly string[],
 ): AsyncGenerator<NotificationEnvelope> {
   const token = await getAccessToken();
   const headers = new Headers({
@@ -109,7 +125,7 @@ export async function* subscribeNotifications(
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  const requestBody = createEnvelope(textEncoder.encode(JSON.stringify({})));
+  const requestBody = createEnvelope(buildSubscribePayload(rooms));
   const response = await fetch(`${config.apiBaseUrl}${SUBSCRIBE_PATH}`, {
     method: 'POST',
     headers,
