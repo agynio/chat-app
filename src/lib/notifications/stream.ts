@@ -30,6 +30,7 @@ class NotificationsStream {
   private hasConnected = false;
   private rooms: string[] = [];
   private roomsKey = serializeRooms([]);
+  private reconnectTimer: ReturnType<typeof globalThis.setTimeout> | null = null;
 
   onEnvelope(cb: EnvelopeListener): () => void {
     this.listeners.add(cb);
@@ -92,6 +93,7 @@ class NotificationsStream {
   }
 
   private disconnect({ resetConnectionState = true }: { resetConnectionState?: boolean } = {}) {
+    this.clearReconnectTimer();
     this.abortController?.abort();
     this.abortController = null;
     if (resetConnectionState) {
@@ -103,6 +105,12 @@ class NotificationsStream {
     if (!this.abortController) return;
     this.disconnect({ resetConnectionState: false });
     this.ensureConnected();
+  }
+
+  private clearReconnectTimer() {
+    if (this.reconnectTimer === null) return;
+    globalThis.clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = null;
   }
 
   private emitEnvelope(envelope: NotificationEnvelope) {
@@ -119,8 +127,13 @@ class NotificationsStream {
 
   private scheduleReconnect() {
     if (this.listeners.size === 0 && this.reconnectListeners.size === 0) return;
-    globalThis.setTimeout(() => {
-      if (this.abortController?.signal.aborted) return;
+    const controller = this.abortController;
+    if (!controller) return;
+    this.clearReconnectTimer();
+    this.reconnectTimer = globalThis.setTimeout(() => {
+      if (this.abortController !== controller) return;
+      if (controller.signal.aborted) return;
+      this.reconnectTimer = null;
       void this.startStream();
     }, RECONNECT_DELAY_MS);
   }
