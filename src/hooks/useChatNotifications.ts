@@ -19,7 +19,12 @@ export function useChatNotifications({
   }, [selectedChatId]);
 
   useEffect(() => {
-    if (!identityId) return;
+    const normalizedIdentityId = typeof identityId === 'string' ? identityId.trim() : '';
+    if (!normalizedIdentityId) {
+      notificationsStream.setRooms([]);
+      return;
+    }
+    notificationsStream.setRooms([`thread_participant:${normalizedIdentityId}`]);
     const offMessageCreated = notificationsStream.onMessageCreated(({ threadId }) => {
       if (selectedChatIdRef.current && selectedChatIdRef.current === threadId) {
         void queryClient.invalidateQueries({ queryKey: ['chats', threadId, 'messages'] });
