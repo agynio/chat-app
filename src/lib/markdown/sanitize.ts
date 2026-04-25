@@ -336,6 +336,8 @@ const diagramSanitizeSchema: Schema = {
     style: ['type', 'media'],
   },
   protocols: markdownSanitizeSchema.protocols,
+  clobber: [],
+  clobberPrefix: '',
 };
 
 const cssCommentPattern = /\/\*[\s\S]*?\*\//g;
