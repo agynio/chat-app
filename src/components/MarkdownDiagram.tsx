@@ -393,7 +393,7 @@ export function MarkdownDiagram({ language, source, className = '' }: MarkdownDi
         ) : null}
       </div>
       {shouldShowSource ? (
-        <pre className="w-full min-w-0 max-w-full overflow-x-auto rounded-[10px] bg-[var(--agyn-bg-light)] p-3 font-mono text-sm leading-relaxed text-[var(--agyn-dark)]">
+        <pre className="w-full min-w-0 max-w-full overflow-x-auto">
           <code
             className={`language-${language} block whitespace-pre-wrap font-mono text-sm leading-relaxed text-[var(--agyn-dark)]`}
           >
