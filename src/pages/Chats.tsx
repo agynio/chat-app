@@ -23,12 +23,12 @@ import type { ChatMessage as ChatMessageRecord, Chat } from '@/api/types/chat';
 import type { ChatReminder } from '@/api/types/chat-resources';
 import { cancelReminder } from '@/features/reminders/api';
 import { clearDraft, CHAT_MESSAGE_MAX_LENGTH } from '@/utils/draftStorage';
-import { resolveMessageTraceUrl } from '@/utils/tracing';
 import type { DraftParticipant } from '@/types/chats';
 import type { User } from '@/user/user-types';
 import { useChatNotifications } from '@/hooks/useChatNotifications';
 import { isDraftChatId } from './chats/draftUtils';
 import { formatDate, formatReminderDate, formatReminderScheduledTime, sanitizeSummary } from './chats/formatters';
+import { resolveChatMessageTraceUrl } from './chats/messageTracing';
 import { useChatDrafts } from './chats/useChatDrafts';
 
 const MESSAGE_LENGTH_LIMIT_LABEL = CHAT_MESSAGE_MAX_LENGTH.toLocaleString();
@@ -498,9 +498,10 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
         const senderLabel = message.senderId === currentUserId
           ? 'You'
           : resolveParticipantLabel(message.senderId, participantLookup);
+        const isAgentMessage = agentIdSet.has(message.senderId);
         const role = message.senderId === currentUserId
           ? 'user'
-          : agentIdSet.has(message.senderId)
+          : isAgentMessage
             ? 'assistant'
             : 'user';
         const content = (
@@ -511,7 +512,12 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
             ) : null}
           </div>
         );
-        const traceUrl = resolveMessageTraceUrl(config.tracingAppUrl, organizationId, message.id) ?? undefined;
+        const traceUrl = resolveChatMessageTraceUrl({
+          baseUrl: config.tracingAppUrl,
+          organizationId,
+          messageId: message.id,
+          isAgentMessage,
+        }) ?? undefined;
         return {
           id: message.id,
           role,
