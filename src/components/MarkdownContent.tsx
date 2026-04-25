@@ -263,6 +263,16 @@ export function MarkdownContent({ content, className = '' }: MarkdownContentProp
         return firstElement;
       }
 
+      const firstElementClassName =
+        firstElement && typeof firstElement.props?.className === 'string' ? firstElement.props.className : '';
+      const firstElementClasses = firstElementClassName.split(/\s+/).filter(Boolean);
+      const isDiagramBlock = firstElementClasses.includes('language-mermaid')
+        || firstElementClasses.includes('language-vega-lite');
+
+      if (firstElement && isDiagramBlock) {
+        return firstElement;
+      }
+
       if (firstElement && firstElement.type === 'pre') {
         return firstElement;
       }
