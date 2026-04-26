@@ -90,6 +90,47 @@ jobs:
             echo "WARNING: ArgoCD Application 'chat-app' not found."
           fi
 
+      - name: Allow devspace sync into nginx html
+        shell: bash
+        run: |
+          set -euo pipefail
+          kubectl get deployment chat-app -n platform
+          kubectl patch deployment chat-app -n platform --type merge \
+            -p "$(cat <<'EOF'
+          {
+            "spec": {
+              "template": {
+                "spec": {
+                  "volumes": [
+                    {
+                      "name": "chat-app-html",
+                      "emptyDir": {}
+                    }
+                  ],
+                  "containers": [
+                    {
+                      "name": "chat-app",
+                      "readinessProbe": {
+                        "httpGet": {
+                          "path": "/healthz"
+                        }
+                      },
+                      "volumeMounts": [
+                        {
+                          "name": "chat-app-html",
+                          "mountPath": "/usr/share/nginx/html"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+          EOF
+          )"
+          kubectl rollout status deployment/chat-app -n platform --timeout=5m
+
       - name: Deploy from source
         run: devspace dev --pipeline dev
 
