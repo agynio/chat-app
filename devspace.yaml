@@ -2,84 +2,6 @@ version: v2beta1
 
 vars:
   APP_NAMESPACE: platform
-  E2E_IMAGE: mcr.microsoft.com/playwright:v1.58.2-noble
-
-functions:
-  disable_argocd_sync: |-
-    for app in chat-app; do
-      if kubectl get application "$app" -n argocd >/dev/null 2>&1; then
-        echo "Disabling ArgoCD auto-sync for $app..."
-        kubectl patch application "$app" -n argocd \
-          --type merge \
-          -p '{"spec":{"syncPolicy":{"automated":null}}}'
-        echo "ArgoCD auto-sync disabled for $app."
-      else
-        echo "WARNING: ArgoCD Application '$app' not found in argocd namespace."
-      fi
-    done
-  restore_argocd_sync: &restore_argocd_sync |-
-    for app in chat-app; do
-      if kubectl get application "$app" -n argocd >/dev/null 2>&1; then
-        echo "Re-enabling ArgoCD auto-sync for $app..."
-        kubectl patch application "$app" -n argocd \
-          --type merge \
-          -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
-        echo "ArgoCD auto-sync restored for $app."
-      else
-        echo "WARNING: ArgoCD Application '$app' not found."
-      fi
-    done
-  deploy_pr_image: |-
-    echo "Deploying PR image to cluster..."
-    IMAGE="${PR_IMAGE:-}"
-    if [ -z "$IMAGE" ]; then
-      echo "ERROR: PR_IMAGE not set, aborting hot deploy"
-      exit 1
-    fi
-    kubectl set image deployment/chat-app chat-app="$IMAGE" -n ${APP_NAMESPACE}
-    kubectl rollout status deployment/chat-app -n ${APP_NAMESPACE} --timeout=120s
-    echo "PR image deployed successfully"
-  dump_agent_logs: |-
-    echo "=== ORCHESTRATOR LOGS ==="
-    kubectl logs deploy/agents-orchestrator -n platform --tail=100 || true
-    echo "=== AGENT WORKLOAD PODS (agyn-workloads) ==="
-    kubectl get pods -n agyn-workloads -o wide 2>/dev/null || true
-    echo "=== AGENT WORKLOAD LOGS ==="
-    for pod in $(kubectl get pods -n agyn-workloads -o name 2>/dev/null); do
-      echo "--- $pod ---"
-      kubectl logs "$pod" -n agyn-workloads --all-containers --tail=50 2>/dev/null || true
-    done
-    echo "=== K8S-RUNNER LOGS ==="
-    kubectl logs deploy/k8s-runner -n platform --tail=50 || true
-    echo "=== END DIAGNOSTIC LOGS ==="
-
-deployments:
-  e2e-runner:
-    namespace: ${APP_NAMESPACE}
-    helm:
-      chart:
-        name: component-chart
-        repo: https://charts.devspace.sh
-      values:
-        containers:
-          - image: ${E2E_IMAGE}
-            env:
-              - name: E2E_BASE_URL
-                value: "https://chat.agyn.dev"
-              - name: ARGOS_TOKEN
-                value: "${ARGOS_TOKEN}"
-              - name: ARGOS_BRANCH
-                value: "${ARGOS_BRANCH}"
-              - name: ARGOS_COMMIT
-                value: "${ARGOS_COMMIT}"
-              - name: CI
-                value: "${CI}"
-        labels:
-          app.kubernetes.io/name: chat-app-e2e
-
-commands:
-  test-e2e: |-
-    devspace run-pipeline test-e2e $@
 
 pipelines:
   dev:
@@ -88,7 +10,6 @@ pipelines:
         short: w
         description: "Keep DevSpace running and stream logs"
     run: |-
-      disable_argocd_sync
       if [ "$(get_flag "watch")" == "true" ]; then
         start_dev --disable-pod-replace chat-app
       else
@@ -97,64 +18,7 @@ pipelines:
         stop_dev chat-app
       fi
 
-  test-e2e:
-    run: |-
-      disable_argocd_sync
-      deploy_pr_image
-      create_deployments e2e-runner
-      start_dev e2e-runner &
-      sleep 5
-      set +e
-      exec_container \
-        --label-selector "app.kubernetes.io/name=chat-app-e2e" \
-        -n ${APP_NAMESPACE} \
-        -- bash -c '
-          echo "Waiting for file sync..."
-          for i in $(seq 1 60); do
-            [ -f /opt/app/data/package.json ] && [ -f /opt/app/data/pnpm-lock.yaml ] && [ -f /opt/app/data/test/e2e/fixtures.ts ] && [ -f /opt/app/data/test/e2e/multi-user-fixtures.ts ] && [ -f /opt/app/data/test/e2e/chat-api.ts ] && [ -f /opt/app/data/test/e2e/chat-exchange.spec.ts ] && [ -f /opt/app/data/test/e2e/chat-detail.spec.ts ] && [ -f /opt/app/data/test/e2e/chats-list.spec.ts ] && [ -f /opt/app/data/test/e2e/file-upload.spec.ts ] && [ -f /opt/app/data/test/e2e/sign-in-helper.ts ] && [ -f /opt/app/data/test/e2e/sign-in.spec.ts ] && break
-            sleep 2
-          done
-          if [ ! -f /opt/app/data/package.json ] || [ ! -f /opt/app/data/pnpm-lock.yaml ] || [ ! -f /opt/app/data/test/e2e/fixtures.ts ] || [ ! -f /opt/app/data/test/e2e/multi-user-fixtures.ts ] || [ ! -f /opt/app/data/test/e2e/chat-api.ts ] || [ ! -f /opt/app/data/test/e2e/chat-exchange.spec.ts ] || [ ! -f /opt/app/data/test/e2e/chat-detail.spec.ts ] || [ ! -f /opt/app/data/test/e2e/chats-list.spec.ts ] || [ ! -f /opt/app/data/test/e2e/file-upload.spec.ts ] || [ ! -f /opt/app/data/test/e2e/sign-in-helper.ts ] || [ ! -f /opt/app/data/test/e2e/sign-in.spec.ts ]; then
-            echo "ERROR: File sync timed out (package.json, pnpm-lock.yaml, or test/e2e files not found after 120s)"
-            exit 1
-          fi
-          sleep 5
-          cd /opt/app/data
-          corepack enable
-          pnpm install --frozen-lockfile
-          E2E_BASE_URL=https://chat.agyn.dev ARGOS_TOKEN=${ARGOS_TOKEN} ARGOS_BRANCH=${ARGOS_BRANCH} ARGOS_COMMIT=${ARGOS_COMMIT} CI=true pnpm test:e2e
-        '
-      EXIT_CODE=$?
-      set -e
-      dump_agent_logs || true
-      stop_dev e2e-runner
-      purge_deployments e2e-runner
-      restore_argocd_sync
-      exit ${EXIT_CODE}
-
-hooks:
-  - name: restore-argocd-auto-sync
-    events:
-      - after:dev:chat-app
-    command: bash
-    args:
-      - -c
-      - *restore_argocd_sync
-
 dev:
-  e2e-runner:
-    namespace: ${APP_NAMESPACE}
-    labelSelector:
-      app.kubernetes.io/name: chat-app-e2e
-    command: ["sleep", "infinity"]
-    workingDir: /opt/app/data
-    sync:
-      - path: ./:/opt/app/data
-        excludePaths:
-          - .git/
-          - .devspace/
-          - node_modules/
-          - dist/
   chat-app:
     namespace: ${APP_NAMESPACE}
     labelSelector:
