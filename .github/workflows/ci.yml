@@ -98,9 +98,7 @@ jobs:
         with:
           service: chat_app
         env:
-          ARGOS_TOKEN: ${{ secrets.ARGOS_TOKEN }}
-          ARGOS_BRANCH: ${{ github.head_ref || github.ref_name }}
-          ARGOS_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+          E2E_FAKE_AGENT_RESPONSES: 'true'
 
       - name: Restore ArgoCD auto-sync
         if: always()
