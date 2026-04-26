@@ -19,8 +19,8 @@ const resolveQueue = (chatId: string) => {
 
 const resolveActivity = (chatId: string): ChatActivity => {
   const queued = queuedMessagesByChat.get(chatId) ?? [];
-  if (queued.length > 0) return 'waiting';
-  return 'idle';
+  if (queued.length > 0) return 'pending';
+  return 'finished';
 };
 
 export const chatResources = {

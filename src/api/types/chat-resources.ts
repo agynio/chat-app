@@ -12,4 +12,4 @@ export type ChatReminder = {
 
 export type ReminderItem = ChatReminder;
 
-export type ChatActivity = 'working' | 'waiting' | 'idle';
+export type ChatActivity = 'running' | 'pending' | 'finished';

@@ -8,6 +8,7 @@ import type {
   CreateChatResponse,
   GetChatsResponse,
   GetMessagesResponse,
+  MarkAsReadResponse,
   SendMessageResponse,
   UpdateChatResponse,
 } from '@/api/types/chat';
@@ -59,6 +60,7 @@ type SendMessageContext = {
   queryKey: (string | number)[];
   previous?: InfiniteData<GetMessagesResponse>;
   optimisticId: string;
+  previousChats?: Array<[unknown, InfiniteData<GetChatsResponse> | undefined]>;
 };
 
 export function useSendMessage() {
@@ -69,8 +71,10 @@ export function useSendMessage() {
       chatApi.sendMessage({ chatId, body, fileIds }),
     onMutate: async ({ chatId, body, senderId, fileIds }) => {
       const queryKey = ['chats', chatId, 'messages', MESSAGE_PAGE_SIZE];
+      const chatsQueryKey = ['chats', 'list'];
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData<InfiniteData<GetMessagesResponse>>(queryKey);
+      const previousChats = queryClient.getQueriesData<InfiniteData<GetChatsResponse>>({ queryKey: chatsQueryKey });
       const optimisticId = `optimistic-${Date.now()}`;
       const optimisticMessage: ChatMessage = {
         id: optimisticId,
@@ -96,12 +100,30 @@ export function useSendMessage() {
         return { ...current, pages: [updatedFirst, ...rest] };
       });
 
-      return { queryKey, previous, optimisticId };
+      queryClient.setQueriesData<InfiniteData<GetChatsResponse>>({ queryKey: chatsQueryKey }, (current) => {
+        if (!current) return current;
+        return {
+          ...current,
+          pages: current.pages.map((page) => ({
+            ...page,
+            chats: page.chats.map((chat) => {
+              if (chat.id !== chatId) return chat;
+              if (chat.activityStatus === 'running' || chat.activityStatus === 'pending') return chat;
+              return { ...chat, activityStatus: 'pending' };
+            }),
+          })),
+        };
+      });
+
+      return { queryKey, previous, optimisticId, previousChats };
     },
     onError: (_error, _variables, context) => {
       if (context?.previous) {
         queryClient.setQueryData(context.queryKey, context.previous);
       }
+      context?.previousChats?.forEach(([key, data]) => {
+        queryClient.setQueryData(key, data);
+      });
     },
     onSuccess: (data, variables, context) => {
       const queryKey = context?.queryKey ?? ['chats', variables.chatId, 'messages', MESSAGE_PAGE_SIZE];
@@ -199,16 +221,13 @@ export function useUpdateChat() {
   });
 }
 
-export function useMarkAsRead(chatId: string | null | undefined) {
+export function useMarkAsRead() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (messageIds: string[]) =>
-      chatApi.markAsRead({ chatId: chatId as string, messageIds }),
-    onSuccess: () => {
-      if (chatId) {
-        queryClient.invalidateQueries({ queryKey: ['chats', chatId, 'messages'] });
-        queryClient.invalidateQueries({ queryKey: ['chats', 'list'] });
-      }
+    mutationFn: (request: { chatId: string }) => chatApi.markAsRead({ chatId: request.chatId }),
+    onSuccess: (_data: MarkAsReadResponse, request) => {
+      queryClient.invalidateQueries({ queryKey: ['chats', request.chatId, 'messages'] });
+      queryClient.invalidateQueries({ queryKey: ['chats', 'list'] });
     },
   });
 }

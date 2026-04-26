@@ -391,7 +391,7 @@ function ChatDetailHeader({
       <div className="mb-3 flex items-start justify-between">
         <div className="flex-1">
           <div className="mb-1 flex items-center gap-2">
-            <StatusIndicator status={chat.status} size="sm" showTooltip={false} />
+            {chat.status ? <StatusIndicator status={chat.status} size="sm" showTooltip={false} /> : null}
             <span
               className="text-xs text-[var(--agyn-gray)]"
               data-testid="chat-detail-header-agent"

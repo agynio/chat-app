@@ -24,7 +24,9 @@ type ChatRunSummary = {
 };
 type ServerChatCreatedPayload = { conversation: ChatSummary };
 type ServerChatUpdatedPayload = { conversation: ChatSummary };
-type ServerChatActivityPayload = { conversationId: string; activity: 'working' | 'waiting' | 'idle' };
+type ServerChatActivity = 'running' | 'pending' | 'finished' | 'working' | 'waiting' | 'idle';
+type ChatActivity = 'running' | 'pending' | 'finished';
+type ServerChatActivityPayload = { conversationId: string; activity: ServerChatActivity };
 type ServerChatRemindersPayload = { conversationId: string; remindersCount: number };
 type ServerMessageCreatedPayload = { conversationId: string; message: MessageSummary };
 type ServerRunStatusChangedPayload = { conversationId: string; run: ServerRunSummary };
@@ -48,12 +50,19 @@ type StateListener = (ev: { nodeId: string; state: Record<string, unknown>; upda
 type ReminderListener = (ev: ReminderCountEvent) => void;
 type ChatCreatedPayload = { chat: ChatSummary };
 type ChatUpdatedPayload = { chat: ChatSummary };
-type ChatActivityPayload = { chatId: string; activity: 'working' | 'waiting' | 'idle' };
+type ChatActivityPayload = { chatId: string; activity: ChatActivity };
 type ChatRemindersPayload = { chatId: string; remindersCount: number };
 type ChatMessageCreatedPayload = { message: MessageSummary; chatId: string };
 type ChatRunStatusChangedPayload = { chatId: string; run: ChatRunSummary };
 
 const socketsEnabled = getSocketsEnabled();
+
+const normalizeChatActivity = (activity: ServerChatActivity): ChatActivity => {
+  if (activity === 'working') return 'running';
+  if (activity === 'waiting') return 'pending';
+  if (activity === 'idle') return 'finished';
+  return activity;
+};
 
 class GraphSocket {
   // Typed socket instance; null until connected
@@ -179,7 +188,10 @@ class GraphSocket {
     this.socketCleanup.push(() => socket.off('conversation_updated', handleChatUpdated));
 
     const handleChatActivityChanged: ServerToClientEvents['conversation_activity_changed'] = (payload) => {
-      const chatPayload: ChatActivityPayload = { chatId: payload.conversationId, activity: payload.activity };
+      const chatPayload: ChatActivityPayload = {
+        chatId: payload.conversationId,
+        activity: normalizeChatActivity(payload.activity),
+      };
       for (const fn of this.chatActivityListeners) fn(chatPayload);
     };
     socket.on('conversation_activity_changed', handleChatActivityChanged);

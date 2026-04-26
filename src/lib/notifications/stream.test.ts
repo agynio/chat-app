@@ -5,6 +5,7 @@ const subscribeNotificationsMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@/api/notifications-connect', () => ({
   parseMessageCreatedNotification: () => null,
+  parseWorkloadUpdatedNotification: () => null,
   subscribeNotifications: subscribeNotificationsMock,
 }));
 

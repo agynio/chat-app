@@ -1,8 +1,10 @@
 import {
   parseMessageCreatedNotification,
+  parseWorkloadUpdatedNotification,
   subscribeNotifications,
   type MessageCreatedNotification,
   type NotificationEnvelope,
+  type WorkloadUpdatedNotification,
 } from '@/api/notifications-connect';
 
 const RECONNECT_DELAY_MS = 3000;
@@ -10,6 +12,7 @@ const RECONNECT_DELAY_MS = 3000;
 type EnvelopeListener = (envelope: NotificationEnvelope) => void;
 type ReconnectListener = () => void;
 type MessageCreatedListener = (notification: MessageCreatedNotification) => void;
+type WorkloadUpdatedListener = (notification: WorkloadUpdatedNotification) => void;
 
 const normalizeRooms = (rooms: readonly string[]): string[] => {
   const uniqueRooms = new Set<string>();
@@ -44,6 +47,15 @@ class NotificationsStream {
   onMessageCreated(cb: MessageCreatedListener): () => void {
     const handler = (envelope: NotificationEnvelope) => {
       const parsed = parseMessageCreatedNotification(envelope);
+      if (!parsed) return;
+      cb(parsed);
+    };
+    return this.onEnvelope(handler);
+  }
+
+  onWorkloadUpdated(cb: WorkloadUpdatedListener): () => void {
+    const handler = (envelope: NotificationEnvelope) => {
+      const parsed = parseWorkloadUpdatedNotification(envelope);
       if (!parsed) return;
       cb(parsed);
     };

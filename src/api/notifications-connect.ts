@@ -32,6 +32,10 @@ export type MessageCreatedNotification = {
   senderId: string | null;
 };
 
+export type WorkloadUpdatedNotification = {
+  workloadId: string;
+};
+
 function createEnvelope(payload: Uint8Array, flags = 0x00): Uint8Array {
   const envelope = new Uint8Array(5 + payload.length);
   envelope[0] = flags;
@@ -109,6 +113,17 @@ export function parseMessageCreatedNotification(
   const messageId = typeof payload.message_id === 'string' ? payload.message_id : null;
   const senderId = typeof payload.sender_id === 'string' ? payload.sender_id : null;
   return { threadId, messageId, senderId };
+}
+
+export function parseWorkloadUpdatedNotification(
+  envelope: NotificationEnvelope,
+): WorkloadUpdatedNotification | null {
+  if (envelope.event !== 'workload.updated') return null;
+  const payload = envelope.payload;
+  if (!payload) return null;
+  const workloadId = typeof payload.workload_id === 'string' ? payload.workload_id : null;
+  if (!workloadId) return null;
+  return { workloadId };
 }
 
 export async function* subscribeNotifications(
