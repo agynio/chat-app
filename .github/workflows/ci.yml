@@ -97,8 +97,6 @@ jobs:
         uses: agynio/e2e/.github/actions/run-tests@main
         with:
           service: chat_app
-        env:
-          E2E_FAKE_AGENT_RESPONSES: 'true'
 
       - name: Restore ArgoCD auto-sync
         if: always()
