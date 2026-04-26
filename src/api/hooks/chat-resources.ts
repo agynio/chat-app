@@ -4,7 +4,7 @@ import { chatResources } from '@/api/modules/chat-resources';
 import type { ChatActivity, ChatReminder } from '@/api/types/chat-resources';
 import { UUID_REGEX } from '@/utils/validation';
 
-const DEFAULT_ACTIVITY: ChatActivity = 'idle';
+const DEFAULT_ACTIVITY: ChatActivity = 'finished';
 
 export function useChatActivity(chatId: string | undefined) {
   const queryKey = useMemo(() => ['chats', chatId, 'activity'] as const, [chatId]);

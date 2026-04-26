@@ -5,6 +5,8 @@ export type ChatParticipant = {
 
 export type ChatStatus = 'open' | 'closed';
 
+export type ChatActivityStatus = 'running' | 'pending' | 'finished' | null;
+
 export type Chat = {
   id: string;
   organizationId: string;
@@ -13,6 +15,9 @@ export type Chat = {
   updatedAt: string;
   status: ChatStatus;
   summary: string | null;
+  activityStatus: ChatActivityStatus;
+  unreadCount: number;
+  activeWorkloadIds: string[];
 };
 
 export type ChatMessage = {
@@ -43,5 +48,5 @@ export type SendMessageResponse = { message: ChatMessage };
 export type UpdateChatRequest = { chatId: string; status?: ChatStatus; summary?: string };
 export type UpdateChatResponse = { chat: Chat };
 
-export type MarkAsReadRequest = { chatId: string; messageIds: string[] };
+export type MarkAsReadRequest = { chatId: string };
 export type MarkAsReadResponse = { readCount: number };

@@ -1,7 +1,7 @@
 import { formatDistanceToNow } from 'date-fns';
 import { StatusIndicator, type Status } from './StatusIndicator';
 
-export type ChatStatus = 'running' | 'pending' | 'finished' | 'failed';
+export type ChatStatus = 'running' | 'pending' | 'finished' | null;
 
 export interface ChatListItem {
   id: string;
@@ -46,6 +46,7 @@ export function ChatListItem({
     ? formatDistanceToNow(updatedAtDate, { addSuffix: true })
     : chat.updatedAt;
   const updatedAtTitle = updatedAtValid ? updatedAtDate.toLocaleString() : undefined;
+  const hasUnread = typeof chat.unreadCount === 'number' && chat.unreadCount > 0;
 
   const handleSelect = () => {
     if (onSelect) {
@@ -86,7 +87,7 @@ export function ChatListItem({
               <span className="text-xs text-[var(--agyn-gray)]" title={updatedAtTitle}>
                 {updatedAtRelative}
               </span>
-              {chat.unreadCount && chat.unreadCount > 0 ? (
+              {hasUnread ? (
                 <span className="ml-1 inline-flex items-center justify-center rounded-full bg-[var(--agyn-blue)] text-white text-[10px] px-1.5 py-0.5">
                   {chat.unreadCount}
                 </span>
@@ -108,7 +109,7 @@ export function ChatListItem({
 
           {/* Status Indicator */}
           <div className="flex-shrink-0 flex items-center gap-2">
-            <StatusIndicator status={chat.status as Status} size="sm" />
+            {chat.status ? <StatusIndicator status={chat.status as Status} size="sm" /> : null}
           </div>
         </div>
         

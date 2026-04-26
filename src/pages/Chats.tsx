@@ -180,11 +180,6 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
   const canUpdateChat = Boolean(selectedChatId && !effectiveDraftMode);
   const isThreadDegraded = Boolean(selectedChatId && !effectiveDraftMode && degradedChatIds.has(selectedChatId));
 
-  useChatNotifications({
-    identityId: currentUserId,
-    selectedChatId: effectiveDraftMode ? null : selectedChatId ?? null,
-  });
-
   useEffect(() => {
     clearAttachments();
   }, [clearAttachments, selectedChatId]);
@@ -221,6 +216,26 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     if (!organizationId) return [];
     return items.filter((chat) => !chat.organizationId || chat.organizationId === organizationId);
   }, [chatsQuery.data, organizationId]);
+
+  const visibleChatSummaries = useMemo(() => {
+    if (filterMode === 'all') return chatSummaries;
+    const isOpen = (chat: Chat) => chat.status === 'open';
+    if (filterMode === 'open') return chatSummaries.filter(isOpen);
+    return chatSummaries.filter((chat) => !isOpen(chat));
+  }, [chatSummaries, filterMode]);
+
+  const activeWorkloadIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const chat of visibleChatSummaries) {
+      for (const workloadId of chat.activeWorkloadIds) {
+        const normalized = workloadId.trim();
+        if (normalized) {
+          ids.add(normalized);
+        }
+      }
+    }
+    return [...ids];
+  }, [visibleChatSummaries]);
 
   const userParticipantIds = useMemo(() => {
     const ids = new Set<string>();
@@ -317,7 +332,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
         subtitle: DRAFT_SUMMARY_LABEL,
         createdAt: draft.createdAt,
         updatedAt: draft.createdAt,
-        status: 'pending',
+        status: null,
         isOpen: true,
         unreadCount: 0,
       };
@@ -334,9 +349,9 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
         subtitle: resolveChatSummary(chat.summary),
         createdAt: chat.createdAt,
         updatedAt: chat.updatedAt,
-        status: 'pending',
+        status: chat.activityStatus,
         isOpen: chat.status === 'open',
-        unreadCount: 0,
+        unreadCount: chat.unreadCount,
       } satisfies ChatListItem;
     });
     return [...fromDrafts, ...fromData];
@@ -352,7 +367,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
       subtitle: undefined,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      status: 'pending',
+      status: null,
       isOpen: true,
       unreadCount: 0,
     } satisfies ChatListItem;
@@ -382,9 +397,30 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     refetchOnWindowFocus: false,
   });
 
-  const markAsRead = useMarkAsRead(
-    effectiveDraftMode ? null : selectedChatId,
+  const markAsRead = useMarkAsRead();
+
+  const triggerMarkAsRead = useCallback(
+    (chatId: string) => {
+      const normalized = chatId.trim();
+      if (!normalized) return;
+      markAsRead.mutate(
+        { chatId: normalized },
+        {
+          onError: (error) => {
+            notifyError(error instanceof Error ? error.message : 'Failed to mark messages as read.');
+          },
+        },
+      );
+    },
+    [markAsRead],
   );
+
+  useChatNotifications({
+    identityId: currentUserId,
+    selectedChatId: effectiveDraftMode ? null : selectedChatId ?? null,
+    activeWorkloadIds,
+    onSelectedChatMessageCreated: triggerMarkAsRead,
+  });
 
   const sendMessage = useSendMessage();
   const createChat = useCreateChat(organizationId);
@@ -459,22 +495,17 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     container.scrollTop = container.scrollHeight;
   }, [selectedChatId]);
 
-  const unreadMessageIdsRef = useRef<string | null>(null);
+  const lastReadChatIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!selectedChatId || effectiveDraftMode) return;
-    if (unreadMessageIds.length === 0) return;
-    if (markAsRead.isPending) return;
-    const key = `${selectedChatId}:${unreadMessageIds.join(',')}`;
-    if (unreadMessageIdsRef.current === key) return;
-    unreadMessageIdsRef.current = key;
-    markAsRead.mutate(unreadMessageIds, {
-      onError: (error) => {
-        unreadMessageIdsRef.current = null;
-        notifyError(error instanceof Error ? error.message : 'Failed to mark messages as read.');
-      },
-    });
-  }, [selectedChatId, effectiveDraftMode, unreadMessageIds, markAsRead]);
+    if (!selectedChatId || effectiveDraftMode) {
+      lastReadChatIdRef.current = null;
+      return;
+    }
+    if (lastReadChatIdRef.current === selectedChatId) return;
+    lastReadChatIdRef.current = selectedChatId;
+    triggerMarkAsRead(selectedChatId);
+  }, [selectedChatId, effectiveDraftMode, triggerMarkAsRead]);
 
   const unreadMessageIdSet = useMemo(() => new Set(unreadMessageIds), [unreadMessageIds]);
 

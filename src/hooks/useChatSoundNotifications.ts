@@ -123,7 +123,13 @@ export function useChatSoundNotifications({
     const isInitialized = statusesInitializedRef.current;
     for (const chat of chats) {
       const prevStatus = previous.get(chat.id);
-      if (isInitialized && prevStatus !== undefined && chat.status === 'finished' && prevStatus !== 'finished') {
+      if (
+        isInitialized
+        && prevStatus
+        && chat.status
+        && chat.status === 'finished'
+        && prevStatus !== 'finished'
+      ) {
         controller.handleChatFinished(chat.id);
       }
       previous.set(chat.id, chat.status);
