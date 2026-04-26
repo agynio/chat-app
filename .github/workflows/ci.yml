@@ -95,7 +95,7 @@ jobs:
         run: |
           set -euo pipefail
           kubectl get deployment chat-app -n platform
-          kubectl patch deployment chat-app -n platform --type merge \
+          kubectl patch deployment chat-app -n platform --type strategic \
             -p "$(cat <<'EOF'
           {
             "spec": {
@@ -112,7 +112,8 @@ jobs:
                       "name": "chat-app",
                       "readinessProbe": {
                         "httpGet": {
-                          "path": "/healthz"
+                          "path": "/healthz",
+                          "port": "http"
                         }
                       },
                       "volumeMounts": [
