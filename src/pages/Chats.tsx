@@ -217,9 +217,16 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     return items.filter((chat) => !chat.organizationId || chat.organizationId === organizationId);
   }, [chatsQuery.data, organizationId]);
 
+  const visibleChatSummaries = useMemo(() => {
+    if (filterMode === 'all') return chatSummaries;
+    const isOpen = (chat: Chat) => chat.status === 'open';
+    if (filterMode === 'open') return chatSummaries.filter(isOpen);
+    return chatSummaries.filter((chat) => !isOpen(chat));
+  }, [chatSummaries, filterMode]);
+
   const activeWorkloadIds = useMemo(() => {
     const ids = new Set<string>();
-    for (const chat of chatSummaries) {
+    for (const chat of visibleChatSummaries) {
       for (const workloadId of chat.activeWorkloadIds) {
         const normalized = workloadId.trim();
         if (normalized) {
@@ -228,7 +235,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
       }
     }
     return [...ids];
-  }, [chatSummaries]);
+  }, [visibleChatSummaries]);
 
   const userParticipantIds = useMemo(() => {
     const ids = new Set<string>();
