@@ -63,13 +63,10 @@ export default defineConfig(({ command }) => ({
     command === 'serve' ? serviceWorkerDevPlugin() : serviceWorkerBuildPlugin(),
   ],
   test: {
-    exclude: [...configDefaults.exclude, 'test/e2e/**'],
+    exclude: configDefaults.exclude,
   },
   server: {
     allowedHosts: true,
-    watch: {
-      ignored: ['**/test-results/**', '**/playwright-report/**'],
-    },
     proxy: {
       '/socket.io': {
         target: gatewayTarget,
