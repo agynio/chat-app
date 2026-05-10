@@ -21,7 +21,12 @@ interface MarkdownContentProps {
 
 type MarkdownCodeProps = ComponentPropsWithoutRef<'code'> & {
   inline?: boolean;
-  node?: { type?: string } | null;
+  node?: {
+    type?: string;
+    tagName?: string;
+    position?: unknown;
+    properties?: { className?: string | string[] };
+  } | null;
 };
 
 type MarkdownPreProps = ComponentPropsWithoutRef<'pre'> & {
@@ -58,8 +63,8 @@ type MarkdownListItemProps = ComponentPropsWithoutRef<'li'> & ReactMarkdownListI
 
 const getCodeRenderMeta = ({ inline, className, node }: Pick<MarkdownCodeProps, 'inline' | 'className' | 'node'>) => {
   const match = /language-([\w-]+)/.exec(className || '');
-  const nodeType = typeof node === 'object' && node ? (node as { type?: string }).type : undefined;
-  const isInlineCode = nodeType ? nodeType === 'inlineCode' : inline ?? !match;
+  const nodeType = typeof node === 'object' && node ? node.type : undefined;
+  const isInlineCode = nodeType === 'inlineCode' || inline === true || (inline !== false && !match);
   return { match, isInlineCode } as const;
 };
 
@@ -113,8 +118,8 @@ export function MarkdownContent({ content, className = '' }: MarkdownContentProp
 
     return (
       <code
-        className="bg-[var(--agyn-bg-light)] text-[var(--agyn-purple)] px-1.5 py-0.5 rounded text-sm break-words max-w-full whitespace-pre-wrap"
-        style={{ overflowWrap: 'break-word', wordBreak: 'break-word', ...style }}
+        className="inline rounded bg-[var(--agyn-bg-light)] px-1.5 py-0.5 font-mono text-[0.875em] leading-normal text-[var(--agyn-purple)] break-words"
+        style={{ overflowWrap: 'anywhere', ...style }}
         {...props}
       >
         {children}
@@ -166,32 +171,32 @@ export function MarkdownContent({ content, className = '' }: MarkdownContentProp
   const markdownComponents: Components = {
     // Headings
     h1: ({ children }) => (
-      <h1 className="text-[var(--agyn-dark)] mb-4 mt-6 first:mt-0">
+      <h1 className="mb-4 mt-6 text-3xl font-bold leading-tight tracking-tight text-[var(--agyn-dark)] first:mt-0">
         {children}
       </h1>
     ),
     h2: ({ children }) => (
-      <h2 className="text-[var(--agyn-dark)] mb-3 mt-5 first:mt-0">
+      <h2 className="mb-3 mt-5 text-2xl font-semibold leading-tight text-[var(--agyn-dark)] first:mt-0">
         {children}
       </h2>
     ),
     h3: ({ children }) => (
-      <h3 className="text-[var(--agyn-dark)] mb-2 mt-4 first:mt-0">
+      <h3 className="mb-2 mt-4 text-xl font-semibold leading-snug text-[var(--agyn-dark)] first:mt-0">
         {children}
       </h3>
     ),
     h4: ({ children }) => (
-      <h4 className="text-[var(--agyn-dark)] mb-2 mt-3 first:mt-0">
+      <h4 className="mb-2 mt-3 text-base font-semibold leading-snug text-[var(--agyn-dark)] first:mt-0">
         {children}
       </h4>
     ),
     h5: ({ children }) => (
-      <h5 className="text-[var(--agyn-dark)] mb-2 mt-3 first:mt-0">
+      <h5 className="mb-2 mt-3 text-sm font-semibold leading-snug text-[var(--agyn-dark)] first:mt-0">
         {children}
       </h5>
     ),
     h6: ({ children }) => (
-      <h6 className="text-[var(--agyn-dark)] mb-2 mt-3 first:mt-0">
+      <h6 className="mb-2 mt-3 text-xs font-semibold uppercase leading-snug tracking-wide text-[var(--agyn-gray)] first:mt-0">
         {children}
       </h6>
     ),
@@ -296,9 +301,10 @@ export function MarkdownContent({ content, className = '' }: MarkdownContentProp
               return node;
             }
 
+            const languageClassName = /(?:^|\s)(language-[\w-]+)(?:\s|$)/.exec(node.props.className ?? '')?.[1];
             const mergedChildClassName = [
               'block whitespace-pre-wrap font-mono text-sm leading-relaxed text-[var(--agyn-dark)]',
-              node.props.className,
+              languageClassName,
             ]
               .filter(Boolean)
               .join(' ');
