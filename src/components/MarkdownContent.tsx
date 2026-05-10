@@ -98,7 +98,7 @@ export function MarkdownContent({ content, className = '' }: MarkdownContentProp
     if (!isInlineCode && match) {
       const language = match[1].toLowerCase();
       if (language === 'mermaid' || language === 'vega-lite') {
-        return <MarkdownDiagram language={language} source={text} className={codeClassName} />;
+        return <MarkdownDiagram language={language} source={text} />;
       }
     }
 
@@ -259,13 +259,7 @@ export function MarkdownContent({ content, className = '' }: MarkdownContentProp
       const childArray = Children.toArray(children);
       const firstElement = childArray.find((node): node is ReactElement => isValidElement(node));
 
-      const firstElementClassName =
-        firstElement && typeof firstElement.props?.className === 'string' ? firstElement.props.className : '';
-      const languageMatch = /language-([\w-]+)/i.exec(firstElementClassName);
-      const normalizedLanguage = languageMatch?.[1].toLowerCase();
-      const isDiagramBlock = normalizedLanguage === 'mermaid' || normalizedLanguage === 'vega-lite';
-
-      if (firstElement && isDiagramBlock) {
+      if (firstElement && firstElement.type === MarkdownDiagram) {
         return firstElement;
       }
 
