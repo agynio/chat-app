@@ -94,14 +94,6 @@ export function MarkdownContent({ content, className = '' }: MarkdownContentProp
   const renderCode = ({ inline, className: codeClassName, children, style, node, ...props }: MarkdownCodeProps) => {
     const { match, isInlineCode } = getCodeRenderMeta({ inline, className: codeClassName, node });
     const text = String(children).replace(/\n$/, '');
-
-    if (!isInlineCode && match) {
-      const language = match[1].toLowerCase();
-      if (language === 'mermaid' || language === 'vega-lite') {
-        return <MarkdownDiagram language={language} source={text} className={codeClassName} />;
-      }
-    }
-
     if (!isInlineCode) {
       return (
         <code
@@ -259,13 +251,22 @@ export function MarkdownContent({ content, className = '' }: MarkdownContentProp
       const childArray = Children.toArray(children);
       const firstElement = childArray.find((node): node is ReactElement => isValidElement(node));
 
-      const firstElementClassName =
-        firstElement && typeof firstElement.props?.className === 'string' ? firstElement.props.className : '';
-      const languageMatch = /language-([\w-]+)/i.exec(firstElementClassName);
-      const normalizedLanguage = languageMatch?.[1].toLowerCase();
-      const isDiagramBlock = normalizedLanguage === 'mermaid' || normalizedLanguage === 'vega-lite';
+      // Special-case diagram code blocks so they are rendered without the normal
+      // markdown <pre> framing. This keeps the rest of markdown behavior unchanged.
+      if (
+        firstElement &&
+        firstElement.type === 'code' &&
+        typeof firstElement.props.className === 'string'
+      ) {
+        const match = /language-([\w-]+)/.exec(firstElement.props.className);
+        const language = match?.[1]?.toLowerCase();
+        if (language === 'mermaid' || language === 'vega-lite') {
+          const text = String(firstElement.props.children ?? '').replace(/\n$/, '');
+          return <MarkdownDiagram language={language} source={text} />;
+        }
+      }
 
-      if (firstElement && isDiagramBlock) {
+      if (firstElement && firstElement.type === MarkdownDiagram) {
         return firstElement;
       }
 
