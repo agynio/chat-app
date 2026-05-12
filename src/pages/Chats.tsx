@@ -14,6 +14,7 @@ import { useFileAttachments } from '@/hooks/useFileAttachments';
 import { config } from '@/config';
 import { useAgentsList } from '@/api/hooks/agents';
 import { useBatchGetUsers } from '@/api/hooks/users';
+import { useAppProfiles } from '@/api/hooks/apps';
 import { useChats, useChatMessages, useCreateChat, useSendMessage, useMarkAsRead, useUpdateChat } from '@/api/hooks/chat';
 import {
   useChatReminders,
@@ -447,6 +448,44 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     [chatMessages, deletedMessageIds],
   );
 
+  const appIdentityIds = useMemo(() => {
+    const participantIds = new Set<string>();
+    const fetchedUserIds = new Set((batchUsersQuery.data?.users ?? []).map((fetchedUser) => fetchedUser.meta.id));
+    const ids = new Set<string>();
+
+    for (const chat of chatSummaries) {
+      for (const participant of chat.participants) {
+        participantIds.add(participant.id);
+        if (
+          batchUsersQuery.isFetched &&
+          participant.id !== currentUserId &&
+          !agentIdSet.has(participant.id) &&
+          !fetchedUserIds.has(participant.id)
+        ) {
+          ids.add(participant.id);
+        }
+      }
+    }
+
+    for (const message of filteredChatMessages) {
+      if (!participantIds.has(message.senderId)) {
+        ids.add(message.senderId);
+      }
+    }
+
+    return [...ids];
+  }, [agentIdSet, batchUsersQuery.data, batchUsersQuery.isFetched, chatSummaries, currentUserId, filteredChatMessages]);
+
+  const appProfiles = useAppProfiles(appIdentityIds);
+
+  const senderLookup = useMemo(() => {
+    const map = new Map(participantLookup);
+    for (const [identityId, profile] of appProfiles) {
+      map.set(identityId, { id: identityId, name: profile.name || profile.slug || identityId, type: 'app' });
+    }
+    return map;
+  }, [appProfiles, participantLookup]);
+
   const unreadCount = chatMessagesQuery.data?.pages?.[0]?.unreadCount ?? 0;
   const unreadMessageIds = useMemo(() => {
     if (!unreadCount) return [] as string[];
@@ -528,7 +567,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
       filteredChatMessages.map((message) => {
         const senderLabel = message.senderId === currentUserId
           ? 'You'
-          : resolveParticipantLabel(message.senderId, participantLookup);
+          : resolveParticipantLabel(message.senderId, senderLookup);
         const isAgentMessage = agentIdSet.has(message.senderId);
         const role = message.senderId === currentUserId
           ? 'user'
@@ -561,7 +600,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
           traceUrl,
         } satisfies ChatMessage;
       }),
-    [filteredChatMessages, currentUserId, participantLookup, agentIdSet, unreadMessageIdSet, handleDeleteMessage, organizationId],
+    [filteredChatMessages, currentUserId, senderLookup, agentIdSet, unreadMessageIdSet, handleDeleteMessage, organizationId],
   );
 
   const chatRuns = useMemo<ChatRun[]>(() => {
