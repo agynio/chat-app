@@ -1,7 +1,7 @@
 export type DraftParticipant = {
   id: string;
   name: string;
-  type: 'agent' | 'user';
+  type: 'agent' | 'user' | 'app';
 };
 
 export type ChatDraft = {
