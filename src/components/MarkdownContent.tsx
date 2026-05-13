@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 import { MediaAudio } from './MediaAudio';
 import { MediaImage } from './MediaImage';
 import { MediaVideo } from './MediaVideo';
-import { MarkdownDiagram } from './MarkdownDiagram';
+import { MarkdownDiagram, type DiagramLanguage } from './MarkdownDiagram';
 
 interface MarkdownContentProps {
   content: string;
@@ -67,6 +67,12 @@ const getCodeRenderMeta = ({ inline, className, node }: Pick<MarkdownCodeProps, 
   const isInlineCode = nodeType === 'inlineCode' || inline === true || (inline !== false && !match);
   return { match, isInlineCode } as const;
 };
+
+function resolveDiagramLanguage(className: string | undefined): DiagramLanguage | null {
+  const language = /(?:^|\s)language-([\w-]+)(?:\s|$)/.exec(className ?? '')?.[1]?.toLowerCase();
+  if (language === 'mermaid' || language === 'vega-lite') return language;
+  return null;
+}
 
 const normalizeAltText = (alt?: string) => alt?.trim().toLowerCase() ?? '';
 const AGYN_PROTOCOL_PREFIX = 'agyn:';
@@ -255,20 +261,16 @@ export function MarkdownContent({ content, className = '' }: MarkdownContentProp
     pre: ({ children, className: preClassName, style: preStyle, node: _node, ...props }: MarkdownPreProps) => {
       const childArray = Children.toArray(children);
       const firstElement = childArray.find((node): node is ReactElement => isValidElement(node));
+      const firstElementClassName = isValidElement<{ className?: string }>(firstElement)
+        ? firstElement.props.className
+        : undefined;
+      const diagramLanguage = resolveDiagramLanguage(firstElementClassName);
 
       // Special-case diagram code blocks so they are rendered without the normal
       // markdown <pre> framing. This keeps the rest of markdown behavior unchanged.
-      if (
-        firstElement &&
-        firstElement.type === 'code' &&
-        typeof firstElement.props.className === 'string'
-      ) {
-        const match = /language-([\w-]+)/.exec(firstElement.props.className);
-        const language = match?.[1]?.toLowerCase();
-        if (language === 'mermaid' || language === 'vega-lite') {
-          const text = String(firstElement.props.children ?? '').replace(/\n$/, '');
-          return <MarkdownDiagram language={language} source={text} />;
-        }
+      if (firstElement && diagramLanguage) {
+        const text = String(firstElement.props.children ?? '').replace(/\n$/, '');
+        return <MarkdownDiagram language={diagramLanguage} source={text} />;
       }
 
       if (firstElement && firstElement.type === MarkdownDiagram) {

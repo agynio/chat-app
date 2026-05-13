@@ -18,6 +18,12 @@ vi.mock('./MediaVideo', () => ({
   MediaVideo: () => null,
 }));
 
+vi.mock('./MarkdownDiagram', () => ({
+  MarkdownDiagram: ({ language, source }: { language: string; source: string }) => (
+    <div data-testid={`markdown-${language}`}>{source}</div>
+  ),
+}));
+
 describe('MarkdownContent', () => {
   beforeEach(() => {
     mediaImageSpy.mockClear();
@@ -52,6 +58,16 @@ describe('MarkdownContent', () => {
 
     expect(markup).toContain('<h1 class="mb-4 mt-6 text-3xl font-bold');
     expect(markup).toContain('Header</h1>');
+  });
+
+  it('renders mermaid code blocks as diagrams', async () => {
+    const { MarkdownContent } = await import('./MarkdownContent');
+
+    const markup = renderToStaticMarkup(<MarkdownContent content={"```mermaid\ngraph TD\nA-->B\n```"} />);
+
+    expect(markup).toContain('data-testid="markdown-mermaid"');
+    expect(markup).toContain('graph TD');
+    expect(markup).not.toContain('<pre');
   });
 
 });
