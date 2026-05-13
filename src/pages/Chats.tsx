@@ -15,7 +15,14 @@ import { config } from '@/config';
 import { useAgentsList } from '@/api/hooks/agents';
 import { useBatchGetUsers } from '@/api/hooks/users';
 import { useAppProfiles } from '@/api/hooks/apps';
-import { useChats, useChatMessages, useCreateChat, useSendMessage, useMarkAsRead, useUpdateChat } from '@/api/hooks/chat';
+import {
+  useChats,
+  useChatMessages,
+  useCreateChat,
+  useSendMessage,
+  useMarkAsRead,
+  useUpdateChat,
+} from '@/api/hooks/chat';
 import {
   useChatReminders,
 } from '@/api/hooks/chat-resources';
@@ -381,6 +388,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
   );
   const {
     hasNextPage: hasNextMessagesPage,
+    isFetching: isFetchingMessages,
     isFetchingNextPage: isFetchingMessagesNextPage,
     fetchNextPage: fetchNextMessagesPage,
   } = chatMessagesQuery;
@@ -510,6 +518,21 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     },
     [hasNextMessagesPage, isFetchingMessagesNextPage, fetchNextMessagesPage, selectedChatId, effectiveDraftMode],
   );
+
+  useEffect(() => {
+    if (!selectedChatId || effectiveDraftMode || !hasNextMessagesPage || isFetchingMessages) return;
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    if (container.scrollHeight > container.clientHeight) return;
+    void fetchNextMessagesPage();
+  }, [
+    selectedChatId,
+    effectiveDraftMode,
+    hasNextMessagesPage,
+    isFetchingMessages,
+    fetchNextMessagesPage,
+    filteredChatMessages.length,
+  ]);
 
   useEffect(() => {
     const container = scrollContainerRef.current;

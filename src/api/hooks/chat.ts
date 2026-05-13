@@ -12,8 +12,9 @@ import type {
   SendMessageResponse,
   UpdateChatResponse,
 } from '@/api/types/chat';
+import { chatMessagesQueryKey } from './chat-query-keys';
 const CHAT_PAGE_SIZE = 25;
-const MESSAGE_PAGE_SIZE = 30;
+const MESSAGE_PAGE_SIZE = chatMessagesQueryKey('page-size')[3];
 
 export function useChats(organizationId: string | undefined) {
   return useInfiniteQuery({
@@ -35,7 +36,7 @@ export function useChats(organizationId: string | undefined) {
 export function useChatMessages(chatId: string | null | undefined) {
   return useInfiniteQuery({
     enabled: Boolean(chatId),
-    queryKey: ['chats', chatId ?? 'none', 'messages', MESSAGE_PAGE_SIZE],
+    queryKey: chatId ? chatMessagesQueryKey(chatId) : ['chats', 'messages', 'disabled', MESSAGE_PAGE_SIZE],
     queryFn: ({ pageParam }) =>
       chatApi.getMessages({
         chatId: chatId as string,
@@ -70,7 +71,7 @@ export function useSendMessage() {
     mutationFn: ({ chatId, body, fileIds }) =>
       chatApi.sendMessage({ chatId, body, fileIds }),
     onMutate: async ({ chatId, body, senderId, fileIds }) => {
-      const queryKey = ['chats', chatId, 'messages', MESSAGE_PAGE_SIZE];
+      const queryKey = chatMessagesQueryKey(chatId);
       const chatsQueryKey = ['chats', 'list'];
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData<InfiniteData<GetMessagesResponse>>(queryKey);
@@ -126,7 +127,7 @@ export function useSendMessage() {
       });
     },
     onSuccess: (data, variables, context) => {
-      const queryKey = context?.queryKey ?? ['chats', variables.chatId, 'messages', MESSAGE_PAGE_SIZE];
+      const queryKey = context?.queryKey ?? chatMessagesQueryKey(variables.chatId);
       queryClient.setQueryData<InfiniteData<GetMessagesResponse>>(queryKey, (current) => {
         if (!current) return current;
         return {
