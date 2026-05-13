@@ -169,6 +169,7 @@ jobs:
         uses: agynio/e2e/.github/actions/run-tests@main
         with:
           service: chat_app
+          tag: svc_gateway,svc_agents_orchestrator,svc_organizations,svc_files,svc_media_proxy
           include_smoke: 'false'
 
       - name: Restore ArgoCD auto-sync
