@@ -12,9 +12,8 @@ import type {
   SendMessageResponse,
   UpdateChatResponse,
 } from '@/api/types/chat';
-import { chatMessagesQueryKey } from './chat-query-keys';
+import { CHAT_MESSAGES_PAGE_SIZE, chatMessagesQueryKey } from './chat-query-keys';
 const CHAT_PAGE_SIZE = 25;
-const MESSAGE_PAGE_SIZE = chatMessagesQueryKey('page-size')[3];
 
 export function useChats(organizationId: string | undefined) {
   return useInfiniteQuery({
@@ -36,11 +35,11 @@ export function useChats(organizationId: string | undefined) {
 export function useChatMessages(chatId: string | null | undefined) {
   return useInfiniteQuery({
     enabled: Boolean(chatId),
-    queryKey: chatId ? chatMessagesQueryKey(chatId) : ['chats', 'messages', 'disabled', MESSAGE_PAGE_SIZE],
+    queryKey: chatId ? chatMessagesQueryKey(chatId) : ['chats', 'messages', 'disabled', CHAT_MESSAGES_PAGE_SIZE],
     queryFn: ({ pageParam }) =>
       chatApi.getMessages({
         chatId: chatId as string,
-        pageSize: MESSAGE_PAGE_SIZE,
+        pageSize: CHAT_MESSAGES_PAGE_SIZE,
         pageToken: pageParam ?? undefined,
       }),
     initialPageParam: undefined as string | undefined,

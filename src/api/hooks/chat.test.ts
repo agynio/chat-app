@@ -1,6 +1,6 @@
 import { QueryClient, type InfiniteData } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
-import { chatMessagesPageSize, chatMessagesQueryKey, type ChatMessagesQueryKey } from './chat-query-keys';
+import { CHAT_MESSAGES_PAGE_SIZE, chatMessagesQueryKey, type ChatMessagesQueryKey } from './chat-query-keys';
 import type { GetMessagesResponse } from '@/api/types/chat';
 
 function message(id: string, chatId: string) {
@@ -15,10 +15,8 @@ function message(id: string, chatId: string) {
 }
 
 async function fetchMessagesPage(queryKey: ChatMessagesQueryKey, pageToken?: string): Promise<GetMessagesResponse> {
-  return getMessages({ chatId: queryKey[1], pageSize: pageSizeFromKey(queryKey), pageToken });
+  return getMessages({ chatId: queryKey[1], pageSize: CHAT_MESSAGES_PAGE_SIZE, pageToken });
 }
-
-const pageSizeFromKey = chatMessagesPageSize;
 
 const getMessages = vi.fn<
   (request: { chatId: string; pageSize: number; pageToken?: string }) => Promise<GetMessagesResponse>
@@ -82,22 +80,22 @@ describe('chat message pagination cache', () => {
 
     expect(getMessages).toHaveBeenNthCalledWith(1, {
       chatId: 'thread-a',
-      pageSize: pageSizeFromKey(threadAKey),
+      pageSize: CHAT_MESSAGES_PAGE_SIZE,
       pageToken: undefined,
     });
     expect(getMessages).toHaveBeenNthCalledWith(2, {
       chatId: 'thread-b',
-      pageSize: pageSizeFromKey(threadBKey),
+      pageSize: CHAT_MESSAGES_PAGE_SIZE,
       pageToken: undefined,
     });
     expect(getMessages).toHaveBeenNthCalledWith(3, {
       chatId: 'thread-a',
-      pageSize: pageSizeFromKey(threadAKey),
+      pageSize: CHAT_MESSAGES_PAGE_SIZE,
       pageToken: undefined,
     });
     expect(getMessages).toHaveBeenNthCalledWith(4, {
       chatId: 'thread-a',
-      pageSize: pageSizeFromKey(threadAKey),
+      pageSize: CHAT_MESSAGES_PAGE_SIZE,
       pageToken: 'thread-a-page-2',
     });
 
