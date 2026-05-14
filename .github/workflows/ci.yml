@@ -170,7 +170,7 @@ jobs:
         env:
           E2E_SUITES: playwright-chat-app
         with:
-          tag: svc_gateway,svc_organizations
+          tag: svc_files,svc_media_proxy
           include_smoke: 'false'
 
       - name: Restore ArgoCD auto-sync
