@@ -388,7 +388,6 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
   );
   const {
     hasNextPage: hasNextMessagesPage,
-    isFetching: isFetchingMessages,
     isFetchingNextPage: isFetchingMessagesNextPage,
     fetchNextPage: fetchNextMessagesPage,
   } = chatMessagesQuery;
@@ -510,29 +509,10 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
       const container = event.currentTarget;
       const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
       isAtBottomRef.current = distanceFromBottom < 80;
-      if (!selectedChatId || effectiveDraftMode) return;
-      if (container.scrollTop <= 120 && hasNextMessagesPage && !isFetchingMessagesNextPage) {
-        pendingScrollHeightRef.current = container.scrollHeight;
-        void fetchNextMessagesPage();
-      }
     },
-    [hasNextMessagesPage, isFetchingMessagesNextPage, fetchNextMessagesPage, selectedChatId, effectiveDraftMode],
+    [],
   );
 
-  useEffect(() => {
-    if (!selectedChatId || effectiveDraftMode || !hasNextMessagesPage || isFetchingMessages) return;
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    if (container.scrollHeight > container.clientHeight) return;
-    void fetchNextMessagesPage();
-  }, [
-    selectedChatId,
-    effectiveDraftMode,
-    hasNextMessagesPage,
-    isFetchingMessages,
-    fetchNextMessagesPage,
-    filteredChatMessages.length,
-  ]);
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -738,6 +718,14 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     }
   }, [chatsQuery]);
 
+  const handleChatLoadMore = useCallback(() => {
+    if (!selectedChatId || effectiveDraftMode) return;
+    if (!hasNextMessagesPage || isFetchingMessagesNextPage) return;
+    const container = scrollContainerRef.current;
+    pendingScrollHeightRef.current = container?.scrollHeight ?? null;
+    void fetchNextMessagesPage();
+  }, [selectedChatId, effectiveDraftMode, hasNextMessagesPage, isFetchingMessagesNextPage, fetchNextMessagesPage]);
+
   const handleCancelQueuedMessage = useCallback(
     (_queuedMessageId: string) => {
       if (!selectedChatId || effectiveDraftMode) return;
@@ -901,8 +889,11 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
           isEmpty={isChatsEmpty}
           listError={listErrorNode}
           detailError={detailErrorNode}
+          chatHasMore={hasNextMessagesPage ?? false}
+          chatIsLoadingMore={isFetchingMessagesNextPage}
           chatScrollRef={scrollContainerRef}
           onChatScroll={handleChatScroll}
+          onChatLoadMore={handleChatLoadMore}
           onFilterModeChange={handleFilterChange}
           onSelectChat={handleSelectChat}
           onInputValueChange={handleInputValueChange}

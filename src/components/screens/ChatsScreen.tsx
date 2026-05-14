@@ -573,8 +573,11 @@ interface ChatsScreenProps {
   isEmpty?: boolean;
   listError?: ReactNode;
   detailError?: ReactNode;
+  chatHasMore?: boolean;
+  chatIsLoadingMore?: boolean;
   chatScrollRef?: Ref<HTMLDivElement>;
   onChatScroll?: (event: UIEvent<HTMLDivElement>) => void;
+  onChatLoadMore?: () => void;
   onFilterModeChange?: (mode: 'all' | 'open' | 'closed') => void;
   onSelectChat?: (chatId: string) => void;
   onInputValueChange?: (value: string) => void;
@@ -622,6 +625,8 @@ export default function ChatsScreen({
   isEmpty = false,
   listError,
   detailError,
+  chatHasMore = false,
+  chatIsLoadingMore = false,
   onFilterModeChange,
   onSelectChat,
   onInputValueChange,
@@ -653,6 +658,7 @@ export default function ChatsScreen({
   className = '',
   chatScrollRef,
   onChatScroll,
+  onChatLoadMore,
 }: ChatsScreenProps) {
   const filteredChats = chats.filter((chat) => {
     if (filterMode === 'all') return true;
@@ -814,8 +820,11 @@ export default function ChatsScreen({
             queuedMessages={chatQueuedMessages}
             reminders={chatReminders}
             className="h-full rounded-none border-none"
+            hasMore={chatHasMore}
+            isLoadingMore={chatIsLoadingMore}
             scrollRef={chatScrollRef}
             onScroll={onChatScroll}
+            onLoadMore={onChatLoadMore}
             onCancelQueuedMessage={onCancelQueuedMessage}
             onCancelReminder={onCancelReminder}
             isCancelQueuedMessagesPending={isCancelQueuedMessagesPending}

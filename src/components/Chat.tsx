@@ -40,7 +40,10 @@ interface ChatProps {
   footer?: ReactNode;
   className?: string;
   scrollRef?: Ref<HTMLDivElement>;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
   onScroll?: (event: UIEvent<HTMLDivElement>) => void;
+  onLoadMore?: () => void;
   onCancelQueuedMessage?: (queuedMessageId: string) => void;
   onCancelReminder?: (reminderId: string) => void;
   isCancelQueuedMessagesPending?: boolean;
@@ -61,13 +64,24 @@ function ChatImpl({
   footer = EMPTY_FOOTER,
   className = '',
   scrollRef,
+  hasMore = false,
+  isLoadingMore = false,
   onScroll,
+  onLoadMore,
   onCancelQueuedMessage,
   onCancelReminder,
   isCancelQueuedMessagesPending = false,
   cancellingReminderIds = EMPTY_REMINDER_IDS,
 }: ChatProps) {
   const hasQueueOrReminders = queuedMessages.length > 0 || reminders.length > 0;
+
+  const handleScroll = (event: UIEvent<HTMLDivElement>) => {
+    onScroll?.(event);
+    if (!hasMore || isLoadingMore || !onLoadMore) return;
+    if (event.currentTarget.scrollTop <= 120) {
+      onLoadMore();
+    }
+  };
 
   return (
     <div
@@ -85,7 +99,7 @@ function ChatImpl({
       <div
         className="flex-1 min-w-0 overflow-y-auto flex flex-col"
         ref={scrollRef ?? undefined}
-        onScroll={onScroll}
+        onScroll={handleScroll}
         data-testid="chat-scroll"
       >
         {/* Runs Container */}
@@ -170,7 +184,10 @@ function areEqual(prev: ChatProps, next: ChatProps): boolean {
     prev.footer === next.footer &&
     prev.className === next.className &&
     prev.scrollRef === next.scrollRef &&
+    prev.hasMore === next.hasMore &&
+    prev.isLoadingMore === next.isLoadingMore &&
     prev.onScroll === next.onScroll &&
+    prev.onLoadMore === next.onLoadMore &&
     prev.onCancelQueuedMessage === next.onCancelQueuedMessage &&
     prev.onCancelReminder === next.onCancelReminder &&
     prev.isCancelQueuedMessagesPending === next.isCancelQueuedMessagesPending &&

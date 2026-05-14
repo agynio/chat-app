@@ -35,7 +35,13 @@ export type CreateChatResponse = { chat: Chat };
 export type GetChatsRequest = { organizationId: string; pageSize?: number; pageToken?: string };
 export type GetChatsResponse = { chats: Chat[]; nextPageToken?: string };
 
-export type GetMessagesRequest = { chatId: string; pageSize?: number; pageToken?: string };
+export type GetMessagesOrder = 'MESSAGE_ORDER_NEWEST_FIRST' | 'MESSAGE_ORDER_OLDEST_FIRST';
+export type GetMessagesRequest = {
+  chatId: string;
+  pageSize?: number;
+  pageToken?: string;
+  order?: GetMessagesOrder;
+};
 export type GetMessagesResponse = {
   messages: ChatMessage[];
   nextPageToken?: string;
