@@ -12,7 +12,7 @@ import type {
   SendMessageResponse,
   UpdateChatResponse,
 } from '@/api/types/chat';
-import { CHAT_MESSAGES_PAGE_SIZE, CHAT_MESSAGES_ORDER, chatMessagesQueryKey } from './chat-query-keys';
+import { CHAT_MESSAGES_PAGE_SIZE, chatMessagesQueryKey } from './chat-query-keys';
 const CHAT_PAGE_SIZE = 25;
 
 export function useChats(organizationId: string | undefined) {
@@ -41,7 +41,6 @@ export function useChatMessages(chatId: string | null | undefined) {
         chatId: chatId as string,
         pageSize: CHAT_MESSAGES_PAGE_SIZE,
         pageToken: pageParam ?? undefined,
-        order: CHAT_MESSAGES_ORDER,
       }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextPageToken ?? undefined,

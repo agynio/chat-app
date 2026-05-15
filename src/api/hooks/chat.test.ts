@@ -1,12 +1,7 @@
 import { QueryClient, type InfiniteData } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
-import {
-  CHAT_MESSAGES_ORDER,
-  CHAT_MESSAGES_PAGE_SIZE,
-  chatMessagesQueryKey,
-  type ChatMessagesQueryKey,
-} from './chat-query-keys';
-import type { GetMessagesOrder, GetMessagesResponse } from '@/api/types/chat';
+import { CHAT_MESSAGES_PAGE_SIZE, chatMessagesQueryKey, type ChatMessagesQueryKey } from './chat-query-keys';
+import type { GetMessagesResponse } from '@/api/types/chat';
 
 function message(id: string, chatId: string) {
   return {
@@ -24,7 +19,6 @@ async function fetchMessagesPage(queryKey: ChatMessagesQueryKey, pageToken?: str
     chatId: queryKey[1],
     pageSize: CHAT_MESSAGES_PAGE_SIZE,
     pageToken,
-    order: CHAT_MESSAGES_ORDER,
   });
 }
 
@@ -33,39 +27,12 @@ const getMessages = vi.fn<
     chatId: string;
     pageSize: number;
     pageToken?: string;
-    order: GetMessagesOrder;
   }) => Promise<GetMessagesResponse>
 >();
 
 describe('chat message pagination cache', () => {
   it('uses separate cache keys for each chat thread', () => {
     expect(chatMessagesQueryKey('thread-a')).not.toEqual(chatMessagesQueryKey('thread-b'));
-  });
-
-  it('requests the newest page first', async () => {
-    const client = new QueryClient();
-    getMessages.mockResolvedValue({
-      messages: [message('latest', 'thread-latest')],
-      nextPageToken: 'older-page',
-      unreadCount: 0,
-    });
-
-    const queryKey = chatMessagesQueryKey('thread-latest');
-    await client.fetchInfiniteQuery({
-      queryKey,
-      queryFn: ({ pageParam }) => fetchMessagesPage(queryKey, pageParam),
-      initialPageParam: undefined as string | undefined,
-      getNextPageParam: (lastPage) => lastPage.nextPageToken ?? undefined,
-    });
-
-    expect(getMessages).toHaveBeenCalledWith({
-      chatId: 'thread-latest',
-      pageSize: CHAT_MESSAGES_PAGE_SIZE,
-      pageToken: undefined,
-      order: CHAT_MESSAGES_ORDER,
-    });
-
-    getMessages.mockReset();
   });
 
   it('keeps pagination cursors isolated by thread', async () => {
@@ -123,25 +90,21 @@ describe('chat message pagination cache', () => {
       chatId: 'thread-a',
       pageSize: CHAT_MESSAGES_PAGE_SIZE,
       pageToken: undefined,
-      order: CHAT_MESSAGES_ORDER,
     });
     expect(getMessages).toHaveBeenNthCalledWith(2, {
       chatId: 'thread-b',
       pageSize: CHAT_MESSAGES_PAGE_SIZE,
       pageToken: undefined,
-      order: CHAT_MESSAGES_ORDER,
     });
     expect(getMessages).toHaveBeenNthCalledWith(3, {
       chatId: 'thread-a',
       pageSize: CHAT_MESSAGES_PAGE_SIZE,
       pageToken: undefined,
-      order: CHAT_MESSAGES_ORDER,
     });
     expect(getMessages).toHaveBeenNthCalledWith(4, {
       chatId: 'thread-a',
       pageSize: CHAT_MESSAGES_PAGE_SIZE,
       pageToken: 'thread-a-page-2',
-      order: CHAT_MESSAGES_ORDER,
     });
 
     getMessages.mockReset();
