@@ -89,7 +89,7 @@ jobs:
       - name: Provision cluster
         id: provision_cluster
         continue-on-error: true
-        uses: agynio/bootstrap/.github/actions/provision@51aa9934430a2fdeedd1d31d53695909ab6acc39
+        uses: agynio/bootstrap/.github/actions/provision@main
 
       - name: Cleanup failed bootstrap cluster
         if: steps.provision_cluster.outcome == 'failure'
@@ -103,10 +103,10 @@ jobs:
 
       - name: Retry provision cluster
         if: steps.provision_cluster.outcome == 'failure'
-        uses: agynio/bootstrap/.github/actions/provision@51aa9934430a2fdeedd1d31d53695909ab6acc39
+        uses: agynio/bootstrap/.github/actions/provision@main
 
       - name: Setup DevSpace
-        uses: agynio/e2e/.github/actions/setup-devspace@b5cb7a85f8cbfc20e6a274c1728ee3f3c53bb873
+        uses: agynio/e2e/.github/actions/setup-devspace@main
 
       - name: Disable ArgoCD auto-sync
         shell: bash
@@ -166,11 +166,10 @@ jobs:
         run: devspace dev --pipeline dev
 
       - name: Run E2E tests
-        uses: agynio/e2e/.github/actions/run-tests@b5cb7a85f8cbfc20e6a274c1728ee3f3c53bb873
+        uses: agynio/e2e/.github/actions/run-tests@main
         with:
           service: chat_app
           include_smoke: 'false'
-          ref: b5cb7a85f8cbfc20e6a274c1728ee3f3c53bb873
 
       - name: Restore ArgoCD auto-sync
         if: always()
