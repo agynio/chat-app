@@ -167,8 +167,10 @@ jobs:
 
       - name: Run E2E tests
         uses: agynio/e2e/.github/actions/run-tests@main
+        env:
+          E2E_SUITES: playwright-chat-app
         with:
-          service: chat_app
+          tag: svc_files,svc_media_proxy
           include_smoke: 'false'
 
       - name: Restore ArgoCD auto-sync
