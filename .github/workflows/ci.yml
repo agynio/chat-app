@@ -165,12 +165,19 @@ jobs:
       - name: Deploy from source
         run: devspace dev --pipeline dev
 
+      - name: Wait for chat ingress
+        shell: bash
+        run: |
+          set -euo pipefail
+          kubectl rollout status deployment/chat-app -n platform --timeout=5m
+          for url in https://chat.agyn.dev https://mockauth.dev; do
+            curl -fsSIk --retry 20 --retry-all-errors --retry-delay 3 --connect-timeout 5 --max-time 15 "$url" >/dev/null
+          done
+
       - name: Run E2E tests
         uses: agynio/e2e/.github/actions/run-tests@main
-        env:
-          E2E_SUITES: playwright-chat-app
         with:
-          tag: svc_files,svc_media_proxy
+          service: chat_app
           include_smoke: 'false'
 
       - name: Restore ArgoCD auto-sync
