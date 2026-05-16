@@ -166,7 +166,7 @@ jobs:
         run: devspace dev --pipeline dev
 
       - name: Run E2E tests
-        uses: agynio/e2e/.github/actions/run-tests@main
+        uses: agynio/e2e/.github/actions/run-tests@a8abde620dbfd9b9ed499aa59847928f2c81e1e0
         with:
           service: chat_app
           include_smoke: 'false'
