@@ -113,6 +113,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
 
   const selectedChatId = params.chatId ?? selectedChatIdState;
   const previousOrganizationIdRef = useRef<string | null>(selectedOrganizationId ?? null);
+  const chatListRefetchOrganizationRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (params.chatId) {
@@ -147,6 +148,22 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
 
   const chatsQuery = useChats(organizationId);
   const agentsQuery = useAgentsList(organizationId);
+  const refetchChats = chatsQuery.refetch;
+
+  useEffect(() => {
+    if (!organizationId) {
+      chatListRefetchOrganizationRef.current = null;
+      return;
+    }
+    if (chatListRefetchOrganizationRef.current === organizationId) return;
+    chatListRefetchOrganizationRef.current = organizationId;
+
+    const timeout = window.setTimeout(() => {
+      void refetchChats();
+    }, 250);
+
+    return () => window.clearTimeout(timeout);
+  }, [organizationId, refetchChats]);
 
   const canFallbackToChat = useCallback(
     (chatId: string) => {
