@@ -27,8 +27,7 @@ export function useChats(organizationId: string | undefined) {
       }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextPageToken ?? undefined,
-    staleTime: 0,
-    refetchOnMount: 'always',
+    staleTime: 15000,
     refetchOnWindowFocus: false,
   });
 }
