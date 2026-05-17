@@ -170,7 +170,7 @@ jobs:
         with:
           service: chat_app
           include_smoke: 'false'
-          ref: 4139d0c3e152889ac6dfcdbc1342a9ebd65c5fb4
+          ref: 31c8277065339717dbaf60cf1815e6d6e3f627f6
 
       - name: Restore ArgoCD auto-sync
         if: always()
