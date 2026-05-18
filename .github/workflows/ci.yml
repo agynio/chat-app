@@ -172,6 +172,37 @@ jobs:
       - name: Deploy from source
         run: devspace dev --pipeline dev
 
+      - name: Export chat app E2E endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          domain=$(terraform -chdir=bootstrap/stacks/k8s output -raw domain)
+          ingress_port=$(terraform -chdir=bootstrap/stacks/k8s output -raw ingress_port)
+          if [ -z "$domain" ] || [ -z "$ingress_port" ]; then
+            echo "Bootstrap outputs missing domain or ingress_port." >&2
+            exit 1
+          fi
+          echo "E2E_BASE_URL=https://chat.${domain}:${ingress_port}" >> "$GITHUB_ENV"
+
+      - name: Wait for chat ingress
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in {1..30}; do
+            status=$(curl -sS -k -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 10 "$E2E_BASE_URL/healthz" || true)
+            if [ "$status" = "200" ]; then
+              exit 0
+            fi
+            echo "Waiting for ${E2E_BASE_URL}/healthz (attempt ${attempt}/30, status ${status})"
+            sleep 5
+          done
+          echo "Chat ingress did not become ready at ${E2E_BASE_URL}/healthz" >&2
+          kubectl get virtualservice -A || true
+          kubectl get gateway -A || true
+          kubectl get svc,pods -n istio-gateway -o wide || true
+          kubectl get svc,pods -n platform -l app.kubernetes.io/name=chat-app -o wide || true
+          exit 1
+
       - name: Run E2E tests
         uses: agynio/e2e/.github/actions/run-tests@a8abde620dbfd9b9ed499aa59847928f2c81e1e0
         env:
