@@ -92,7 +92,9 @@ jobs:
       - name: Provision cluster
         id: provision_cluster
         continue-on-error: true
-        uses: agynio/bootstrap/.github/actions/provision@main
+        uses: agynio/bootstrap/.github/actions/provision@8f63e050dd80f6c6d7b77082e517f8967442b675
+        with:
+          ref: 8f63e050dd80f6c6d7b77082e517f8967442b675
 
       - name: Cleanup failed bootstrap cluster
         if: steps.provision_cluster.outcome == 'failure'
@@ -106,7 +108,9 @@ jobs:
 
       - name: Retry provision cluster
         if: steps.provision_cluster.outcome == 'failure'
-        uses: agynio/bootstrap/.github/actions/provision@main
+        uses: agynio/bootstrap/.github/actions/provision@8f63e050dd80f6c6d7b77082e517f8967442b675
+        with:
+          ref: 8f63e050dd80f6c6d7b77082e517f8967442b675
 
       - name: Setup DevSpace
         uses: agynio/e2e/.github/actions/setup-devspace@main
