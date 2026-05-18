@@ -50,7 +50,7 @@ jobs:
       contents: read
       packages: read
     env:
-      BOOTSTRAP_PROVISION_REF: c4f7f7bf7954e0eab929b30eded0c409b0997f21
+      BOOTSTRAP_PROVISION_REF: 8f63e050dd80f6c6d7b77082e517f8967442b675
       AGYN_AGENT_INIT_IMAGE: ghcr.io/agynio/agent-init:v1.0.0
       TF_VAR_threads_chart_version: 0.4.12
       TF_VAR_threads_image_tag: 0.4.12
@@ -92,7 +92,7 @@ jobs:
       - name: Provision cluster
         id: provision_cluster
         continue-on-error: true
-        uses: agynio/bootstrap/.github/actions/provision@c4f7f7bf7954e0eab929b30eded0c409b0997f21
+        uses: agynio/bootstrap/.github/actions/provision@8f63e050dd80f6c6d7b77082e517f8967442b675
         with:
           ref: ${{ env.BOOTSTRAP_PROVISION_REF }}
 
@@ -108,7 +108,7 @@ jobs:
 
       - name: Retry provision cluster
         if: steps.provision_cluster.outcome == 'failure'
-        uses: agynio/bootstrap/.github/actions/provision@c4f7f7bf7954e0eab929b30eded0c409b0997f21
+        uses: agynio/bootstrap/.github/actions/provision@8f63e050dd80f6c6d7b77082e517f8967442b675
         with:
           ref: ${{ env.BOOTSTRAP_PROVISION_REF }}
 
