@@ -52,6 +52,7 @@ jobs:
     env:
       BOOTSTRAP_PROVISION_REF: 8f63e050dd80f6c6d7b77082e517f8967442b675
       AGYN_AGENT_INIT_IMAGE: ghcr.io/agynio/agent-init:v1.0.0
+      TF_VAR_gateway_image_tag: sha-5ee6937
       TF_VAR_threads_chart_version: 0.4.12
       TF_VAR_threads_image_tag: 0.4.12
       AGN_INIT_IMAGE: ghcr.io/agynio/agent-init-agn:0.4.16
