@@ -50,6 +50,7 @@ jobs:
       contents: read
       packages: read
     env:
+      BOOTSTRAP_PROVISION_REF: c4f7f7bf7954e0eab929b30eded0c409b0997f21
       AGYN_AGENT_INIT_IMAGE: ghcr.io/agynio/agent-init:v1.0.0
       TF_VAR_threads_chart_version: 0.4.12
       TF_VAR_threads_image_tag: 0.4.12
@@ -91,7 +92,9 @@ jobs:
       - name: Provision cluster
         id: provision_cluster
         continue-on-error: true
-        uses: agynio/bootstrap/.github/actions/provision@main
+        uses: agynio/bootstrap/.github/actions/provision@c4f7f7bf7954e0eab929b30eded0c409b0997f21
+        with:
+          ref: ${{ env.BOOTSTRAP_PROVISION_REF }}
 
       - name: Cleanup failed bootstrap cluster
         if: steps.provision_cluster.outcome == 'failure'
@@ -105,7 +108,9 @@ jobs:
 
       - name: Retry provision cluster
         if: steps.provision_cluster.outcome == 'failure'
-        uses: agynio/bootstrap/.github/actions/provision@main
+        uses: agynio/bootstrap/.github/actions/provision@c4f7f7bf7954e0eab929b30eded0c409b0997f21
+        with:
+          ref: ${{ env.BOOTSTRAP_PROVISION_REF }}
 
       - name: Setup DevSpace
         uses: agynio/e2e/.github/actions/setup-devspace@main
@@ -169,10 +174,12 @@ jobs:
 
       - name: Run E2E tests
         uses: agynio/e2e/.github/actions/run-tests@a8abde620dbfd9b9ed499aa59847928f2c81e1e0
+        env:
+          E2E_SUITES: playwright-chat-app
         with:
-          service: chat_app
+          tag: svc_files,svc_media_proxy
           include_smoke: 'false'
-          ref: 31c8277065339717dbaf60cf1815e6d6e3f627f6
+          ref: 32837a4c8a22940b297f0bf923ff379733a3ccc2
 
       - name: Restore ArgoCD auto-sync
         if: always()
