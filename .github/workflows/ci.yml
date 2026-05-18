@@ -133,24 +133,22 @@ jobs:
           curl -fsS -k \
             "https://openfga.${domain}:${ingress_port}/stores/${store_id}/authorization-models/${model_id}" \
             -o "$model_json"
-          python3 - "$model_json" <<'PY'
-          import json
-          import sys
+          node - "$model_json" <<'NODE'
+          const fs = require('node:fs');
 
-          with open(sys.argv[1], "r", encoding="utf-8") as handle:
-              payload = json.load(handle)
+          const payload = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const model = payload.authorization_model ?? payload;
+          const definitions = model.type_definitions ?? [];
+          const typeNames = definitions
+            .map((definition) => definition.type)
+            .filter((typeName) => typeof typeName === 'string' && typeName.length > 0)
+            .sort();
 
-          model = payload.get("authorization_model") or payload
-          definitions = model.get("type_definitions") or []
-          type_names = sorted(
-              definition.get("type")
-              for definition in definitions
-              if isinstance(definition, dict) and definition.get("type")
-          )
-          print("openfga model types:", ", ".join(type_names))
-          if "agent" not in type_names:
-              raise SystemExit("OpenFGA authorization model is missing required type: agent")
-          PY
+          console.log(`openfga model types: ${typeNames.join(', ')}`);
+          if (!typeNames.includes('agent')) {
+            throw new Error('OpenFGA authorization model is missing required type: agent');
+          }
+          NODE
 
       - name: Setup DevSpace
         uses: agynio/e2e/.github/actions/setup-devspace@main
