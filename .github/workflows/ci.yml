@@ -180,7 +180,7 @@ jobs:
         with:
           tag: svc_files,svc_media_proxy
           include_smoke: 'false'
-          ref: cd9cc1672ae4c5c177ba2b0d9c1e8eb21ae86d20
+          ref: cd9cc165a7012f4283f367163b60c9ab62f14f42
 
       - name: Restore ArgoCD auto-sync
         if: always()
