@@ -86,6 +86,8 @@ jobs:
         id: provision_cluster
         continue-on-error: true
         uses: agynio/bootstrap/.github/actions/provision@main
+        with:
+          ref: main
 
       - name: Cleanup failed bootstrap cluster
         if: steps.provision_cluster.outcome == 'failure'
@@ -100,6 +102,55 @@ jobs:
       - name: Retry provision cluster
         if: steps.provision_cluster.outcome == 'failure'
         uses: agynio/bootstrap/.github/actions/provision@main
+        with:
+          ref: main
+
+      - name: Verify bootstrap authorization model
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "bootstrap HEAD: $(git -C bootstrap rev-parse HEAD)"
+          echo "bootstrap origin/main: $(git -C bootstrap rev-parse origin/main)"
+          git -C bootstrap --no-pager log -1 --oneline
+
+          grep -n 'authorization//terraform?ref=' bootstrap/stacks/platform/main.tf
+          grep -n 'authorization_chart_version' bootstrap/stacks/platform/variables.tf
+          grep -n 'default     = "0.5.3"' bootstrap/stacks/platform/variables.tf
+
+          rm -rf bootstrap/stacks/platform/.terraform/modules/openfga_authorization
+          terraform -chdir=bootstrap/stacks/platform init -upgrade
+          terraform -chdir=bootstrap/stacks/platform apply -auto-approve
+
+          domain=$(terraform -chdir=bootstrap/stacks/k8s output -raw domain)
+          ingress_port=$(terraform -chdir=bootstrap/stacks/k8s output -raw ingress_port)
+          store_id=$(terraform -chdir=bootstrap/stacks/platform output -raw openfga_store_id)
+          model_id=$(terraform -chdir=bootstrap/stacks/platform output -raw openfga_model_id)
+          echo "openfga store id: ${store_id}"
+          echo "openfga model id: ${model_id}"
+
+          model_json=$(mktemp)
+          curl -fsS -k \
+            "https://openfga.${domain}:${ingress_port}/stores/${store_id}/authorization-models/${model_id}" \
+            -o "$model_json"
+          python3 - "$model_json" <<'PY'
+          import json
+          import sys
+
+          with open(sys.argv[1], "r", encoding="utf-8") as handle:
+              payload = json.load(handle)
+
+          model = payload.get("authorization_model") or payload
+          definitions = model.get("type_definitions") or []
+          type_names = sorted(
+              definition.get("type")
+              for definition in definitions
+              if isinstance(definition, dict) and definition.get("type")
+          )
+          print("openfga model types:", ", ".join(type_names))
+          if "agent" not in type_names:
+              raise SystemExit("OpenFGA authorization model is missing required type: agent")
+          PY
 
       - name: Setup DevSpace
         uses: agynio/e2e/.github/actions/setup-devspace@main
@@ -160,37 +211,6 @@ jobs:
 
       - name: Deploy from source
         run: devspace dev --pipeline dev
-
-      - name: Export chat app E2E endpoint
-        shell: bash
-        run: |
-          set -euo pipefail
-          domain=$(terraform -chdir=bootstrap/stacks/k8s output -raw domain)
-          ingress_port=$(terraform -chdir=bootstrap/stacks/k8s output -raw ingress_port)
-          if [ -z "$domain" ] || [ -z "$ingress_port" ]; then
-            echo "Bootstrap outputs missing domain or ingress_port." >&2
-            exit 1
-          fi
-          echo "E2E_BASE_URL=https://chat.${domain}:${ingress_port}" >> "$GITHUB_ENV"
-
-      - name: Wait for chat ingress
-        shell: bash
-        run: |
-          set -euo pipefail
-          for attempt in {1..30}; do
-            status=$(curl -sS -k -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 10 "$E2E_BASE_URL/healthz" || true)
-            if [ "$status" = "200" ]; then
-              exit 0
-            fi
-            echo "Waiting for ${E2E_BASE_URL}/healthz (attempt ${attempt}/30, status ${status})"
-            sleep 5
-          done
-          echo "Chat ingress did not become ready at ${E2E_BASE_URL}/healthz" >&2
-          kubectl get virtualservice -A || true
-          kubectl get gateway -A || true
-          kubectl get svc,pods -n istio-gateway -o wide || true
-          kubectl get svc,pods -n platform -l app.kubernetes.io/name=chat-app -o wide || true
-          exit 1
 
       - name: Run E2E tests
         uses: agynio/e2e/.github/actions/run-tests@a8abde620dbfd9b9ed499aa59847928f2c81e1e0
