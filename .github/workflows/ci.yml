@@ -82,19 +82,10 @@ jobs:
         env:
           VITE_API_BASE_URL: /api
 
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Provision cluster
         id: provision_cluster
         continue-on-error: true
-        uses: agynio/bootstrap/.github/actions/provision@8f63e050dd80f6c6d7b77082e517f8967442b675
-        with:
-          ref: 8f63e050dd80f6c6d7b77082e517f8967442b675
+        uses: agynio/bootstrap/.github/actions/provision@main
 
       - name: Cleanup failed bootstrap cluster
         if: steps.provision_cluster.outcome == 'failure'
@@ -108,9 +99,7 @@ jobs:
 
       - name: Retry provision cluster
         if: steps.provision_cluster.outcome == 'failure'
-        uses: agynio/bootstrap/.github/actions/provision@8f63e050dd80f6c6d7b77082e517f8967442b675
-        with:
-          ref: 8f63e050dd80f6c6d7b77082e517f8967442b675
+        uses: agynio/bootstrap/.github/actions/provision@main
 
       - name: Setup DevSpace
         uses: agynio/e2e/.github/actions/setup-devspace@main
