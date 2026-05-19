@@ -210,12 +210,61 @@ jobs:
       - name: Deploy from source
         run: devspace dev --pipeline dev
 
+      - name: Export chat app E2E endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          domain=$(terraform -chdir=bootstrap/stacks/k8s output -raw domain)
+          ingress_port=$(terraform -chdir=bootstrap/stacks/k8s output -raw ingress_port)
+          if [ -z "$domain" ] || [ -z "$ingress_port" ]; then
+            echo "Bootstrap outputs missing domain or ingress_port." >&2
+            exit 1
+          fi
+          echo "E2E_DOMAIN=${domain}" >> "$GITHUB_ENV"
+          echo "E2E_INGRESS_PORT=${ingress_port}" >> "$GITHUB_ENV"
+          echo "E2E_BASE_URL=https://chat.${domain}" >> "$GITHUB_ENV"
+          echo "HOST_E2E_BASE_URL=https://127.0.0.1:${ingress_port}" >> "$GITHUB_ENV"
+
+      - name: Validate E2E URLs
+        shell: bash
+        run: |
+          set -euo pipefail
+          ingress_port="${HOST_E2E_BASE_URL##*:}"
+
+          echo "Runner ingress URL: ${HOST_E2E_BASE_URL}"
+          echo "In-cluster app URL: ${E2E_BASE_URL}"
+          echo "E2E domain: ${E2E_DOMAIN}"
+
+          for attempt in {1..30}; do
+            status=$(curl -sS -k -H "Host: chat.${E2E_DOMAIN}" -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 10 "${HOST_E2E_BASE_URL}/healthz" || true)
+            if [ "$status" = "200" ]; then
+              break
+            fi
+            echo "Waiting for ${HOST_E2E_BASE_URL}/healthz via Host: chat.${E2E_DOMAIN} (attempt ${attempt}/30, status ${status})"
+            sleep 5
+          done
+          if [ "${status}" != "200" ]; then
+            echo "Chat ingress did not become ready at ${HOST_E2E_BASE_URL}/healthz" >&2
+            kubectl get virtualservice -A || true
+            kubectl get gateway -A || true
+            kubectl get svc,pods -n istio-gateway -o wide || true
+            kubectl get svc,pods -n platform -l app.kubernetes.io/name=chat-app -o wide || true
+            exit 1
+          fi
+
+          curl -v -k -H "Host: chat.${E2E_DOMAIN}" --connect-timeout 5 --max-time 10 "${HOST_E2E_BASE_URL}/healthz"
+          openssl s_client -connect "127.0.0.1:${ingress_port}" -servername "chat.${E2E_DOMAIN}" -brief </dev/null
+          kubectl run e2e-url-check -n platform --rm -i --restart=Never --image=curlimages/curl:8.11.1 \
+            --env="E2E_BASE_URL=${E2E_BASE_URL}" \
+            -- \
+            sh -c 'set -eu; curl -v -k --connect-timeout 5 --max-time 10 "$E2E_BASE_URL/healthz"; curl -v -k --connect-timeout 5 --max-time 10 "$E2E_BASE_URL/"'
+
       - name: Run E2E tests
         uses: agynio/e2e/.github/actions/run-tests@a8abde620dbfd9b9ed499aa59847928f2c81e1e0
         env:
           E2E_SUITES: playwright-chat-app
         with:
-          tag: svc_files,svc_media_proxy
+          service: chat_app
           include_smoke: 'false'
           ref: cd9cc165a7012f4283f367163b60c9ab62f14f42
 
