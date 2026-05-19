@@ -36,6 +36,7 @@ import type { User } from '@/user/user-types';
 import { useChatNotifications } from '@/hooks/useChatNotifications';
 import { isDraftChatId } from './chats/draftUtils';
 import { formatDate, formatReminderDate, formatReminderScheduledTime, sanitizeSummary } from './chats/formatters';
+import { shouldFetchNextMessagesPage } from './chats/messagePagination';
 import { resolveChatMessageTraceUrl } from './chats/messageTracing';
 import { useChatDrafts } from './chats/useChatDrafts';
 
@@ -557,6 +558,24 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     if (!container) return;
     container.scrollTop = container.scrollHeight;
   }, [selectedChatId]);
+
+  useEffect(() => {
+    if (!selectedChatId || effectiveDraftMode) return;
+    if (!hasNextMessagesPage || isFetchingMessagesNextPage) return;
+
+    const container = scrollContainerRef.current;
+    if (!container || !shouldFetchNextMessagesPage(container)) return;
+
+    pendingScrollHeightRef.current = container.scrollHeight;
+    void fetchNextMessagesPage();
+  }, [
+    filteredChatMessages.length,
+    hasNextMessagesPage,
+    isFetchingMessagesNextPage,
+    fetchNextMessagesPage,
+    selectedChatId,
+    effectiveDraftMode,
+  ]);
 
   const lastReadChatIdRef = useRef<string | null>(null);
 

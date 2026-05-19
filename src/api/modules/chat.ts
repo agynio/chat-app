@@ -1,5 +1,4 @@
 import { connectPost } from '@/api/connect';
-import { readChatOrganizationMap, writeChatOrganization } from '@/utils/chatOrganizationStorage';
 import type {
   ChatMessage,
   Chat,
@@ -68,11 +67,15 @@ function normalizeMessage(message: ChatMessage): ChatMessage {
   return { ...message, fileIds: message.fileIds ?? [] };
 }
 
-function normalizeChat(chat: ChatWire): Chat {
+function normalizeChat(chat: ChatWire, requestOrganizationId?: string): Chat {
   const { organization_id: organizationIdSnake, ...rest } = chat;
+  const organizationId = chat.organizationId ?? organizationIdSnake ?? requestOrganizationId;
+  if (!organizationId) {
+    throw new Error(`Chat ${chat.id} response missing organizationId.`);
+  }
   return {
     ...rest,
-    organizationId: chat.organizationId ?? organizationIdSnake ?? '',
+    organizationId,
     participants: chat.participants ?? [],
     status: protoStatusToLocal(chat.status),
     summary: chat.summary ?? null,
@@ -82,29 +85,16 @@ function normalizeChat(chat: ChatWire): Chat {
   };
 }
 
-function resolveChatOrganization(chat: Chat, fallbackOrganizationId?: string): Chat {
-  if (chat.organizationId) {
-    writeChatOrganization(chat.id, chat.organizationId);
-    return chat;
-  }
-
-  const organizationId = readChatOrganizationMap()[chat.id] ?? fallbackOrganizationId;
-  if (!organizationId) return chat;
-
-  writeChatOrganization(chat.id, organizationId);
-  return { ...chat, organizationId };
-}
-
 export const chatApi = {
   createChat: async (req: CreateChatRequest): Promise<CreateChatResponse> => {
     const resp = await connectPost<CreateChatRequest, CreateChatResponse>(CHAT_SERVICE, 'CreateChat', req);
-    return { ...resp, chat: resolveChatOrganization(normalizeChat(resp.chat), req.organizationId) };
+    return { ...resp, chat: normalizeChat(resp.chat, req.organizationId) };
   },
   getChats: async (req: GetChatsRequest): Promise<GetChatsResponse> => {
     const resp = await connectPost<GetChatsRequest, GetChatsResponse>(CHAT_SERVICE, 'GetChats', req);
     return {
       ...resp,
-      chats: (resp.chats ?? []).map((chat) => resolveChatOrganization(normalizeChat(chat), req.organizationId)),
+      chats: (resp.chats ?? []).map((chat) => normalizeChat(chat, req.organizationId)),
     };
   },
   getMessages: async (req: GetMessagesRequest): Promise<GetMessagesResponse> => {
@@ -127,7 +117,7 @@ export const chatApi = {
       status: localStatusToProto(req.status),
     };
     const resp = await connectPost<UpdateChatRequestWire, UpdateChatResponse>(CHAT_SERVICE, 'UpdateChat', payload);
-    return { ...resp, chat: resolveChatOrganization(normalizeChat(resp.chat)) };
+    return { ...resp, chat: normalizeChat(resp.chat) };
   },
   markAsRead: (req: MarkAsReadRequest): Promise<MarkAsReadResponse> =>
     connectPost<MarkAsReadRequest, MarkAsReadResponse>(CHAT_SERVICE, 'MarkAsRead', req),
