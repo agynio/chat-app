@@ -239,7 +239,7 @@ jobs:
         env:
           E2E_SUITES: playwright-chat-app
         with:
-          service: chat_app
+          tag: svc_files,svc_media_proxy
           include_smoke: 'false'
           ref: cd9cc165a7012f4283f367163b60c9ab62f14f42
 
