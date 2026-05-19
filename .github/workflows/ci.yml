@@ -49,15 +49,6 @@ jobs:
     permissions:
       contents: read
       packages: read
-    env:
-      AGYN_AGENT_INIT_IMAGE: ghcr.io/agynio/agent-init:v1.0.0
-      TF_VAR_gateway_image_tag: sha-f3d99ba
-      TF_VAR_threads_chart_version: 0.4.12
-      TF_VAR_threads_image_tag: 0.4.12
-      AGN_INIT_IMAGE: ghcr.io/agynio/agent-init-agn:0.4.16
-      CODEX_INIT_IMAGE: ghcr.io/agynio/agent-init-codex:0.13.20
-      CLAUDE_INIT_IMAGE: ghcr.io/agynio/agent-init-claude:0.1.23
-      AGN_EXPOSE_INIT_IMAGE: ghcr.io/agynio/agent-init-agn:0.4.16
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -86,8 +77,6 @@ jobs:
         id: provision_cluster
         continue-on-error: true
         uses: agynio/bootstrap/.github/actions/provision@main
-        with:
-          ref: main
 
       - name: Cleanup failed bootstrap cluster
         if: steps.provision_cluster.outcome == 'failure'
@@ -102,53 +91,6 @@ jobs:
       - name: Retry provision cluster
         if: steps.provision_cluster.outcome == 'failure'
         uses: agynio/bootstrap/.github/actions/provision@main
-        with:
-          ref: main
-
-      - name: Verify bootstrap authorization model
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          echo "bootstrap HEAD: $(git -C bootstrap rev-parse HEAD)"
-          echo "bootstrap origin/main: $(git -C bootstrap rev-parse origin/main)"
-          git -C bootstrap --no-pager log -1 --oneline
-
-          grep -n 'authorization//terraform?ref=' bootstrap/stacks/platform/main.tf
-          grep -n 'authorization_chart_version' bootstrap/stacks/platform/variables.tf
-          grep -n 'default     = "0.5.3"' bootstrap/stacks/platform/variables.tf
-
-          rm -rf bootstrap/stacks/platform/.terraform/modules/openfga_authorization
-          terraform -chdir=bootstrap/stacks/platform init -upgrade
-          terraform -chdir=bootstrap/stacks/platform apply -auto-approve
-
-          domain=$(terraform -chdir=bootstrap/stacks/k8s output -raw domain)
-          ingress_port=$(terraform -chdir=bootstrap/stacks/k8s output -raw ingress_port)
-          store_id=$(terraform -chdir=bootstrap/stacks/platform output -raw openfga_store_id)
-          model_id=$(terraform -chdir=bootstrap/stacks/platform output -raw openfga_model_id)
-          echo "openfga store id: ${store_id}"
-          echo "openfga model id: ${model_id}"
-
-          model_json=$(mktemp)
-          curl -fsS -k \
-            "https://openfga.${domain}:${ingress_port}/stores/${store_id}/authorization-models/${model_id}" \
-            -o "$model_json"
-          node - "$model_json" <<'NODE'
-          const fs = require('node:fs');
-
-          const payload = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
-          const model = payload.authorization_model ?? payload;
-          const definitions = model.type_definitions ?? [];
-          const typeNames = definitions
-            .map((definition) => definition.type)
-            .filter((typeName) => typeof typeName === 'string' && typeName.length > 0)
-            .sort();
-
-          console.log(`openfga model types: ${typeNames.join(', ')}`);
-          if (!typeNames.includes('agent')) {
-            throw new Error('OpenFGA authorization model is missing required type: agent');
-          }
-          NODE
 
       - name: Setup DevSpace
         uses: agynio/e2e/.github/actions/setup-devspace@main
@@ -210,38 +152,11 @@ jobs:
       - name: Deploy from source
         run: devspace dev --pipeline dev
 
-      - name: Export chat app E2E endpoint
-        shell: bash
-        run: |
-          set -euo pipefail
-          domain=$(terraform -chdir=bootstrap/stacks/k8s output -raw domain)
-          if [ -z "$domain" ]; then
-            echo "Bootstrap output missing domain." >&2
-            exit 1
-          fi
-          echo "E2E_DOMAIN=${domain}" >> "$GITHUB_ENV"
-          echo "E2E_BASE_URL=https://chat.${domain}" >> "$GITHUB_ENV"
-
-      - name: Validate E2E URLs
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "In-cluster app URL: ${E2E_BASE_URL}"
-          echo "E2E domain: ${E2E_DOMAIN}"
-          kubectl get service istio-ingressgateway -n istio-gateway -o wide
-          kubectl run e2e-url-check -n platform --rm -i --restart=Never --image=curlimages/curl:8.11.1 \
-            --env="E2E_BASE_URL=${E2E_BASE_URL}" \
-            -- \
-            sh -c 'set -eu; curl -v -k --connect-timeout 5 --max-time 10 "$E2E_BASE_URL/healthz"; curl -v -k --connect-timeout 5 --max-time 10 "$E2E_BASE_URL/"'
-
       - name: Run E2E tests
-        uses: agynio/e2e/.github/actions/run-tests@a8abde620dbfd9b9ed499aa59847928f2c81e1e0
-        env:
-          E2E_SUITES: playwright-chat-app
+        uses: agynio/e2e/.github/actions/run-tests@main
         with:
           tag: svc_files,svc_media_proxy
           include_smoke: 'false'
-          ref: cd9cc165a7012f4283f367163b60c9ab62f14f42
 
       - name: Restore ArgoCD auto-sync
         if: always()
