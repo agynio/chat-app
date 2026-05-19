@@ -75,21 +75,6 @@ jobs:
 
       - name: Provision cluster
         id: provision_cluster
-        continue-on-error: true
-        uses: agynio/bootstrap/.github/actions/provision@main
-
-      - name: Cleanup failed bootstrap cluster
-        if: steps.provision_cluster.outcome == 'failure'
-        shell: bash
-        run: |
-          set -euo pipefail
-          if command -v k3d >/dev/null 2>&1; then
-            k3d cluster delete agyn-local || true
-          fi
-          rm -rf bootstrap
-
-      - name: Retry provision cluster
-        if: steps.provision_cluster.outcome == 'failure'
         uses: agynio/bootstrap/.github/actions/provision@main
 
       - name: Setup DevSpace
