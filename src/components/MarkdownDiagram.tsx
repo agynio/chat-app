@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import type { EmbedOptions } from 'vega-embed';
+import { compile } from 'vega-lite';
 import type { VisualizationSpec } from 'vega-lite';
 import { cn } from '@/lib/utils';
 import { sanitizeDiagramSvg } from '@/lib/markdown/sanitize';
@@ -165,9 +166,22 @@ function validateVegaLiteSpec(source: string): { spec?: VisualizationSpec; error
     return { error: 'Vega-Lite spec must be a JSON object.' };
   }
 
+  if (!Array.isArray(parsed)) {
+    const specRecord = parsed as Record<string, unknown>;
+    if ('mark' in specRecord && !('encoding' in specRecord)) {
+      return { error: 'Vega-Lite encoding is required.' };
+    }
+  }
+
   const error = findVegaLiteError(parsed);
   if (error) {
     return { error };
+  }
+
+  try {
+    compile(parsed as VisualizationSpec);
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Vega-Lite spec is invalid.' };
   }
 
   return { spec: parsed as VisualizationSpec };

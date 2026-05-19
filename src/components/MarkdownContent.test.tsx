@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mediaImageSpy = vi.fn();
+const markdownDiagramSpy = vi.fn();
 
 vi.mock('./MediaImage', () => ({
   MediaImage: (props: { src: string }) => {
@@ -19,14 +20,16 @@ vi.mock('./MediaVideo', () => ({
 }));
 
 vi.mock('./MarkdownDiagram', () => ({
-  MarkdownDiagram: ({ language, source }: { language: string; source: string }) => (
-    <div data-testid={`markdown-${language}`}>{source}</div>
-  ),
+  MarkdownDiagram: ({ language, source }: { language: string; source: string }) => {
+    markdownDiagramSpy({ language, source });
+    return <div data-testid={`markdown-${language}`}>{source}</div>;
+  },
 }));
 
 describe('MarkdownContent', () => {
   beforeEach(() => {
     mediaImageSpy.mockClear();
+    markdownDiagramSpy.mockClear();
   });
 
   it('passes agyn protocol urls to MediaImage', async () => {
@@ -67,6 +70,17 @@ describe('MarkdownContent', () => {
 
     expect(markup).toContain('data-testid="markdown-mermaid"');
     expect(markup).toContain('graph TD');
+    expect(markup).not.toContain('<pre');
+  });
+
+  it('passes invalid vega-lite code blocks to diagram rendering', async () => {
+    const { MarkdownContent } = await import('./MarkdownContent');
+    const source = '{"data":{"values":[{"x":1,"y":2}]},"encoding":{"x":{"field":"x","type":"quantitative"}}}';
+
+    const markup = renderToStaticMarkup(<MarkdownContent content={`\`\`\`vega-lite\n${source}\n\`\`\``} />);
+
+    expect(markup).toContain('data-testid="markdown-vega-lite"');
+    expect(markdownDiagramSpy).toHaveBeenCalledWith({ language: 'vega-lite', source });
     expect(markup).not.toContain('<pre');
   });
 
