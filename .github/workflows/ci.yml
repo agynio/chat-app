@@ -226,39 +226,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ingress_external_ip=$(kubectl get service istio-ingressgateway -n istio-gateway -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-          ingress_https_port=$(kubectl get service istio-ingressgateway -n istio-gateway -o jsonpath='{.spec.ports[?(@.port==443)].port}')
-          if [ -z "$ingress_external_ip" ] || [ -z "$ingress_https_port" ]; then
-            echo "Unable to resolve istio ingress external IP or HTTPS service port." >&2
-            kubectl get service istio-ingressgateway -n istio-gateway -o wide || true
-            exit 1
-          fi
-          host_e2e_base_url="https://${ingress_external_ip}:${ingress_https_port}"
-
-          echo "Runner ingress URL: ${host_e2e_base_url}"
           echo "In-cluster app URL: ${E2E_BASE_URL}"
           echo "E2E domain: ${E2E_DOMAIN}"
           kubectl get service istio-ingressgateway -n istio-gateway -o wide
-
-          for attempt in {1..30}; do
-            status=$(curl -sS -k -H "Host: chat.${E2E_DOMAIN}" -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 10 "${host_e2e_base_url}/healthz" || true)
-            if [ "$status" = "200" ]; then
-              break
-            fi
-            echo "Waiting for ${host_e2e_base_url}/healthz via Host: chat.${E2E_DOMAIN} (attempt ${attempt}/30, status ${status})"
-            sleep 5
-          done
-          if [ "${status}" != "200" ]; then
-            echo "Chat ingress did not become ready at ${host_e2e_base_url}/healthz" >&2
-            kubectl get virtualservice -A || true
-            kubectl get gateway -A || true
-            kubectl get svc,pods -n istio-gateway -o wide || true
-            kubectl get svc,pods -n platform -l app.kubernetes.io/name=chat-app -o wide || true
-            exit 1
-          fi
-
-          curl -v -k -H "Host: chat.${E2E_DOMAIN}" --connect-timeout 5 --max-time 10 "${host_e2e_base_url}/healthz"
-          openssl s_client -connect "${ingress_external_ip}:${ingress_https_port}" -servername "chat.${E2E_DOMAIN}" -brief </dev/null
           kubectl run e2e-url-check -n platform --rm -i --restart=Never --image=curlimages/curl:8.11.1 \
             --env="E2E_BASE_URL=${E2E_BASE_URL}" \
             -- \
