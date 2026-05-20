@@ -140,7 +140,7 @@ jobs:
       - name: Run E2E tests
         uses: agynio/e2e/.github/actions/run-tests@main
         with:
-          tag: svc_gateway
+          service: chat_app
           include_smoke: 'false'
 
       - name: Restore ArgoCD auto-sync
