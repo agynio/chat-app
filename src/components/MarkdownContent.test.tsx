@@ -46,7 +46,7 @@ describe('MarkdownContent', () => {
   it('renders inline code with inline-safe classes', async () => {
     const { MarkdownContent } = await import('./MarkdownContent');
 
-    const markup = renderToStaticMarkup(<MarkdownContent content={"before `test` after"} />);
+    const markup = renderToStaticMarkup(<MarkdownContent content={'before `test` after'} />);
 
     expect(markup).toContain('<code class="inline rounded');
     expect(markup).toContain('font-mono');
@@ -57,31 +57,49 @@ describe('MarkdownContent', () => {
   it('renders headings with explicit typography classes', async () => {
     const { MarkdownContent } = await import('./MarkdownContent');
 
-    const markup = renderToStaticMarkup(<MarkdownContent content={"# Header"} />);
+    const markup = renderToStaticMarkup(<MarkdownContent content={'# Header'} />);
 
     expect(markup).toContain('<h1 class="mb-4 mt-6 text-3xl font-bold');
     expect(markup).toContain('Header</h1>');
   });
 
-  it('renders mermaid code blocks as diagrams', async () => {
+  it('keeps regular fenced code blocks in styled pre/code markup', async () => {
     const { MarkdownContent } = await import('./MarkdownContent');
 
-    const markup = renderToStaticMarkup(<MarkdownContent content={"```mermaid\ngraph TD\nA-->B\n```"} />);
+    const markup = renderToStaticMarkup(
+      <MarkdownContent content={'```ts\nconst value = 1;\n```'} />,
+    );
+
+    expect(markup).toContain('<pre class="my-4 w-full overflow-x-auto');
+    expect(markup).toContain('<code class="block whitespace-pre-wrap');
+    expect(markup).toContain('language-ts');
+    expect(markup).toContain('const value = 1;');
+    expect(markup).not.toContain('data-testid="markdown-ts"');
+  });
+
+  it('renders mermaid fenced code blocks as diagrams', async () => {
+    const { MarkdownContent } = await import('./MarkdownContent');
+
+    const markup = renderToStaticMarkup(
+      <MarkdownContent content={'```mermaid\ngraph TD\nA --> B\n```'} />,
+    );
 
     expect(markup).toContain('data-testid="markdown-mermaid"');
     expect(markup).toContain('graph TD');
-    expect(markup).not.toContain('<pre');
+    expect(markup).not.toContain('language-mermaid');
   });
 
-  it('passes invalid vega-lite code blocks to diagram rendering', async () => {
+  it('renders vega-lite fenced code blocks as diagrams', async () => {
     const { MarkdownContent } = await import('./MarkdownContent');
-    const source = '{"data":{"values":[{"x":1,"y":2}]},"encoding":{"x":{"field":"x","type":"quantitative"}}}';
 
-    const markup = renderToStaticMarkup(<MarkdownContent content={`\`\`\`vega-lite\n${source}\n\`\`\``} />);
+    const spec = '{"data":{"values":[{"x":1}]},"mark":"bar"}';
+    const markup = renderToStaticMarkup(
+      <MarkdownContent content={`\`\`\`vega-lite\n${spec}\n\`\`\``} />,
+    );
 
     expect(markup).toContain('data-testid="markdown-vega-lite"');
-    expect(markdownDiagramSpy).toHaveBeenCalledWith({ language: 'vega-lite', source });
-    expect(markup).not.toContain('<pre');
+    expect(markup).toContain('&quot;mark&quot;:&quot;bar&quot;');
+    expect(markdownDiagramSpy).toHaveBeenCalledWith({ language: 'vega-lite', source: spec });
+    expect(markup).not.toContain('language-vega-lite');
   });
-
 });
