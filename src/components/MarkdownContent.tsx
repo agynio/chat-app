@@ -260,7 +260,6 @@ export function MarkdownContent({ content, className = '' }: MarkdownContentProp
       // markdown <pre> framing. This keeps the rest of markdown behavior unchanged.
       if (
         firstElement &&
-        firstElement.type === 'code' &&
         typeof firstElement.props.className === 'string'
       ) {
         const match = /language-([\w-]+)/.exec(firstElement.props.className);
