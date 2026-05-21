@@ -27,6 +27,7 @@ import {
   useChatReminders,
 } from '@/api/hooks/chat-resources';
 import { chatResources } from '@/api/modules/chat-resources';
+import { tracingApi } from '@/api/modules/tracing';
 import type { ChatMessage as ChatMessageRecord, Chat } from '@/api/types/chat';
 import type { ChatReminder } from '@/api/types/chat-resources';
 import { cancelReminder } from '@/features/reminders/api';
@@ -37,7 +38,7 @@ import { useChatNotifications } from '@/hooks/useChatNotifications';
 import { isDraftChatId } from './chats/draftUtils';
 import { formatDate, formatReminderDate, formatReminderScheduledTime, sanitizeSummary } from './chats/formatters';
 import { shouldFetchNextMessagesPage } from './chats/messagePagination';
-import { resolveChatMessageTraceUrl } from './chats/messageTracing';
+import { rememberChatMessageRunId, resolveChatMessageTraceUrl } from './chats/messageTracing';
 import { useChatDrafts } from './chats/useChatDrafts';
 
 const MESSAGE_LENGTH_LIMIT_LABEL = CHAT_MESSAGE_MAX_LENGTH.toLocaleString();
@@ -604,6 +605,19 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     },
     [selectedChatId, effectiveDraftMode],
   );
+
+  useEffect(() => {
+    if (!organizationId || !config.tracingAppUrl) return;
+
+    for (const message of filteredChatMessages) {
+      if (agentIdSet.has(message.senderId)) continue;
+      void tracingApi.findRunIdByMessageId(organizationId, message.id)
+        .then((runId) => rememberChatMessageRunId(organizationId, message.id, runId))
+        .catch(() => {
+          // Message deep links remain the fallback while traces are still being indexed.
+        });
+    }
+  }, [filteredChatMessages, agentIdSet, organizationId]);
 
   const chatMessagesForDisplay = useMemo<ChatMessage[]>(
     () =>
