@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildMessageTraceUrl, buildRunTraceUrl, resolveMessageTraceUrl } from './tracing';
+import { buildMessageTraceUrl, resolveMessageTraceUrl } from './tracing';
 
 describe('buildMessageTraceUrl', () => {
   it('builds a message trace url with org and message', () => {
@@ -18,26 +18,6 @@ describe('buildMessageTraceUrl', () => {
     });
 
     expect(url).toBe('https://tracing.agyn.dev/app/message/msg-456?orgId=org-123');
-  });
-});
-
-describe('buildRunTraceUrl', () => {
-  it('builds a direct run trace url', () => {
-    const url = buildRunTraceUrl('https://tracing.agyn.dev', {
-      organizationId: 'org-123',
-      runId: '00112233445566778899aabbccddeeff',
-    });
-
-    expect(url).toBe('https://tracing.agyn.dev/org-123/runs/00112233445566778899aabbccddeeff');
-  });
-
-  it('preserves base paths when building', () => {
-    const url = buildRunTraceUrl('https://tracing.agyn.dev/app/', {
-      organizationId: 'org-123',
-      runId: '00112233445566778899aabbccddeeff',
-    });
-
-    expect(url).toBe('https://tracing.agyn.dev/app/org-123/runs/00112233445566778899aabbccddeeff');
   });
 });
 
