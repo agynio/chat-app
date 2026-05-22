@@ -36,11 +36,18 @@ export type GetChatsRequest = { organizationId: string; pageSize?: number; pageT
 export type GetChatsResponse = { chats: Chat[]; nextPageToken?: string };
 
 export type GetMessagesRequest = { chatId: string; pageSize?: number; pageToken?: string };
+export type GetThreadMessagesRequest = {
+  threadId: string;
+  pageSize?: number;
+  pageToken?: string;
+  order?: 'MESSAGE_ORDER_OLDEST_FIRST' | 'MESSAGE_ORDER_NEWEST_FIRST';
+};
 export type GetMessagesResponse = {
   messages: ChatMessage[];
   nextPageToken?: string;
   unreadCount?: number;
 };
+export type GetThreadMessagesResponse = Omit<GetMessagesResponse, 'unreadCount'>;
 
 export type SendMessageRequest = { chatId: string; body?: string; fileIds?: string[] };
 export type SendMessageResponse = { message: ChatMessage };

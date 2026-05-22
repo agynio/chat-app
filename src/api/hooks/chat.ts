@@ -13,7 +13,8 @@ import type {
   UpdateChatResponse,
 } from '@/api/types/chat';
 const CHAT_PAGE_SIZE = 25;
-const MESSAGE_PAGE_SIZE = 30;
+export const MESSAGE_PAGE_SIZE = 30;
+export const MESSAGE_ORDER_NEWEST_FIRST = 'MESSAGE_ORDER_NEWEST_FIRST' as const;
 
 export function useChats(organizationId: string | undefined) {
   return useInfiniteQuery({
@@ -32,16 +33,31 @@ export function useChats(organizationId: string | undefined) {
   });
 }
 
+export function fetchChatMessagesPage(chatId: string, pageToken?: string): Promise<GetMessagesResponse> {
+  return chatApi.getThreadMessages({
+    threadId: chatId,
+    pageSize: MESSAGE_PAGE_SIZE,
+    pageToken,
+    order: MESSAGE_ORDER_NEWEST_FIRST,
+  }).then(async (page) => {
+    if (pageToken !== undefined) return page;
+
+    const metadata = await chatApi.getMessages({
+      chatId,
+      pageSize: 1,
+    });
+    return {
+      ...page,
+      unreadCount: metadata.unreadCount ?? 0,
+    };
+  });
+}
+
 export function useChatMessages(chatId: string | null | undefined) {
   return useInfiniteQuery({
     enabled: Boolean(chatId),
     queryKey: ['chats', chatId ?? 'none', 'messages', MESSAGE_PAGE_SIZE],
-    queryFn: ({ pageParam }) =>
-      chatApi.getMessages({
-        chatId: chatId as string,
-        pageSize: MESSAGE_PAGE_SIZE,
-        pageToken: pageParam ?? undefined,
-      }),
+    queryFn: ({ pageParam }) => fetchChatMessagesPage(chatId as string, pageParam ?? undefined),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextPageToken ?? undefined,
     staleTime: 5000,
