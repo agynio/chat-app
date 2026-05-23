@@ -1,7 +1,7 @@
-import { createElement } from 'react';
-import { act, create } from 'react-test-renderer';
+import { fireEvent, render, screen } from '@testing-library/react';
+import '@testing-library/jest-dom/vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ReactTestRenderer } from 'react-test-renderer';
+import React from 'react';
 import type ChatsScreenComponent from './ChatsScreen';
 import type * as ChatModule from '../Chat';
 import type { ChatRun } from '../Chat';
@@ -10,16 +10,15 @@ import type { ChatListItem } from '../ChatListItem';
 const markdownComposerSpy = vi.fn();
 const chatRenderSpy = vi.fn();
 const markdownContentRenderSpy = vi.fn();
-const mediaMountSpy = vi.fn();
+const mediaRenderSpy = vi.fn();
 let ChatsScreen: typeof ChatsScreenComponent;
-
-globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 vi.mock('../MarkdownComposer', () => ({
   MarkdownComposer: ({ value, onChange }: { value: string; onChange: (nextValue: string) => void }) => {
     markdownComposerSpy({ value });
     return (
       <textarea
+        aria-label="Type a message..."
         data-testid="composer"
         value={value}
         onChange={(event) => onChange(event.currentTarget.value)}
@@ -72,7 +71,7 @@ vi.mock('../MarkdownContent', () => ({
 }));
 
 function MockInlineMedia() {
-  mediaMountSpy();
+  mediaRenderSpy();
   return <img src="https://media.agyn.dev/proxy?url=test" alt="chart" />;
 }
 
@@ -103,30 +102,22 @@ const runs: ChatRun[] = [
   },
 ];
 
-function createChatsScreenElement(inputValue: string) {
-  return createElement(ChatsScreen, {
-    chats: [chat],
-    runs,
-    reminders: [],
-    filterMode: 'open',
-    selectedChatId: chat.id,
-    selectedChat: chat,
-    inputValue,
-    currentUserId: 'user-1',
-    onInputValueChange: () => {},
-    onSendMessage: () => {},
-  });
-}
-
-function renderChatsScreen(inputValue: string): ReactTestRenderer {
-  let renderer: ReactTestRenderer | undefined;
-  act(() => {
-    renderer = create(createChatsScreenElement(inputValue));
-  });
-  if (!renderer) {
-    throw new Error('ChatsScreen did not render.');
-  }
-  return renderer;
+function TestHarness() {
+  const [inputValue, setInputValue] = React.useState('');
+  return (
+    <ChatsScreen
+      chats={[chat]}
+      runs={runs}
+      reminders={[]}
+      filterMode="open"
+      selectedChatId={chat.id}
+      selectedChat={chat}
+      inputValue={inputValue}
+      currentUserId="user-1"
+      onInputValueChange={setInputValue}
+      onSendMessage={() => {}}
+    />
+  );
 }
 
 describe('ChatsScreen', () => {
@@ -135,24 +126,24 @@ describe('ChatsScreen', () => {
     markdownComposerSpy.mockClear();
     chatRenderSpy.mockClear();
     markdownContentRenderSpy.mockClear();
-    mediaMountSpy.mockClear();
+    mediaRenderSpy.mockClear();
   });
 
   it('does not rerender the transcript when composer input changes', () => {
-    const renderer = renderChatsScreen('');
+    render(<TestHarness />);
 
+    expect(screen.getByAltText('chart')).toBeInTheDocument();
     expect(chatRenderSpy).toHaveBeenCalledTimes(1);
     expect(markdownContentRenderSpy).toHaveBeenCalledTimes(1);
-    expect(mediaMountSpy).toHaveBeenCalledTimes(1);
+    expect(mediaRenderSpy).toHaveBeenCalledTimes(1);
     expect(markdownComposerSpy).toHaveBeenLastCalledWith({ value: '' });
 
-    act(() => {
-      renderer.update(createChatsScreenElement('hello'));
-    });
+    fireEvent.change(screen.getByTestId('composer'), { target: { value: 'hello' } });
 
+    expect(screen.getByTestId('composer')).toHaveValue('hello');
     expect(markdownComposerSpy).toHaveBeenLastCalledWith({ value: 'hello' });
     expect(chatRenderSpy).toHaveBeenCalledTimes(1);
     expect(markdownContentRenderSpy).toHaveBeenCalledTimes(1);
-    expect(mediaMountSpy).toHaveBeenCalledTimes(1);
+    expect(mediaRenderSpy).toHaveBeenCalledTimes(1);
   });
 });
