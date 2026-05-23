@@ -12,8 +12,9 @@ import type {
   SendMessageResponse,
   UpdateChatResponse,
 } from '@/api/types/chat';
-import { CHAT_MESSAGES_PAGE_SIZE, chatMessagesQueryKey } from './chat-query-keys';
 const CHAT_PAGE_SIZE = 25;
+export const MESSAGE_PAGE_SIZE = 30;
+export const MESSAGE_ORDER_NEWEST_FIRST = 'MESSAGE_ORDER_NEWEST_FIRST' as const;
 
 export function useChats(organizationId: string | undefined) {
   return useInfiniteQuery({
@@ -33,16 +34,31 @@ export function useChats(organizationId: string | undefined) {
   });
 }
 
+export function fetchChatMessagesPage(chatId: string, pageToken?: string): Promise<GetMessagesResponse> {
+  return chatApi.getThreadMessages({
+    threadId: chatId,
+    pageSize: MESSAGE_PAGE_SIZE,
+    pageToken,
+    order: MESSAGE_ORDER_NEWEST_FIRST,
+  }).then(async (page) => {
+    if (pageToken !== undefined) return page;
+
+    const metadata = await chatApi.getMessages({
+      chatId,
+      pageSize: 1,
+    });
+    return {
+      ...page,
+      unreadCount: metadata.unreadCount ?? 0,
+    };
+  });
+}
+
 export function useChatMessages(chatId: string | null | undefined) {
   return useInfiniteQuery({
     enabled: Boolean(chatId),
-    queryKey: chatId ? chatMessagesQueryKey(chatId) : ['chats', 'messages', 'disabled', CHAT_MESSAGES_PAGE_SIZE],
-    queryFn: ({ pageParam }) =>
-      chatApi.getMessages({
-        chatId: chatId as string,
-        pageSize: CHAT_MESSAGES_PAGE_SIZE,
-        pageToken: pageParam ?? undefined,
-      }),
+    queryKey: ['chats', chatId ?? 'none', 'messages', MESSAGE_PAGE_SIZE],
+    queryFn: ({ pageParam }) => fetchChatMessagesPage(chatId as string, pageParam ?? undefined),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextPageToken ?? undefined,
     staleTime: 5000,
@@ -71,7 +87,7 @@ export function useSendMessage() {
     mutationFn: ({ chatId, body, fileIds }) =>
       chatApi.sendMessage({ chatId, body, fileIds }),
     onMutate: async ({ chatId, body, senderId, fileIds }) => {
-      const queryKey = chatMessagesQueryKey(chatId);
+      const queryKey = ['chats', chatId, 'messages', MESSAGE_PAGE_SIZE];
       const chatsQueryKey = ['chats', 'list'];
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData<InfiniteData<GetMessagesResponse>>(queryKey);
@@ -127,7 +143,7 @@ export function useSendMessage() {
       });
     },
     onSuccess: (data, variables, context) => {
-      const queryKey = context?.queryKey ?? chatMessagesQueryKey(variables.chatId);
+      const queryKey = context?.queryKey ?? ['chats', variables.chatId, 'messages', MESSAGE_PAGE_SIZE];
       queryClient.setQueryData<InfiniteData<GetMessagesResponse>>(queryKey, (current) => {
         if (!current) return current;
         return {
@@ -227,7 +243,7 @@ export function useMarkAsRead() {
   return useMutation({
     mutationFn: (request: { chatId: string }) => chatApi.markAsRead({ chatId: request.chatId }),
     onSuccess: (_data: MarkAsReadResponse, request) => {
-      queryClient.invalidateQueries({ queryKey: chatMessagesQueryKey(request.chatId) });
+      queryClient.invalidateQueries({ queryKey: ['chats', request.chatId, 'messages'] });
       queryClient.invalidateQueries({ queryKey: ['chats', 'list'] });
     },
   });

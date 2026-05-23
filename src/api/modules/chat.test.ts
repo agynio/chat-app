@@ -1,19 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { chatApi } from './chat';
+import { connectPost } from '@/api/connect';
 
-const post = vi.fn();
-
-vi.mock('@/api/http', () => ({
-  http: { post },
+vi.mock('@/api/connect', () => ({
+  connectPost: vi.fn(),
 }));
 
-describe('chatApi chat normalization', () => {
+const mockedConnectPost = vi.mocked(connectPost);
+
+describe('chatApi', () => {
   beforeEach(() => {
-    post.mockReset();
+    mockedConnectPost.mockReset();
   });
 
   it('normalizes snake-case organization ids from the chat boundary', async () => {
-    const { chatApi } = await import('./chat');
-    post.mockResolvedValueOnce({
+    mockedConnectPost.mockResolvedValueOnce({
       chats: [
         {
           id: 'chat-1',
@@ -31,8 +32,7 @@ describe('chatApi chat normalization', () => {
   });
 
   it('uses request-scoped organization ids for chat list responses', async () => {
-    const { chatApi } = await import('./chat');
-    post.mockResolvedValueOnce({
+    mockedConnectPost.mockResolvedValueOnce({
       chats: [
         {
           id: 'chat-1',
@@ -49,8 +49,7 @@ describe('chatApi chat normalization', () => {
   });
 
   it('fails when update responses omit organization ids', async () => {
-    const { chatApi } = await import('./chat');
-    post.mockResolvedValueOnce({
+    mockedConnectPost.mockResolvedValueOnce({
       chat: {
         id: 'chat-1',
         participants: [],
@@ -62,5 +61,51 @@ describe('chatApi chat normalization', () => {
     await expect(chatApi.updateChat({ chatId: 'chat-1', status: 'closed' })).rejects.toThrow(
       'Chat chat-1 response missing organizationId.',
     );
+  });
+
+  it('loads thread messages through ThreadsGateway with newest-first ordering', async () => {
+    mockedConnectPost.mockResolvedValueOnce({
+      messages: [
+        {
+          id: 'message-2',
+          threadId: 'thread-1',
+          senderId: 'user-1',
+          body: 'latest',
+          createdAt: '2026-05-22T12:01:00Z',
+        },
+      ],
+      nextPageToken: 'older-page',
+    });
+
+    const response = await chatApi.getThreadMessages({
+      threadId: 'thread-1',
+      pageSize: 30,
+      pageToken: 'cursor-1',
+      order: 'MESSAGE_ORDER_NEWEST_FIRST',
+    });
+
+    expect(mockedConnectPost).toHaveBeenCalledWith(
+      '/api/agynio.api.gateway.v1.ThreadsGateway',
+      'GetMessages',
+      {
+        threadId: 'thread-1',
+        pageSize: 30,
+        pageToken: 'cursor-1',
+        order: 'MESSAGE_ORDER_NEWEST_FIRST',
+      },
+    );
+    expect(response).toEqual({
+      messages: [
+        {
+          id: 'message-2',
+          chatId: 'thread-1',
+          senderId: 'user-1',
+          body: 'latest',
+          fileIds: [],
+          createdAt: '2026-05-22T12:01:00Z',
+        },
+      ],
+      nextPageToken: 'older-page',
+    });
   });
 });

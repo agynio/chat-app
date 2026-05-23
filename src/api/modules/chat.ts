@@ -10,6 +10,8 @@ import type {
   GetChatsResponse,
   GetMessagesRequest,
   GetMessagesResponse,
+  GetThreadMessagesRequest,
+  GetThreadMessagesResponse,
   MarkAsReadRequest,
   MarkAsReadResponse,
   SendMessageRequest,
@@ -19,6 +21,7 @@ import type {
 } from '@/api/types/chat';
 
 const CHAT_SERVICE = '/api/agynio.api.gateway.v1.ChatGateway';
+const THREADS_SERVICE = '/api/agynio.api.gateway.v1.ThreadsGateway';
 
 type ProtoStatus = 'CHAT_STATUS_OPEN' | 'CHAT_STATUS_CLOSED';
 type ProtoActivityStatus =
@@ -63,8 +66,24 @@ function localStatusToProto(status?: ChatStatus): ProtoStatus | undefined {
   return status === 'closed' ? 'CHAT_STATUS_CLOSED' : 'CHAT_STATUS_OPEN';
 }
 
+type ThreadMessageWire = Omit<ChatMessage, 'chatId'> & {
+  threadId?: string;
+  chatId?: string;
+};
+
 function normalizeMessage(message: ChatMessage): ChatMessage {
   return { ...message, fileIds: message.fileIds ?? [] };
+}
+
+function normalizeThreadMessage(message: ThreadMessageWire): ChatMessage {
+  return {
+    id: message.id,
+    chatId: message.chatId ?? message.threadId ?? '',
+    senderId: message.senderId,
+    body: message.body,
+    fileIds: message.fileIds ?? [],
+    createdAt: message.createdAt,
+  };
 }
 
 function normalizeChat(chat: ChatWire, requestOrganizationId?: string): Chat {
@@ -102,6 +121,17 @@ export const chatApi = {
     return {
       ...resp,
       messages: (resp.messages ?? []).map(normalizeMessage),
+    };
+  },
+  getThreadMessages: async (req: GetThreadMessagesRequest): Promise<GetThreadMessagesResponse> => {
+    const resp = await connectPost<GetThreadMessagesRequest, { messages?: ThreadMessageWire[]; nextPageToken?: string }>(
+      THREADS_SERVICE,
+      'GetMessages',
+      req,
+    );
+    return {
+      ...resp,
+      messages: (resp.messages ?? []).map(normalizeThreadMessage),
     };
   },
   sendMessage: async (req: SendMessageRequest): Promise<SendMessageResponse> => {
