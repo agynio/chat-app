@@ -3,6 +3,7 @@ import {
   Children,
   cloneElement,
   isValidElement,
+  memo,
   type ComponentPropsWithoutRef,
   type ReactElement,
   type ReactNode,
@@ -101,7 +102,7 @@ const resolveSourceFromChildren = (children: ReactNode): string | null => {
   return null;
 };
 
-export function MarkdownContent({ content, className = '' }: MarkdownContentProps) {
+function MarkdownContentComponent({ content, className = '' }: MarkdownContentProps) {
   const renderCode = ({ inline, className: codeClassName, children, style, node, ...props }: MarkdownCodeProps) => {
     const { match, isInlineCode } = getCodeRenderMeta({ inline, className: codeClassName, node });
     const text = String(children).replace(/\n$/, '');
@@ -413,3 +414,7 @@ export function MarkdownContent({ content, className = '' }: MarkdownContentProp
     </div>
   );
 }
+
+export const MarkdownContent = memo(MarkdownContentComponent);
+
+MarkdownContent.displayName = 'MarkdownContent';

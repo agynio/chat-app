@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { buildDownloadUrl, buildProxyUrl } from '@/lib/media/proxy-url';
 import { cn } from '@/lib/utils';
 import { MediaDownloadLink } from './MediaDownloadLink';
@@ -10,7 +10,7 @@ interface MediaVideoProps {
   className?: string;
 }
 
-export function MediaVideo({ src, label = 'Video', className = '' }: MediaVideoProps) {
+function MediaVideoComponent({ src, label = 'Video', className = '' }: MediaVideoProps) {
   const normalizedSrc = src.trim();
   const proxyUrl = useMemo(() => (normalizedSrc ? buildProxyUrl(normalizedSrc) : null), [normalizedSrc]);
   const downloadUrl = useMemo(() => (normalizedSrc ? buildDownloadUrl(normalizedSrc) : null), [normalizedSrc]);
@@ -46,3 +46,7 @@ export function MediaVideo({ src, label = 'Video', className = '' }: MediaVideoP
     </div>
   );
 }
+
+export const MediaVideo = memo(MediaVideoComponent);
+
+MediaVideo.displayName = 'MediaVideo';

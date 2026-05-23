@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { buildDownloadUrl, buildProxyUrl, INLINE_IMAGE_MAX_SIZE } from '@/lib/media/proxy-url';
 import { cn } from '@/lib/utils';
 import { MediaDownloadLink } from './MediaDownloadLink';
@@ -12,7 +12,7 @@ interface MediaImageProps {
   className?: string;
 }
 
-export function MediaImage({ src, alt = '', title, className = '' }: MediaImageProps) {
+function MediaImageComponent({ src, alt = '', title, className = '' }: MediaImageProps) {
   const normalizedSrc = src.trim();
   const proxyUrl = useMemo(
     () => (normalizedSrc ? buildProxyUrl(normalizedSrc, { size: INLINE_IMAGE_MAX_SIZE }) : null),
@@ -109,3 +109,7 @@ export function MediaImage({ src, alt = '', title, className = '' }: MediaImageP
     </div>
   );
 }
+
+export const MediaImage = memo(MediaImageComponent);
+
+MediaImage.displayName = 'MediaImage';
