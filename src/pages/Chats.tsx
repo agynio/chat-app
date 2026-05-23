@@ -15,7 +15,14 @@ import { config } from '@/config';
 import { useAgentsList } from '@/api/hooks/agents';
 import { useBatchGetUsers } from '@/api/hooks/users';
 import { useAppProfiles } from '@/api/hooks/apps';
-import { useChats, useChatMessages, useCreateChat, useSendMessage, useMarkAsRead, useUpdateChat } from '@/api/hooks/chat';
+import {
+  useChats,
+  useChatMessages,
+  useCreateChat,
+  useSendMessage,
+  useMarkAsRead,
+  useUpdateChat,
+} from '@/api/hooks/chat';
 import {
   useChatReminders,
 } from '@/api/hooks/chat-resources';
@@ -29,6 +36,7 @@ import type { User } from '@/user/user-types';
 import { useChatNotifications } from '@/hooks/useChatNotifications';
 import { isDraftChatId } from './chats/draftUtils';
 import { formatDate, formatReminderDate, formatReminderScheduledTime, sanitizeSummary } from './chats/formatters';
+import { shouldFetchNextMessagesPage } from './chats/messagePagination';
 import { resolveChatMessageTraceUrl } from './chats/messageTracing';
 import { useChatDrafts } from './chats/useChatDrafts';
 
@@ -106,6 +114,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
 
   const selectedChatId = params.chatId ?? selectedChatIdState;
   const previousOrganizationIdRef = useRef<string | null>(selectedOrganizationId ?? null);
+  const chatListRefetchOrganizationRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (params.chatId) {
@@ -140,6 +149,22 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
 
   const chatsQuery = useChats(organizationId);
   const agentsQuery = useAgentsList(organizationId);
+  const refetchChats = chatsQuery.refetch;
+
+  useEffect(() => {
+    if (!organizationId) {
+      chatListRefetchOrganizationRef.current = null;
+      return;
+    }
+    if (chatListRefetchOrganizationRef.current === organizationId) return;
+    chatListRefetchOrganizationRef.current = organizationId;
+
+    const timeout = window.setTimeout(() => {
+      void refetchChats();
+    }, 250);
+
+    return () => window.clearTimeout(timeout);
+  }, [organizationId, refetchChats]);
 
   const canFallbackToChat = useCallback(
     (chatId: string) => {
@@ -533,6 +558,24 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     if (!container) return;
     container.scrollTop = container.scrollHeight;
   }, [selectedChatId]);
+
+  useEffect(() => {
+    if (!selectedChatId || effectiveDraftMode) return;
+    if (!hasNextMessagesPage || isFetchingMessagesNextPage) return;
+
+    const container = scrollContainerRef.current;
+    if (!container || !shouldFetchNextMessagesPage(container)) return;
+
+    pendingScrollHeightRef.current = container.scrollHeight;
+    void fetchNextMessagesPage();
+  }, [
+    filteredChatMessages.length,
+    hasNextMessagesPage,
+    isFetchingMessagesNextPage,
+    fetchNextMessagesPage,
+    selectedChatId,
+    effectiveDraftMode,
+  ]);
 
   const lastReadChatIdRef = useRef<string | null>(null);
 

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { chatMessagesQueryKey } from '@/api/hooks/chat-query-keys';
 import { notificationsStream } from '@/lib/notifications/stream';
 
 type UseChatNotificationsOptions = {
@@ -51,7 +52,7 @@ export function useChatNotifications({
     const offMessageCreated = notificationsStream.onMessageCreated(({ threadId }) => {
       if (selectedChatIdRef.current && selectedChatIdRef.current === threadId) {
         onSelectedChatMessageCreatedRef.current?.(threadId);
-        void queryClient.invalidateQueries({ queryKey: ['chats', threadId, 'messages'] });
+        void queryClient.invalidateQueries({ queryKey: chatMessagesQueryKey(threadId) });
       }
       void queryClient.invalidateQueries({ queryKey: ['chats', 'list'] });
     });

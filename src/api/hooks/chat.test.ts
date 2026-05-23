@@ -1,5 +1,7 @@
+import { QueryClient, type InfiniteData } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { chatApi } from '@/api/modules/chat';
+import type { GetMessagesResponse } from '@/api/types/chat';
 import { fetchChatMessagesPage, MESSAGE_ORDER_NEWEST_FIRST, MESSAGE_PAGE_SIZE } from './chat';
 
 vi.mock('@/api/modules/chat', () => ({
@@ -69,5 +71,59 @@ describe('fetchChatMessagesPage', () => {
       order: MESSAGE_ORDER_NEWEST_FIRST,
     });
     expect(mockedChatApi.getMessages).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('chat message pagination cache', () => {
+  it('uses separate cache keys for each chat thread', async () => {
+    const client = new QueryClient();
+    mockedChatApi.getThreadMessages.mockImplementation(async (request) => ({
+      messages: [
+        {
+          id: `${request.threadId}-${request.pageToken ?? 'first'}`,
+          chatId: request.threadId,
+          senderId: 'user-1',
+          body: 'message',
+          fileIds: [],
+          createdAt: '2026-05-22T12:30:00Z',
+        },
+      ],
+      nextPageToken: request.pageToken ? undefined : `${request.threadId}-page-2`,
+    }));
+    mockedChatApi.getMessages.mockResolvedValue({ messages: [], unreadCount: 0 });
+
+    const threadAKey = ['chats', 'thread-a', 'messages', MESSAGE_PAGE_SIZE];
+    const threadBKey = ['chats', 'thread-b', 'messages', MESSAGE_PAGE_SIZE];
+
+    await client.fetchInfiniteQuery({
+      queryKey: threadAKey,
+      queryFn: ({ pageParam }) => fetchChatMessagesPage('thread-a', pageParam),
+      initialPageParam: undefined as string | undefined,
+      getNextPageParam: (lastPage) => lastPage.nextPageToken ?? undefined,
+    });
+
+    await client.fetchInfiniteQuery({
+      queryKey: threadBKey,
+      queryFn: ({ pageParam }) => fetchChatMessagesPage('thread-b', pageParam),
+      initialPageParam: undefined as string | undefined,
+      getNextPageParam: (lastPage) => lastPage.nextPageToken ?? undefined,
+    });
+
+    await client.fetchInfiniteQuery({
+      queryKey: threadAKey,
+      queryFn: ({ pageParam }) => fetchChatMessagesPage('thread-a', pageParam),
+      initialPageParam: undefined as string | undefined,
+      getNextPageParam: (lastPage) => lastPage.nextPageToken ?? undefined,
+      pages: 2,
+    });
+
+    const threadAData = client.getQueryData<InfiniteData<GetMessagesResponse>>(threadAKey);
+    const threadBData = client.getQueryData<InfiniteData<GetMessagesResponse>>(threadBKey);
+
+    expect(threadAData?.pages).toHaveLength(2);
+    expect(threadAData?.pages[1]?.messages[0]?.id).toBe('thread-a-thread-a-page-2');
+    expect(threadBData?.pages).toHaveLength(1);
+    expect(threadBData?.pages[0]?.nextPageToken).toBe('thread-b-page-2');
   });
 });

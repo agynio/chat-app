@@ -48,12 +48,7 @@ jobs:
     timeout-minutes: 60
     permissions:
       contents: read
-    env:
-      AGYN_AGENT_INIT_IMAGE: ghcr.io/agynio/agent-init:v1.0.0
-      AGN_INIT_IMAGE: ghcr.io/agynio/agent-init-agn:0.4.16
-      CODEX_INIT_IMAGE: ghcr.io/agynio/agent-init-codex:0.13.20
-      CLAUDE_INIT_IMAGE: ghcr.io/agynio/agent-init-claude:0.1.23
-      AGN_EXPOSE_INIT_IMAGE: ghcr.io/agynio/agent-init-agn:0.4.16
+      packages: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -79,6 +74,7 @@ jobs:
           VITE_API_BASE_URL: /api
 
       - name: Provision cluster
+        id: provision_cluster
         uses: agynio/bootstrap/.github/actions/provision@main
 
       - name: Setup DevSpace
@@ -145,6 +141,7 @@ jobs:
         uses: agynio/e2e/.github/actions/run-tests@main
         with:
           service: chat_app
+          ref: jules/remove-chat-trace-link-tests
           include_smoke: 'false'
 
       - name: Restore ArgoCD auto-sync

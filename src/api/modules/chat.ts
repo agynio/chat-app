@@ -30,7 +30,12 @@ type ProtoActivityStatus =
   | 'CHAT_ACTIVITY_STATUS_FINISHED'
   | 'CHAT_ACTIVITY_STATUS_UNSPECIFIED';
 
-type ChatWire = Omit<Chat, 'status' | 'activityStatus' | 'unreadCount' | 'activeWorkloadIds'> & {
+type ChatWire = Omit<
+  Chat,
+  'organizationId' | 'status' | 'activityStatus' | 'unreadCount' | 'activeWorkloadIds'
+> & {
+  organizationId?: string;
+  organization_id?: string;
   status?: ChatStatus | ProtoStatus;
   activityStatus?: ChatActivityStatus | ProtoActivityStatus | null;
   unreadCount?: number;
@@ -81,9 +86,15 @@ function normalizeThreadMessage(message: ThreadMessageWire): ChatMessage {
   };
 }
 
-function normalizeChat(chat: ChatWire): Chat {
+function normalizeChat(chat: ChatWire, requestOrganizationId?: string): Chat {
+  const { organization_id: organizationIdSnake, ...rest } = chat;
+  const organizationId = chat.organizationId ?? organizationIdSnake ?? requestOrganizationId;
+  if (!organizationId) {
+    throw new Error(`Chat ${chat.id} response missing organizationId.`);
+  }
   return {
-    ...chat,
+    ...rest,
+    organizationId,
     participants: chat.participants ?? [],
     status: protoStatusToLocal(chat.status),
     summary: chat.summary ?? null,
@@ -96,13 +107,13 @@ function normalizeChat(chat: ChatWire): Chat {
 export const chatApi = {
   createChat: async (req: CreateChatRequest): Promise<CreateChatResponse> => {
     const resp = await connectPost<CreateChatRequest, CreateChatResponse>(CHAT_SERVICE, 'CreateChat', req);
-    return { ...resp, chat: normalizeChat(resp.chat) };
+    return { ...resp, chat: normalizeChat(resp.chat, req.organizationId) };
   },
   getChats: async (req: GetChatsRequest): Promise<GetChatsResponse> => {
     const resp = await connectPost<GetChatsRequest, GetChatsResponse>(CHAT_SERVICE, 'GetChats', req);
     return {
       ...resp,
-      chats: (resp.chats ?? []).map(normalizeChat),
+      chats: (resp.chats ?? []).map((chat) => normalizeChat(chat, req.organizationId)),
     };
   },
   getMessages: async (req: GetMessagesRequest): Promise<GetMessagesResponse> => {

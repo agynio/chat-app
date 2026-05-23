@@ -17,7 +17,7 @@ import { sanitizeDiagramSvg } from '@/lib/markdown/sanitize';
 import { validateVegaLiteSpec } from '@/lib/markdown/vega-lite';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 
-type DiagramLanguage = 'mermaid' | 'vega-lite';
+export type DiagramLanguage = 'mermaid' | 'vega-lite';
 
 interface MarkdownDiagramProps {
   language: DiagramLanguage;

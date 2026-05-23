@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mediaImageSpy = vi.fn();
+const markdownDiagramSpy = vi.fn();
 
 vi.mock('./MediaImage', () => ({
   MediaImage: (props: { src: string }) => {
@@ -19,14 +20,16 @@ vi.mock('./MediaVideo', () => ({
 }));
 
 vi.mock('./MarkdownDiagram', () => ({
-  MarkdownDiagram: ({ language, source }: { language: string; source: string }) => (
-    <div data-testid={`markdown-${language}`}>{source}</div>
-  ),
+  MarkdownDiagram: ({ language, source }: { language: string; source: string }) => {
+    markdownDiagramSpy({ language, source });
+    return <div data-testid={`markdown-${language}`}>{source}</div>;
+  },
 }));
 
 describe('MarkdownContent', () => {
   beforeEach(() => {
     mediaImageSpy.mockClear();
+    markdownDiagramSpy.mockClear();
   });
 
   it('passes agyn protocol urls to MediaImage', async () => {
@@ -96,6 +99,7 @@ describe('MarkdownContent', () => {
 
     expect(markup).toContain('data-testid="markdown-vega-lite"');
     expect(markup).toContain('&quot;mark&quot;:&quot;bar&quot;');
+    expect(markdownDiagramSpy).toHaveBeenCalledWith({ language: 'vega-lite', source: spec });
     expect(markup).not.toContain('language-vega-lite');
   });
 });
