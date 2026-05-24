@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type Ref, type UIEvent } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type Ref, type UIEvent } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import {
   Bell,
@@ -51,6 +51,9 @@ import { LogoutButton } from '@/auth/LogoutButton';
 const UNKNOWN_PARTICIPANT_LABEL = '(unknown participant)';
 const MESSAGE_LENGTH_LIMIT_LABEL = CHAT_MESSAGE_MAX_LENGTH.toLocaleString();
 const NEAR_LIMIT_THRESHOLD = Math.floor(CHAT_MESSAGE_MAX_LENGTH * 0.9);
+const EMPTY_CHAT_QUEUED_MESSAGES: ChatQueuedMessageData[] = [];
+const EMPTY_CHAT_REMINDERS: ChatReminderData[] = [];
+const EMPTY_ATTACHMENTS: Attachment[] = [];
 
 function getInitials(name: string | null | undefined): string {
   const trimmed = name?.trim();
@@ -606,12 +609,134 @@ interface ChatsScreenProps {
   className?: string;
 }
 
+interface ChatComposerPanelProps {
+  inputValue: string;
+  selectedChatId: string | null;
+  baseDisabled: boolean;
+  onInputValueChange?: (value: string) => void;
+  onSendMessage?: (value: string, context: { chatId: string | null }) => void;
+  composerDisabled?: boolean;
+  isSendMessagePending: boolean;
+  attachments: Attachment[];
+  onAttachFiles?: (files: FileList | File[]) => void;
+  onRemoveAttachment?: (clientId: string) => void;
+  onRetryAttachment?: (clientId: string) => void;
+  isUploading: boolean;
+}
+
+function ChatComposerPanel({
+  inputValue,
+  selectedChatId,
+  baseDisabled,
+  onInputValueChange,
+  onSendMessage,
+  composerDisabled = false,
+  isSendMessagePending,
+  attachments,
+  onAttachFiles,
+  onRemoveAttachment,
+  onRetryAttachment,
+  isUploading,
+}: ChatComposerPanelProps) {
+  const trimmedLength = inputValue.trim().length;
+  const lengthExceeded = trimmedLength > CHAT_MESSAGE_MAX_LENGTH;
+  const nearLimit = trimmedLength >= NEAR_LIMIT_THRESHOLD && !lengthExceeded;
+  const sendDisabled = baseDisabled || lengthExceeded || isUploading;
+  const trimmedLabel = trimmedLength.toLocaleString();
+  const counterLabel = `${trimmedLabel} / ${MESSAGE_LENGTH_LIMIT_LABEL}`;
+
+  const handleChange = useCallback(
+    (nextValue: string) => onInputValueChange?.(nextValue),
+    [onInputValueChange],
+  );
+
+  const handleSend = useCallback(() => {
+    if (!onSendMessage) return;
+    onSendMessage(inputValue, { chatId: selectedChatId });
+  }, [inputValue, onSendMessage, selectedChatId]);
+
+  return (
+    <div className="border-t border-[var(--agyn-border-subtle)] bg-[var(--agyn-bg-light)] p-4">
+      <MarkdownComposer
+        value={inputValue}
+        onChange={handleChange}
+        placeholder="Type a message..."
+        minLines={1}
+        maxLines={8}
+        onSend={handleSend}
+        sendDisabled={sendDisabled}
+        disabled={composerDisabled}
+        isSending={isSendMessagePending}
+        attachments={attachments}
+        onAttachFiles={onAttachFiles}
+        onRemoveAttachment={onRemoveAttachment}
+        onRetryAttachment={onRetryAttachment}
+      />
+      {nearLimit ? (
+        <div className="mt-2 text-xs text-[var(--agyn-yellow)]">
+          Approaching the {MESSAGE_LENGTH_LIMIT_LABEL} character limit ({counterLabel}).
+        </div>
+      ) : null}
+      {lengthExceeded ? (
+        <div className="mt-2 text-xs text-[var(--agyn-status-failed)]">
+          Message exceeds the {MESSAGE_LENGTH_LIMIT_LABEL} character limit ({counterLabel}).
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+interface ChatTranscriptPanelProps {
+  runs: ChatRun[];
+  chatQueuedMessages: ChatQueuedMessageData[];
+  chatReminders: ChatReminderData[];
+  chatScrollRef?: Ref<HTMLDivElement>;
+  onChatScroll?: (event: UIEvent<HTMLDivElement>) => void;
+  onCancelQueuedMessage?: (queuedMessageId: string) => void;
+  onCancelReminder?: (reminderId: string) => void;
+  isCancelQueuedMessagesPending?: boolean;
+  cancellingReminderIds?: ReadonlySet<string>;
+}
+
+function ChatTranscriptPanelComponent({
+  runs,
+  chatQueuedMessages,
+  chatReminders,
+  chatScrollRef,
+  onChatScroll,
+  onCancelQueuedMessage,
+  onCancelReminder,
+  isCancelQueuedMessagesPending,
+  cancellingReminderIds,
+}: ChatTranscriptPanelProps) {
+  return (
+    <div className="min-h-0 min-w-0 flex-1 overflow-hidden" data-testid="chat-transcript-panel">
+      <Chat
+        runs={runs}
+        queuedMessages={chatQueuedMessages}
+        reminders={chatReminders}
+        className="h-full rounded-none border-none"
+        scrollRef={chatScrollRef}
+        onScroll={onChatScroll}
+        onCancelQueuedMessage={onCancelQueuedMessage}
+        onCancelReminder={onCancelReminder}
+        isCancelQueuedMessagesPending={isCancelQueuedMessagesPending}
+        cancellingReminderIds={cancellingReminderIds}
+      />
+    </div>
+  );
+}
+
+const ChatTranscriptPanel = memo(ChatTranscriptPanelComponent);
+
+ChatTranscriptPanel.displayName = 'ChatTranscriptPanel';
+
 export default function ChatsScreen({
   chats,
   runs,
   reminders,
-  chatQueuedMessages = [],
-  chatReminders = [],
+  chatQueuedMessages = EMPTY_CHAT_QUEUED_MESSAGES,
+  chatReminders = EMPTY_CHAT_REMINDERS,
   filterMode,
   selectedChatId,
   selectedChat,
@@ -645,7 +770,7 @@ export default function ChatsScreen({
   onCancelReminder,
   isCancelQueuedMessagesPending,
   cancellingReminderIds,
-  attachments = [],
+  attachments = EMPTY_ATTACHMENTS,
   onAttachFiles,
   onRemoveAttachment,
   onRetryAttachment,
@@ -699,52 +824,26 @@ export default function ChatsScreen({
 
   const renderComposer = ({
     baseDisabled,
-    trimmedLength,
     composerDisabled = false,
   }: {
     baseDisabled: boolean;
-    trimmedLength: number;
     composerDisabled?: boolean;
-  }) => {
-    const lengthExceeded = trimmedLength > CHAT_MESSAGE_MAX_LENGTH;
-    const nearLimit = trimmedLength >= NEAR_LIMIT_THRESHOLD && !lengthExceeded;
-    const sendDisabled = baseDisabled || lengthExceeded || isUploading;
-    const trimmedLabel = trimmedLength.toLocaleString();
-    const counterLabel = `${trimmedLabel} / ${MESSAGE_LENGTH_LIMIT_LABEL}`;
-
-    return (
-      <div className="border-t border-[var(--agyn-border-subtle)] bg-[var(--agyn-bg-light)] p-4">
-        <MarkdownComposer
-          value={inputValue}
-          onChange={(next) => onInputValueChange?.(next)}
-          placeholder="Type a message..."
-          minLines={1}
-          maxLines={8}
-          onSend={() => {
-            if (!onSendMessage) return;
-            onSendMessage(inputValue, { chatId: selectedChatId ?? null });
-          }}
-          sendDisabled={sendDisabled}
-          disabled={composerDisabled}
-          isSending={isSendMessagePending}
-          attachments={attachments}
-          onAttachFiles={onAttachFiles}
-          onRemoveAttachment={onRemoveAttachment}
-          onRetryAttachment={onRetryAttachment}
-        />
-        {nearLimit ? (
-          <div className="mt-2 text-xs text-[var(--agyn-yellow)]">
-            Approaching the {MESSAGE_LENGTH_LIMIT_LABEL} character limit ({counterLabel}).
-          </div>
-        ) : null}
-        {lengthExceeded ? (
-          <div className="mt-2 text-xs text-[var(--agyn-status-failed)]">
-            Message exceeds the {MESSAGE_LENGTH_LIMIT_LABEL} character limit ({counterLabel}).
-          </div>
-        ) : null}
-      </div>
-    );
-  };
+  }) => (
+    <ChatComposerPanel
+      inputValue={inputValue}
+      selectedChatId={selectedChatId ?? null}
+      baseDisabled={baseDisabled}
+      onInputValueChange={onInputValueChange}
+      onSendMessage={onSendMessage}
+      composerDisabled={composerDisabled}
+      isSendMessagePending={isSendMessagePending}
+      attachments={attachments}
+      onAttachFiles={onAttachFiles}
+      onRemoveAttachment={onRemoveAttachment}
+      onRetryAttachment={onRetryAttachment}
+      isUploading={isUploading}
+    />
+  );
 
   const renderDetailContent = () => {
     if (detailError) {
@@ -756,8 +855,7 @@ export default function ChatsScreen({
     }
 
     if (draftMode) {
-      const trimmedInputValue = inputValue.trim();
-      const trimmedLength = trimmedInputValue.length;
+      const trimmedLength = inputValue.trim().length;
       const hasParticipants = draftParticipants.some((participant) => participant.id !== currentUserId);
       const hasMessage = trimmedLength > 0;
       const draftBaseDisabled = !onSendMessage || isSendMessagePending || !hasParticipants || !hasMessage;
@@ -771,7 +869,7 @@ export default function ChatsScreen({
             onDraftParticipantRemove={onDraftParticipantRemove}
             onDraftCancel={onDraftCancel}
           />
-          {renderComposer({ baseDisabled: draftBaseDisabled, trimmedLength })}
+          {renderComposer({ baseDisabled: draftBaseDisabled })}
         </>
       );
     }
@@ -792,8 +890,6 @@ export default function ChatsScreen({
       );
     }
 
-    const chatTrimmedLength = inputValue.trim().length;
-
     return (
       <div className="relative flex min-h-0 flex-1 flex-col">
         <ChatDetailHeader
@@ -808,24 +904,20 @@ export default function ChatsScreen({
         />
         {isThreadDegraded ? <ChatDegradedBanner /> : null}
 
-        <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
-          <Chat
-            runs={runs}
-            queuedMessages={chatQueuedMessages}
-            reminders={chatReminders}
-            className="h-full rounded-none border-none"
-            scrollRef={chatScrollRef}
-            onScroll={onChatScroll}
-            onCancelQueuedMessage={onCancelQueuedMessage}
-            onCancelReminder={onCancelReminder}
-            isCancelQueuedMessagesPending={isCancelQueuedMessagesPending}
-            cancellingReminderIds={cancellingReminderIds}
-          />
-        </div>
+        <ChatTranscriptPanel
+          runs={runs}
+          chatQueuedMessages={chatQueuedMessages}
+          chatReminders={chatReminders}
+          chatScrollRef={chatScrollRef}
+          onChatScroll={onChatScroll}
+          onCancelQueuedMessage={onCancelQueuedMessage}
+          onCancelReminder={onCancelReminder}
+          isCancelQueuedMessagesPending={isCancelQueuedMessagesPending}
+          cancellingReminderIds={cancellingReminderIds}
+        />
 
         {renderComposer({
           baseDisabled: !onSendMessage || !selectedChatId || isSendMessagePending || isThreadDegraded,
-          trimmedLength: chatTrimmedLength,
           composerDisabled: isThreadDegraded,
         })}
         {isLoading ? (

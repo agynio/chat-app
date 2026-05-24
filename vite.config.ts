@@ -64,6 +64,7 @@ export default defineConfig(({ command }) => ({
   ],
   test: {
     exclude: configDefaults.exclude,
+    environment: 'jsdom',
   },
   server: {
     allowedHosts: true,

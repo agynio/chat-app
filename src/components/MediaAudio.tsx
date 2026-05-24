@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { buildDownloadUrl, buildProxyUrl } from '@/lib/media/proxy-url';
 import { cn } from '@/lib/utils';
 import { MediaDownloadLink } from './MediaDownloadLink';
@@ -10,7 +10,7 @@ interface MediaAudioProps {
   className?: string;
 }
 
-export function MediaAudio({ src, label = 'Audio', className = '' }: MediaAudioProps) {
+function MediaAudioComponent({ src, label = 'Audio', className = '' }: MediaAudioProps) {
   const normalizedSrc = src.trim();
   const proxyUrl = useMemo(() => (normalizedSrc ? buildProxyUrl(normalizedSrc) : null), [normalizedSrc]);
   const downloadUrl = useMemo(() => (normalizedSrc ? buildDownloadUrl(normalizedSrc) : null), [normalizedSrc]);
@@ -46,3 +46,7 @@ export function MediaAudio({ src, label = 'Audio', className = '' }: MediaAudioP
     </div>
   );
 }
+
+export const MediaAudio = memo(MediaAudioComponent);
+
+MediaAudio.displayName = 'MediaAudio';

@@ -1,6 +1,7 @@
 import {
   Suspense,
   lazy,
+  memo,
   useCallback,
   useEffect,
   useId,
@@ -154,7 +155,7 @@ function sanitizeSvgMarkup(svg: string): string | null {
   return sanitizeDiagramSvg(svg);
 }
 
-export function MarkdownDiagram({ language, source, className = '' }: MarkdownDiagramProps) {
+function MarkdownDiagramComponent({ language, source, className = '' }: MarkdownDiagramProps) {
   const trimmedSource = source.trim();
   const isTooLarge = trimmedSource.length > MAX_DIAGRAM_CHARS;
   const isDark = useIsDarkMode();
@@ -341,3 +342,7 @@ export function MarkdownDiagram({ language, source, className = '' }: MarkdownDi
     </div>
   );
 }
+
+export const MarkdownDiagram = memo(MarkdownDiagramComponent);
+
+MarkdownDiagram.displayName = 'MarkdownDiagram';
