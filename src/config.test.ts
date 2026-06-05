@@ -9,7 +9,7 @@ type LocationStub = {
 
 type WindowStub = {
   location: LocationStub;
-  __APP_CONFIG: { API_BASE_URL: string };
+  __APP_CONFIG: Record<string, string>;
 };
 
 let deriveMediaProxyUrl: () => string | null;
@@ -98,5 +98,28 @@ describe('deriveTracingAppUrl', () => {
       setLocation(url);
       expect(deriveTracingAppUrl()).toBe(tracing);
     }
+  });
+});
+
+describe('oidcConfig', () => {
+  it('reads runtime OIDC resource', async () => {
+    windowStub.__APP_CONFIG = {
+      API_BASE_URL: '/api',
+      OIDC_AUTHORITY: 'https://auth.example.com',
+      OIDC_CLIENT_ID: 'chat-client',
+      OIDC_SCOPE: 'openid profile',
+      OIDC_RESOURCE: 'https://api.example.com',
+    };
+    vi.resetModules();
+
+    const mod = await import('./config');
+
+    expect(mod.oidcConfig).toEqual({
+      enabled: true,
+      authority: 'https://auth.example.com',
+      clientId: 'chat-client',
+      scope: 'openid profile',
+      resource: 'https://api.example.com',
+    });
   });
 });

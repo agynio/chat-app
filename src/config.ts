@@ -8,6 +8,7 @@ type RuntimeConfig = {
   OIDC_AUTHORITY?: string;
   OIDC_CLIENT_ID?: string;
   OIDC_SCOPE?: string;
+  OIDC_RESOURCE?: string;
 };
 
 type ViteEnv = {
@@ -17,6 +18,7 @@ type ViteEnv = {
   VITE_OIDC_AUTHORITY?: string;
   VITE_OIDC_CLIENT_ID?: string;
   VITE_OIDC_SCOPE?: string;
+  VITE_OIDC_RESOURCE?: string;
 };
 
 type OidcConfigEnabled = {
@@ -24,6 +26,7 @@ type OidcConfigEnabled = {
   authority: string;
   clientId: string;
   scope: string;
+  resource: string | null;
 };
 
 type OidcConfigDisabled = {
@@ -140,6 +143,7 @@ export const oidcConfig: OidcConfig = oidcEnabled
       authority: requireConfig('OIDC_AUTHORITY', rawOidcAuthority),
       clientId: requireConfig('OIDC_CLIENT_ID', readConfigValue('OIDC_CLIENT_ID', 'VITE_OIDC_CLIENT_ID')),
       scope: requireConfig('OIDC_SCOPE', readConfigValue('OIDC_SCOPE', 'VITE_OIDC_SCOPE')),
+      resource: readConfigValue('OIDC_RESOURCE', 'VITE_OIDC_RESOURCE'),
     }
   : { enabled: false };
 
