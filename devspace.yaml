@@ -23,7 +23,6 @@ dev:
     namespace: ${APP_NAMESPACE}
     labelSelector:
       app.kubernetes.io/name: chat-app
-      app.kubernetes.io/instance: chat-app
     containers:
       chat-app:
         sync:
