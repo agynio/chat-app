@@ -9,6 +9,7 @@ export interface ChatMessage {
   content: ReactNode;
   timestamp?: string;
   senderLabel?: string;
+  senderHandle?: string;
   isUnread?: boolean;
   showDelete?: boolean;
   onDelete?: () => void;
@@ -102,6 +103,7 @@ function ChatImpl({
                       content={message.content}
                       timestamp={message.timestamp}
                       senderLabel={message.senderLabel}
+                      senderHandle={message.senderHandle}
                       isUnread={message.isUnread}
                       showDelete={message.showDelete}
                       onDelete={message.onDelete}

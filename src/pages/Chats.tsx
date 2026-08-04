@@ -533,6 +533,19 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     return map;
   }, [appProfiles, participantLookup]);
 
+  // Which instance a message came from, for the conversation view. The chat
+  // list shows the class name alone -- several instances of one agent would
+  // otherwise read as several agents in the sidebar.
+  const senderHandles = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const instance of agentInstances) {
+      if (instance.handle) {
+        map.set(instance.meta.id, instance.handle);
+      }
+    }
+    return map;
+  }, [agentInstances]);
+
   const unreadCount = chatMessagesQuery.data?.pages?.[0]?.unreadCount ?? 0;
   const unreadMessageIds = useMemo(() => {
     if (!unreadCount) return [] as string[];
@@ -633,6 +646,9 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
         const senderLabel = message.senderId === currentUserId
           ? 'You'
           : resolveParticipantLabel(message.senderId, senderLookup);
+        // Which instance answered, on hover: several instances of one agent
+        // are otherwise indistinguishable in a conversation.
+        const senderHandle = senderHandles.get(message.senderId);
         const isAgentMessage = agentIdSet.has(message.senderId);
         const role = message.senderId === currentUserId
           ? 'user'
@@ -659,13 +675,14 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
           content,
           timestamp: formatDate(message.createdAt),
           senderLabel,
+          senderHandle,
           isUnread: unreadMessageIdSet.has(message.id),
           showDelete: role === 'user',
           onDelete: role === 'user' ? () => handleDeleteMessage(message.id) : undefined,
           traceUrl,
         } satisfies ChatMessage;
       }),
-    [filteredChatMessages, currentUserId, senderLookup, agentIdSet, unreadMessageIdSet, handleDeleteMessage, organizationId],
+    [filteredChatMessages, currentUserId, senderLookup, senderHandles, agentIdSet, unreadMessageIdSet, handleDeleteMessage, organizationId],
   );
 
   const chatRuns = useMemo<ChatRun[]>(() => {
