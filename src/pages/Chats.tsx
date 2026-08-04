@@ -12,7 +12,7 @@ import { useUser } from '@/user/user.runtime';
 import { useOrganization } from '@/organization/organization.runtime';
 import { useFileAttachments } from '@/hooks/useFileAttachments';
 import { config } from '@/config';
-import { useAgentsList } from '@/api/hooks/agents';
+import { useAgentInstancesList, useAgentsList } from '@/api/hooks/agents';
 import { useBatchGetUsers } from '@/api/hooks/users';
 import { useAppProfiles } from '@/api/hooks/apps';
 import {
@@ -149,6 +149,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
 
   const chatsQuery = useChats(organizationId);
   const agentsQuery = useAgentsList(organizationId);
+  const agentInstancesQuery = useAgentInstancesList(organizationId);
   const refetchChats = chatsQuery.refetch;
 
   useEffect(() => {
@@ -235,7 +236,20 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
   );
 
   const agents = useMemo(() => agentsQuery.data?.agents ?? [], [agentsQuery.data]);
-  const agentIdSet = useMemo(() => new Set(agents.map((agent) => agent.meta.id)), [agents]);
+  const agentInstances = useMemo(
+    () => agentInstancesQuery.data?.instances ?? [],
+    [agentInstancesQuery.data],
+  );
+  // Participants are instances, not classes. Both belong here: the set decides
+  // which ids are looked up as users, and an instance id never resolves to one.
+  const agentIdSet = useMemo(
+    () =>
+      new Set([
+        ...agents.map((agent) => agent.meta.id),
+        ...agentInstances.map((instance) => instance.meta.id),
+      ]),
+    [agents, agentInstances],
+  );
 
   const chatSummaries = useMemo(() => {
     const items = chatsQuery.data?.pages.flatMap((page) => page.chats) ?? [];
@@ -283,6 +297,14 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     for (const agent of agents) {
       map.set(agent.meta.id, { id: agent.meta.id, name: agent.name, type: 'agent' });
     }
+    for (const instance of agentInstances) {
+      const agent = agents.find((candidate) => candidate.meta.id === instance.agentId);
+      map.set(instance.meta.id, {
+        id: instance.meta.id,
+        name: agent?.name || instance.handle,
+        type: 'agent',
+      });
+    }
     for (const fetchedUser of batchUsersQuery.data?.users ?? []) {
       map.set(fetchedUser.meta.id, {
         id: fetchedUser.meta.id,
@@ -292,7 +314,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     }
     map.set(user.identityId, { id: user.identityId, name: user.name || userEmail, type: 'user' });
     return map;
-  }, [agents, batchUsersQuery.data, user.identityId, user.name, userEmail]);
+  }, [agents, agentInstances, batchUsersQuery.data, user.identityId, user.name, userEmail]);
 
   const draftParticipants = useMemo(() => activeDraft?.participants ?? EMPTY_PARTICIPANTS, [activeDraft]);
   const selectedParticipantIds = useMemo(
