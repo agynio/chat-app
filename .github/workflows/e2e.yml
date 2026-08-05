@@ -48,7 +48,7 @@ jobs:
         with:
           # Temporary: proving the notification-subscription fixes before the
           # VM release moves latest.
-          version: sha-b9413c0
+          version: sha-876f602
 
       - name: Setup DevSpace
         uses: agynio/e2e/.github/actions/setup-devspace@main
