@@ -2,6 +2,121 @@ version: v2beta1
 
 vars:
   APP_NAMESPACE: platform
+  # Carries Node and already ships in the VM's image store, so this pulls
+  # nothing. Keep in sync with the image in patch_deployment below.
+  DEV_IMAGE: ghcr.io/agynio/devcontainer-agyn:sha-f739923
+
+functions:
+  disable_argocd_sync: |-
+    for app in chat-app gateway; do
+      if kubectl get application "$app" -n argocd >/dev/null 2>&1; then
+        echo "Disabling ArgoCD auto-sync for $app..."
+        kubectl patch application "$app" -n argocd \
+          --type merge \
+          -p '{"spec":{"syncPolicy":{"automated":null}}}'
+        echo "ArgoCD auto-sync disabled for $app."
+      else
+        echo "WARNING: ArgoCD Application '$app' not found in argocd namespace."
+      fi
+    done
+  restore_argocd_sync: &restore_argocd_sync |-
+    for app in chat-app gateway; do
+      if kubectl get application "$app" -n argocd >/dev/null 2>&1; then
+        echo "Re-enabling ArgoCD auto-sync for $app..."
+        kubectl patch application "$app" -n argocd \
+          --type merge \
+          -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
+        echo "ArgoCD auto-sync restored for $app."
+      else
+        echo "WARNING: ArgoCD Application '$app' not found."
+      fi
+    done
+  patch_deployment: |-
+    echo "Patching chat-app deployment for DevSpace..."
+    deploy=$(kubectl get deployment -n ${APP_NAMESPACE} -l app.kubernetes.io/name=chat-app -o jsonpath='{.items[0].metadata.name}')
+    if [ -z "$deploy" ]; then
+      echo "ERROR: chat-app deployment not found in ${APP_NAMESPACE}." >&2
+      return 1
+    fi
+    kubectl patch deployment "$deploy" -n ${APP_NAMESPACE} --type strategic --patch "$(cat <<'EOF'
+    spec:
+      template:
+        spec:
+          securityContext:
+            runAsUser: 1000
+            fsGroup: 1000
+          initContainers: []
+          volumes:
+            - name: data
+              emptyDir: {}
+          containers:
+            - name: chat-app
+              image: ghcr.io/agynio/devcontainer-agyn:sha-f739923 # keep in sync with DEV_IMAGE
+              workingDir: /opt/app/data
+              livenessProbe: null
+              readinessProbe: null
+              startupProbe: null
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  elapsed=0
+                  while [ ! -f /opt/app/data/package.json ]; do
+                    sleep 1; elapsed=$((elapsed + 1))
+                    [ "$elapsed" -ge 120 ] && { echo "ERROR: sync timeout" >&2; exit 1; }
+                  done
+                  # pnpm-lock.yaml is the only lockfile; the image ships Node
+                  # alone, so fetch the pinned pnpm rather than a global install.
+                  npx --yes pnpm@10.5.0 install --frozen-lockfile
+                  # The released image generates __config.js at start from the
+                  # same variables; Vite serves public/__config.js, which is a
+                  # placeholder, so without this the chat has no OIDC settings
+                  # and never finishes loading. Same script, so the two cannot
+                  # drift.
+                  sh docker/40-generate-config.sh
+                  cp /tmp/__config.js public/__config.js
+                  # The port the Service already targets, so the ingress and
+                  # every URL the browser was handed keep working.
+                  exec npx vite --host 0.0.0.0 --port 3000
+              env:
+                # Anything generated has to land outside the synced tree: the
+                # sync is bidirectional, so a cache written next to the source
+                # is copied back onto the developer's machine.
+                - name: HOME
+                  value: /tmp
+                - name: npm_config_cache
+                  value: /tmp/npm-cache
+                # Puts pnpm's store under /tmp too, since it derives from HOME.
+                - name: PNPM_HOME
+                  value: /tmp/pnpm
+              resources:
+                # The released container is nginx serving a build and is sized
+                # for it; installing dependencies and running Vite is a
+                # different job. Requests stay low so several services can run
+                # from source on one node; the limit covers the install peak.
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  cpu: "2"
+                  memory: 3Gi
+              volumeMounts:
+                - name: data
+                  mountPath: /opt/app/data
+              securityContext:
+                runAsNonRoot: true
+                runAsUser: 1000
+                runAsGroup: 1000
+                readOnlyRootFilesystem: false
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+                seccompProfile:
+                  type: RuntimeDefault
+    EOF
+    )"
+    kubectl rollout status deployment "$deploy" -n ${APP_NAMESPACE} --timeout=600s
 
 pipelines:
   dev:
@@ -10,6 +125,8 @@ pipelines:
         short: w
         description: "Keep DevSpace running and stream logs"
     run: |-
+      disable_argocd_sync
+      patch_deployment
       if [ "$(get_flag "watch")" == "true" ]; then
         start_dev --disable-pod-replace chat-app
       else
@@ -18,22 +135,35 @@ pipelines:
         stop_dev chat-app
       fi
 
+hooks:
+  - name: restore-argocd-auto-sync
+    events:
+      - after:dev:chat-app
+    command: bash
+    args:
+      - -c
+      - *restore_argocd_sync
+
 dev:
   chat-app:
     namespace: ${APP_NAMESPACE}
+    # Matched on name alone: the instance label carries the Helm release name,
+    # which is the umbrella release (agyn-platform) rather than chat-app.
     labelSelector:
       app.kubernetes.io/name: chat-app
-      app.kubernetes.io/instance: chat-app
     containers:
       chat-app:
         sync:
-          - path: ./dist:/usr/share/nginx/html
+          - path: ./:/opt/app/data
             excludePaths:
               - .git/
               - .devspace/
               - node_modules/
+              - dist/
+              # Generated in the container from the deployment's own variables.
+              # Syncing the repo's placeholder over it leaves the chat with no
+              # OIDC settings and stuck on its loading screen.
+              - public/__config.js
         logs:
           enabled: true
           lastLines: 200
-    ports:
-      - port: "3000"
