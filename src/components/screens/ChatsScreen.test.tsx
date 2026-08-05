@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import React from 'react';
+import { ThemeProvider } from '../theme-provider';
 import type ChatsScreenComponent from './ChatsScreen';
 import type * as ChatModule from '../Chat';
 import type { ChatRun } from '../Chat';
@@ -35,6 +36,9 @@ vi.mock('../ui/dropdown-menu', () => ({
   DropdownMenuRadioGroup: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
   DropdownMenuRadioItem: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
   DropdownMenuSeparator: () => <hr />,
+  DropdownMenuSub: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+  DropdownMenuSubContent: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  DropdownMenuSubTrigger: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
   DropdownMenuTrigger: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
 }));
 
@@ -46,6 +50,7 @@ vi.mock('../ui/popover', () => ({
 
 vi.mock('@/config', () => ({
   oidcConfig: { enabled: false },
+  deriveSiblingUrl: () => null,
 }));
 
 vi.mock('@/auth/LogoutButton', () => ({
@@ -130,7 +135,11 @@ describe('ChatsScreen', () => {
   });
 
   it('does not rerender the transcript when composer input changes', () => {
-    render(<TestHarness />);
+    render(
+      <ThemeProvider>
+        <TestHarness />
+      </ThemeProvider>,
+    );
 
     expect(screen.getByAltText('chart')).toBeInTheDocument();
     expect(chatRenderSpy).toHaveBeenCalledTimes(1);

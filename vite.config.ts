@@ -65,6 +65,7 @@ export default defineConfig(({ command }) => ({
   test: {
     exclude: configDefaults.exclude,
     environment: 'jsdom',
+    setupFiles: ['./src/test-setup.ts'],
   },
   server: {
     allowedHosts: true,

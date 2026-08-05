@@ -34,7 +34,7 @@ type OidcConfig = OidcConfigEnabled | OidcConfigDisabled;
 
 const runtimeConfig: RuntimeConfig = typeof window !== 'undefined' ? (window.__APP_CONFIG ?? {}) : {};
 
-function deriveSiblingUrl(serviceName: string): string | null {
+export function deriveSiblingUrl(serviceName: string): string | null {
   if (typeof window === 'undefined') return null;
 
   const { protocol, hostname, port } = window.location;

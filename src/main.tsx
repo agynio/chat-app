@@ -8,21 +8,24 @@ import App from './App';
 import './index.css';
 import { UserProvider } from './user/UserProvider';
 import { OrganizationProvider } from './organization/OrganizationProvider';
+import { ThemeProvider } from './components/theme-provider';
 
 const queryClient = new QueryClient();
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
-      <QueryClientProvider client={queryClient}>
-        <AuthGate>
-          <UserProvider>
-            <OrganizationProvider>
-              <App />
-            </OrganizationProvider>
-          </UserProvider>
-        </AuthGate>
-      </QueryClientProvider>
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <QueryClientProvider client={queryClient}>
+          <AuthGate>
+            <UserProvider>
+              <OrganizationProvider>
+                <App />
+              </OrganizationProvider>
+            </UserProvider>
+          </AuthGate>
+        </QueryClientProvider>
+      </BrowserRouter>
+    </ThemeProvider>
   </StrictMode>,
 );
 
