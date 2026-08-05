@@ -43,7 +43,6 @@ import { useChatDrafts } from './chats/useChatDrafts';
 
 const MESSAGE_LENGTH_LIMIT_LABEL = CHAT_MESSAGE_MAX_LENGTH.toLocaleString();
 const MESSAGE_LENGTH_LIMIT_NOTIFICATION = `Chat messages cannot exceed ${MESSAGE_LENGTH_LIMIT_LABEL} characters.`;
-const DRAFT_SUMMARY_LABEL = '(new chat)';
 const DRAFT_PARTICIPANT_LABEL = '(select participants)';
 const UNKNOWN_PARTICIPANT_LABEL = '(unknown participant)';
 const EMPTY_REMINDER_CONTENT = '(no content)';
@@ -389,6 +388,20 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     [instanceSuffixById],
   );
 
+  const resolveParticipantBadges = useCallback(
+    (participants: Chat['participants']) =>
+      participants
+        .filter((participant) => participant.id !== currentUserId)
+        .map((participant) => {
+          const entry = participantLookup.get(participant.id);
+          return {
+            name: entry?.name ?? UNKNOWN_PARTICIPANT_LABEL,
+            isAgent: entry?.type === 'agent',
+          };
+        }),
+    [currentUserId, participantLookup],
+  );
+
   const resolveAgentSettingsUrl = useCallback(
     (participants: Chat['participants']) => {
       if (!organizationId) return undefined;
@@ -411,7 +424,13 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
       return {
         id: draft.id,
         title: participantsLabel,
-        subtitle: DRAFT_SUMMARY_LABEL,
+        // A draft has no topic and nothing sent yet, so the row falls back to
+        // "Untitled" over "No messages yet".
+        participants: draft.participants.map((participant) => ({
+          name: participant.name || UNKNOWN_PARTICIPANT_LABEL,
+          isAgent: participant.type === 'agent',
+        })),
+        hasMessages: false,
         createdAt: draft.createdAt,
         updatedAt: draft.createdAt,
         status: null,
@@ -429,6 +448,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
         id: chat.id,
         title: resolveChatTitle(chat.participants),
         detailSuffix: resolveChatSuffix(chat.participants),
+        participants: resolveParticipantBadges(chat.participants),
         agentSettingsUrl: resolveAgentSettingsUrl(chat.participants),
         subtitle: resolveChatSummary(chat.summary),
         createdAt: chat.createdAt,
@@ -439,7 +459,15 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
       } satisfies ChatListItem;
     });
     return [...fromDrafts, ...fromData];
-  }, [drafts, mapDraftToChat, chatSummaries, resolveChatTitle, resolveChatSuffix, resolveAgentSettingsUrl]);
+  }, [
+    drafts,
+    mapDraftToChat,
+    chatSummaries,
+    resolveChatTitle,
+    resolveChatSuffix,
+    resolveParticipantBadges,
+    resolveAgentSettingsUrl,
+  ]);
 
   const selectedChat = useMemo(() => {
     const found = chatsForList.find((chat) => chat.id === selectedChatId);
