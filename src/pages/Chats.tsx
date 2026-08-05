@@ -13,7 +13,7 @@ import { useUser } from '@/user/user.runtime';
 import { useOrganization } from '@/organization/organization.runtime';
 import { useFileAttachments } from '@/hooks/useFileAttachments';
 import { config } from '@/config';
-import { useAgentsList } from '@/api/hooks/agents';
+import { useAgentInstances, useAgentsList } from '@/api/hooks/agents';
 import { useBatchGetUsers } from '@/api/hooks/users';
 import { useAppProfiles } from '@/api/hooks/apps';
 import {
@@ -150,6 +150,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
 
   const chatsQuery = useChats(organizationId);
   const agentsQuery = useAgentsList(organizationId);
+  const instancesQuery = useAgentInstances(organizationId);
   const refetchChats = chatsQuery.refetch;
 
   useEffect(() => {
@@ -236,7 +237,24 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
   );
 
   const agents = useMemo(() => agentsQuery.data?.agents ?? [], [agentsQuery.data]);
-  const agentIdSet = useMemo(() => new Set(agents.map((agent) => agent.meta.id)), [agents]);
+  const agentInstances = useMemo(() => instancesQuery.data?.instances ?? [], [instancesQuery.data]);
+  const agentNameByClassId = useMemo(
+    () => new Map(agents.map((agent) => [agent.meta.id, agent.name])),
+    [agents],
+  );
+  const instanceSuffixById = useMemo(
+    () => new Map(agentInstances.map((instance) => [instance.meta.id, instance.suffix])),
+    [agentInstances],
+  );
+  // Threads rewrites an agent class to a fresh instance on add, so threads and
+  // messages carry instance ids. Every "is this an agent?" test takes both.
+  const agentIdSet = useMemo(() => {
+    const ids = new Set(agents.map((agent) => agent.meta.id));
+    for (const instance of agentInstances) {
+      ids.add(instance.meta.id);
+    }
+    return ids;
+  }, [agents, agentInstances]);
 
   const chatSummaries = useMemo(() => {
     const items = chatsQuery.data?.pages.flatMap((page) => page.chats) ?? [];
@@ -284,6 +302,15 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     for (const agent of agents) {
       map.set(agent.meta.id, { id: agent.meta.id, name: agent.name, type: 'agent' });
     }
+    for (const instance of agentInstances) {
+      map.set(instance.meta.id, {
+        id: instance.meta.id,
+        // Fall back to the handle when the class is not in the list, e.g. an
+        // agent the viewer can chat with but cannot read.
+        name: agentNameByClassId.get(instance.agentId) ?? instance.handle,
+        type: 'agent',
+      });
+    }
     for (const fetchedUser of batchUsersQuery.data?.users ?? []) {
       map.set(fetchedUser.meta.id, {
         id: fetchedUser.meta.id,
@@ -293,7 +320,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     }
     map.set(user.identityId, { id: user.identityId, name: user.name || userEmail, type: 'user' });
     return map;
-  }, [agents, batchUsersQuery.data, user.identityId, user.name, userEmail]);
+  }, [agents, agentInstances, agentNameByClassId, batchUsersQuery.data, user.identityId, user.name, userEmail]);
 
   const draftParticipants = useMemo(() => activeDraft?.participants ?? EMPTY_PARTICIPANTS, [activeDraft]);
   const selectedParticipantIds = useMemo(
@@ -335,17 +362,22 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
   );
 
   const resolveChatTitle = useCallback(
-    (participants: Chat['participants']) => {
+    (participants: Chat['participants'], options?: { withSuffix?: boolean }) => {
       const names = participants
         .filter((participant) => participant.id !== currentUserId)
-        .map((participant) => resolveParticipantLabel(participant.id, participantLookup))
+        .map((participant) => {
+          const label = resolveParticipantLabel(participant.id, participantLookup);
+          // Only agent instances carry a suffix, so users are left untouched.
+          const suffix = options?.withSuffix ? instanceSuffixById.get(participant.id) : undefined;
+          return suffix ? `${label} #${suffix}` : label;
+        })
         .filter(Boolean);
       if (names.length === 0) {
         return 'Unknown';
       }
       return names.join(', ');
     },
-    [currentUserId, participantLookup],
+    [currentUserId, participantLookup, instanceSuffixById],
   );
 
   const mapDraftToChat = useCallback(
@@ -373,6 +405,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
       return {
         id: chat.id,
         title: resolveChatTitle(chat.participants),
+        detailTitle: resolveChatTitle(chat.participants, { withSuffix: true }),
         subtitle: resolveChatSummary(chat.summary),
         createdAt: chat.createdAt,
         updatedAt: chat.updatedAt,

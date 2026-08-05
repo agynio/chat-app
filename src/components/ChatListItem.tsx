@@ -6,6 +6,9 @@ export type ChatStatus = 'running' | 'pending' | 'finished' | null;
 export interface ChatListItem {
   id: string;
   title: string;
+  /** Title carrying each agent's instance suffix; the detail header shows this
+   * so one thread can be told from another of the same agent. */
+  detailTitle?: string;
   subtitle?: string;
   createdAt: string;
   updatedAt: string;

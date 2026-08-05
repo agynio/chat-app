@@ -274,7 +274,7 @@ function ChatDetailHeader({
     onToggleChatStatus(chat.id, nextStatus);
   };
 
-  const chatTitle = chat.title?.trim() || UNKNOWN_PARTICIPANT_LABEL;
+  const chatTitle = chat.detailTitle?.trim() || chat.title?.trim() || UNKNOWN_PARTICIPANT_LABEL;
   const summaryDisplay = hasSummary ? summaryValue : summaryPlaceholder;
   const summaryClassName = hasSummary
     ? 'text-foreground'
