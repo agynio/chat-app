@@ -1,13 +1,19 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type Ref, type UIEvent } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import {
+  AlertTriangle,
+  ArrowUpRight,
   Bell,
+  Bot,
+  CheckCircle,
+  ChevronDown,
+  Circle,
+  Hash,
+  Link2,
   Loader2,
   MessageSquarePlus,
-  Circle,
-  CheckCircle,
-  AlertTriangle,
-  ChevronDown,
+  MoreHorizontal,
+  Pencil,
   Trash2,
   X,
 } from 'lucide-react';
@@ -24,13 +30,14 @@ import {
   type ChatQueuedMessageData,
 } from '../Chat';
 import { Popover, PopoverTrigger, PopoverContent } from '../ui/popover';
-import { StatusIndicator } from '../StatusIndicator';
 import { MarkdownComposer } from '../MarkdownComposer';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
 import { menuItemBaseClasses } from '../ui/menu-item-classes';
@@ -48,6 +55,15 @@ const NEAR_LIMIT_THRESHOLD = Math.floor(CHAT_MESSAGE_MAX_LENGTH * 0.9);
 const EMPTY_CHAT_QUEUED_MESSAGES: ChatQueuedMessageData[] = [];
 const EMPTY_CHAT_REMINDERS: ChatReminderData[] = [];
 const EMPTY_ATTACHMENTS: Attachment[] = [];
+// Wording for the activity pill; the underlying statuses are shared with
+// StatusIndicator, which labels them for a different context.
+const ACTIVITY_PILL_LABELS: Record<string, string> = {
+  running: 'Working',
+  pending: 'Queued',
+  finished: 'Done',
+  failed: 'Failed',
+  terminated: 'Stopped',
+};
 
 type ChatDraftPanelProps = {
   draftParticipants: DraftParticipant[];
@@ -215,8 +231,7 @@ function ChatDetailHeader({
 
   useEffect(() => {
     if (isEditingSummary) return;
-    const nextSummary = chat.subtitle?.trim() ?? '';
-    setSummaryDraft(nextSummary);
+    setSummaryDraft(chat.subtitle?.trim() ?? '');
   }, [chat.id, chat.subtitle, isEditingSummary]);
 
   useEffect(() => {
@@ -243,11 +258,13 @@ function ChatDetailHeader({
   const createdAtTitle = createdAtValid ? createdAtDate.toLocaleString() : undefined;
   const currentStatusValue: 'open' | 'closed' = chat.isOpen ? 'open' : 'closed';
   const currentStatusLabel = chat.isOpen ? 'Open' : 'Resolved';
-  const CurrentStatusIcon = chat.isOpen ? Circle : CheckCircle;
   const statusSelectionDisabled = !onToggleChatStatus || isToggleChatStatusPending;
   const summaryValue = chat.subtitle?.trim() ?? '';
   const hasSummary = summaryValue.length > 0;
-  const summaryPlaceholder = 'Add a summary';
+  const summaryDisplay = hasSummary ? summaryValue : 'Add a description';
+  const canEditSummary = Boolean(onUpdateSummary) && !isUpdateSummaryPending;
+  const chatTitle = chat.title?.trim() || UNKNOWN_PARTICIPANT_LABEL;
+  const activityLabel = chat.status ? ACTIVITY_PILL_LABELS[chat.status] : undefined;
 
   const handleSummaryCommit = () => {
     if (summaryCancelRef.current) {
@@ -274,145 +291,59 @@ function ChatDetailHeader({
     onToggleChatStatus(chat.id, nextStatus);
   };
 
-  const chatTitle = chat.detailTitle?.trim() || chat.title?.trim() || UNKNOWN_PARTICIPANT_LABEL;
-  const summaryDisplay = hasSummary ? summaryValue : summaryPlaceholder;
-  const summaryClassName = hasSummary
-    ? 'text-foreground'
-    : 'text-muted-foreground';
+  const copyToClipboard = (value: string) => {
+    void navigator.clipboard?.writeText(value);
+  };
 
   return (
-    <div className="bg-card border-b border-border p-4">
-      <div className="mb-3 flex items-start justify-between">
-        <div className="flex-1">
-          <div className="mb-1 flex items-center gap-2">
-            {chat.status ? <StatusIndicator status={chat.status} size="sm" showTooltip={false} /> : null}
+    <div className="border-b border-border bg-card p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <h2 className="truncate text-lg font-semibold text-foreground" data-testid="chat-detail-header-agent">
+            {chatTitle}
+          </h2>
+          {chat.status && activityLabel ? (
             <span
-              className="text-xs text-muted-foreground"
-              data-testid="chat-detail-header-agent"
+              className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium"
+              style={{
+                color: `var(--agyn-status-${chat.status})`,
+                backgroundColor: `var(--agyn-status-${chat.status}-bg)`,
+              }}
+              data-testid="chat-detail-header-activity"
             >
-              {chatTitle}
-            </span>
-            <span className="text-xs text-muted-foreground">•</span>
-            <span className="text-xs text-muted-foreground" title={createdAtTitle}>
-              {createdAtRelative}
-            </span>
-          </div>
-          <div className="mt-1" data-testid="chat-detail-header-title">
-            {isEditingSummary ? (
-              <input
-                ref={summaryInputRef}
-                type="text"
-                value={summaryDraft}
-                onChange={(event) => setSummaryDraft(event.target.value)}
-                onBlur={handleSummaryCommit}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
-                    event.preventDefault();
-                    handleSummaryCommit();
-                  }
-                  if (event.key === 'Escape') {
-                    event.preventDefault();
-                    handleSummaryCancel();
-                  }
-                }}
-                className="w-full rounded-md border border-border bg-background px-2 py-1 text-foreground text-sm"
-                disabled={isUpdateSummaryPending}
-                aria-busy={isUpdateSummaryPending || undefined}
+              <span
+                className="h-1.5 w-1.5 rounded-full"
+                style={{ backgroundColor: `var(--agyn-status-${chat.status})` }}
               />
-            ) : (
-              <button
-                type="button"
-                className={`text-left text-sm ${summaryClassName} hover:text-foreground transition-colors`}
-                onClick={() => {
-                  if (!onUpdateSummary || isUpdateSummaryPending) return;
-                  setSummaryDraft(summaryValue);
-                  setIsEditingSummary(true);
-                }}
-                disabled={!onUpdateSummary || isUpdateSummaryPending}
-              >
-                {summaryDisplay}
-              </button>
-            )}
-          </div>
+              {activityLabel}
+            </span>
+          ) : null}
+          {chat.detailSuffix ? (
+            <span className="text-sm text-muted-foreground" data-testid="chat-detail-header-suffix">
+              #{chat.detailSuffix}
+            </span>
+          ) : null}
+          <span className="text-sm text-muted-foreground">·</span>
+          <span className="text-sm text-muted-foreground" title={createdAtTitle}>
+            {createdAtRelative}
+          </span>
         </div>
-      </div>
 
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <DropdownMenu
-            modal={false}
-            open={isStatusMenuOpen}
-            onOpenChange={(open) => {
-              if (statusSelectionDisabled) {
-                setIsStatusMenuOpen(false);
-                return;
-              }
-              setIsStatusMenuOpen(open);
-            }}
-          >
-            <DropdownMenuTrigger asChild disabled={statusSelectionDisabled}>
-              <button
-                type="button"
-                className="flex items-center gap-2 rounded-[6px] px-2 py-1 transition-colors hover:bg-muted"
-                aria-label={`Chat status: ${currentStatusLabel}`}
-                aria-busy={isToggleChatStatusPending || undefined}
-                aria-haspopup="menu"
-                aria-expanded={isStatusMenuOpen}
-                disabled={statusSelectionDisabled}
-              >
-                <CurrentStatusIcon className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-foreground">{currentStatusLabel}</span>
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              className="w-[160px] rounded-[10px] border border-border bg-popover p-1 shadow-lg"
-              align="start"
-            >
-              <DropdownMenuRadioGroup
-                value={currentStatusValue}
-                onValueChange={(value) => handleStatusChange(value as 'open' | 'closed')}
-              >
-                <DropdownMenuRadioItem
-                  value="open"
-                  hideIndicator
-                  className="data-[state=checked]:font-medium"
+        <div className="flex shrink-0 items-center gap-1">
+          {hasReminders ? (
+            <Popover open={isRemindersPopoverOpen} onOpenChange={setIsRemindersPopoverOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  aria-haspopup="dialog"
+                  aria-expanded={isRemindersPopoverOpen}
+                  title="Reminders"
                 >
-                  <Circle className="h-4 w-4 text-muted-foreground group-data-[state=checked]:text-primary" />
-                  <span>Open</span>
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem
-                  value="closed"
-                  hideIndicator
-                  className="data-[state=checked]:font-medium"
-                >
-                  <CheckCircle className="h-4 w-4 text-muted-foreground group-data-[state=checked]:text-primary" />
-                  <span>Resolved</span>
-                </DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <Popover
-            open={isRemindersPopoverOpen}
-            onOpenChange={(open) => {
-              if (!hasReminders) return;
-              setIsRemindersPopoverOpen(open);
-            }}
-          >
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="flex items-center gap-2 rounded-[6px] px-2 py-1 transition-colors hover:bg-muted"
-                aria-haspopup="dialog"
-                aria-expanded={isRemindersPopoverOpen}
-              >
-                <Bell className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-foreground">{reminders.length}</span>
-                <span className="text-xs text-muted-foreground">reminders</span>
-              </button>
-            </PopoverTrigger>
-            {hasReminders ? (
+                  <Bell className="h-4 w-4" />
+                  <span className="text-sm">{reminders.length}</span>
+                </button>
+              </PopoverTrigger>
               <PopoverContent
                 className="w-[300px] rounded-[10px] border border-border bg-popover p-1 shadow-lg"
                 align="end"
@@ -421,14 +352,17 @@ function ChatDetailHeader({
                   {reminders.map((reminder) => {
                     const isCancelling = cancellingReminderIds?.has(reminder.id) ?? false;
                     return (
-                      <li
-                        key={reminder.id}
-                        className={cn(menuItemBaseClasses, 'flex-col items-start gap-1')}
-                      >
+                      <li key={reminder.id} className={cn(menuItemBaseClasses, 'flex-col items-start gap-1')}>
                         <div className="flex w-full items-center justify-between gap-2">
                           <p className="min-w-0 truncate text-sm text-foreground">{reminder.title}</p>
                           <IconButton
-                            icon={isCancelling ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                            icon={
+                              isCancelling ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-3 w-3" />
+                              )
+                            }
                             size="xs"
                             variant="danger"
                             aria-label="Cancel reminder"
@@ -443,13 +377,155 @@ function ChatDetailHeader({
                   })}
                 </ul>
               </PopoverContent>
-            ) : null}
-          </Popover>
+            </Popover>
+          ) : null}
+
+          <DropdownMenu
+            modal={false}
+            open={isStatusMenuOpen}
+            onOpenChange={(open) => {
+              if (statusSelectionDisabled) {
+                setIsStatusMenuOpen(false);
+                return;
+              }
+              setIsStatusMenuOpen(open);
+            }}
+          >
+            <DropdownMenuTrigger asChild disabled={statusSelectionDisabled}>
+              <button
+                type="button"
+                className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+                aria-label={`Chat status: ${currentStatusLabel}`}
+                aria-busy={isToggleChatStatusPending || undefined}
+                aria-haspopup="menu"
+                aria-expanded={isStatusMenuOpen}
+                disabled={statusSelectionDisabled}
+              >
+                {currentStatusLabel}
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              className="w-[160px] rounded-[10px] border border-border bg-popover p-1 shadow-lg"
+              align="end"
+            >
+              <DropdownMenuRadioGroup
+                value={currentStatusValue}
+                onValueChange={(value) => handleStatusChange(value as 'open' | 'closed')}
+              >
+                <DropdownMenuRadioItem value="open" hideIndicator className="data-[state=checked]:font-medium">
+                  <Circle className="h-4 w-4 text-muted-foreground group-data-[state=checked]:text-primary" />
+                  <span>Open</span>
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="closed" hideIndicator className="data-[state=checked]:font-medium">
+                  <CheckCircle className="h-4 w-4 text-muted-foreground group-data-[state=checked]:text-primary" />
+                  <span>Resolved</span>
+                </DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                aria-label="Conversation actions"
+                data-testid="chat-detail-header-menu"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              className="w-[240px] rounded-[10px] border border-border bg-popover p-1 shadow-lg"
+              align="end"
+            >
+              <DropdownMenuItem
+                disabled={!canEditSummary}
+                onSelect={() => {
+                  setSummaryDraft(summaryValue);
+                  setIsEditingSummary(true);
+                }}
+                data-testid="chat-action-edit-description"
+              >
+                <Pencil className="h-4 w-4 text-muted-foreground" />
+                <span>Edit description</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => copyToClipboard(window.location.href)}
+                data-testid="chat-action-copy-link"
+              >
+                <Link2 className="h-4 w-4 text-muted-foreground" />
+                <span>Copy link</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => copyToClipboard(chat.id)}
+                data-testid="chat-action-copy-id"
+              >
+                <Hash className="h-4 w-4 text-muted-foreground" />
+                <span>Copy conversation ID</span>
+              </DropdownMenuItem>
+              {chat.agentSettingsUrl ? (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild data-testid="chat-action-agent-settings">
+                    <a href={chat.agentSettingsUrl} target="_blank" rel="noreferrer">
+                      <Bot className="h-4 w-4 text-muted-foreground" />
+                      <span className="flex-1">Agent settings</span>
+                      <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
+                    </a>
+                  </DropdownMenuItem>
+                </>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
+      </div>
+
+      <div className="mt-1" data-testid="chat-detail-header-title">
+        {isEditingSummary ? (
+          <input
+            ref={summaryInputRef}
+            type="text"
+            value={summaryDraft}
+            onChange={(event) => setSummaryDraft(event.target.value)}
+            onBlur={handleSummaryCommit}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                handleSummaryCommit();
+              }
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                handleSummaryCancel();
+              }
+            }}
+            className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
+            disabled={isUpdateSummaryPending}
+            aria-busy={isUpdateSummaryPending || undefined}
+          />
+        ) : (
+          <button
+            type="button"
+            className={cn(
+              'text-left text-sm transition-colors hover:text-foreground',
+              hasSummary ? 'text-foreground' : 'text-muted-foreground',
+            )}
+            onClick={() => {
+              if (!canEditSummary) return;
+              setSummaryDraft(summaryValue);
+              setIsEditingSummary(true);
+            }}
+            disabled={!canEditSummary}
+          >
+            {summaryDisplay}
+          </button>
+        )}
       </div>
     </div>
   );
 }
+
 
 interface ChatsScreenProps {
   chats: ChatListItem[];

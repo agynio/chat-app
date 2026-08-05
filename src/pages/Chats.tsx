@@ -12,7 +12,7 @@ import { isThreadDegradedError } from '@/api/errors';
 import { useUser } from '@/user/user.runtime';
 import { useOrganization } from '@/organization/organization.runtime';
 import { useFileAttachments } from '@/hooks/useFileAttachments';
-import { config } from '@/config';
+import { config, deriveSiblingUrl } from '@/config';
 import { useAgentInstances, useAgentsList } from '@/api/hooks/agents';
 import { useBatchGetUsers } from '@/api/hooks/users';
 import { useAppProfiles } from '@/api/hooks/apps';
@@ -242,6 +242,10 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     () => new Map(agents.map((agent) => [agent.meta.id, agent.name])),
     [agents],
   );
+  const instanceById = useMemo(
+    () => new Map(agentInstances.map((instance) => [instance.meta.id, instance])),
+    [agentInstances],
+  );
   const instanceSuffixById = useMemo(
     () => new Map(agentInstances.map((instance) => [instance.meta.id, instance.suffix])),
     [agentInstances],
@@ -362,22 +366,41 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
   );
 
   const resolveChatTitle = useCallback(
-    (participants: Chat['participants'], options?: { withSuffix?: boolean }) => {
+    (participants: Chat['participants']) => {
       const names = participants
         .filter((participant) => participant.id !== currentUserId)
-        .map((participant) => {
-          const label = resolveParticipantLabel(participant.id, participantLookup);
-          // Only agent instances carry a suffix, so users are left untouched.
-          const suffix = options?.withSuffix ? instanceSuffixById.get(participant.id) : undefined;
-          return suffix ? `${label} #${suffix}` : label;
-        })
+        .map((participant) => resolveParticipantLabel(participant.id, participantLookup))
         .filter(Boolean);
       if (names.length === 0) {
         return 'Unknown';
       }
       return names.join(', ');
     },
-    [currentUserId, participantLookup, instanceSuffixById],
+    [currentUserId, participantLookup],
+  );
+
+  // Only agent instances carry a suffix, so users contribute nothing here.
+  const resolveChatSuffix = useCallback(
+    (participants: Chat['participants']) =>
+      participants
+        .map((participant) => instanceSuffixById.get(participant.id))
+        .filter(Boolean)
+        .join(' · '),
+    [instanceSuffixById],
+  );
+
+  const resolveAgentSettingsUrl = useCallback(
+    (participants: Chat['participants']) => {
+      if (!organizationId) return undefined;
+      const consoleUrl = deriveSiblingUrl('console');
+      if (!consoleUrl) return undefined;
+      const agentId = participants
+        .map((participant) => instanceById.get(participant.id)?.agentId)
+        .find(Boolean);
+      if (!agentId) return undefined;
+      return `${consoleUrl}/organizations/${organizationId}/agents/${agentId}`;
+    },
+    [instanceById, organizationId],
   );
 
   const mapDraftToChat = useCallback(
@@ -405,7 +428,8 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
       return {
         id: chat.id,
         title: resolveChatTitle(chat.participants),
-        detailTitle: resolveChatTitle(chat.participants, { withSuffix: true }),
+        detailSuffix: resolveChatSuffix(chat.participants),
+        agentSettingsUrl: resolveAgentSettingsUrl(chat.participants),
         subtitle: resolveChatSummary(chat.summary),
         createdAt: chat.createdAt,
         updatedAt: chat.updatedAt,
@@ -415,7 +439,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
       } satisfies ChatListItem;
     });
     return [...fromDrafts, ...fromData];
-  }, [drafts, mapDraftToChat, chatSummaries, resolveChatTitle]);
+  }, [drafts, mapDraftToChat, chatSummaries, resolveChatTitle, resolveChatSuffix, resolveAgentSettingsUrl]);
 
   const selectedChat = useMemo(() => {
     const found = chatsForList.find((chat) => chat.id === selectedChatId);
