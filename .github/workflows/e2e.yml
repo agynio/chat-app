@@ -45,6 +45,10 @@ jobs:
 
       - name: Provision cluster
         uses: agynio/e2e/.github/actions/provision-vm@main
+        with:
+          # Temporary: proving the notification-subscription fixes before the
+          # VM release moves latest.
+          version: sha-b9413c0
 
       - name: Setup DevSpace
         uses: agynio/e2e/.github/actions/setup-devspace@main
