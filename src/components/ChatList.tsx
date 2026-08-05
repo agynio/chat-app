@@ -72,10 +72,10 @@ export function ChatList({
   if (chats.length === 0 && !isLoading) {
     return (
       <div
-        className={`flex min-h-0 flex-col bg-white rounded-[10px] border border-[var(--agyn-border-subtle)] overflow-hidden ${className}`}
+        className={`flex min-h-0 flex-col bg-card rounded-[10px] border border-border overflow-hidden ${className}`}
         data-testid="chat-list"
       >
-        <div className="flex items-center justify-center py-12 text-[var(--agyn-gray)]">
+        <div className="flex items-center justify-center py-12 text-muted-foreground">
           {emptyState || <p>No chats found</p>}
         </div>
       </div>
@@ -84,7 +84,7 @@ export function ChatList({
 
   return (
     <div
-      className={`flex min-h-0 flex-col bg-white rounded-[10px] border border-[var(--agyn-border-subtle)] overflow-hidden ${className}`}
+      className={`flex min-h-0 flex-col bg-card rounded-[10px] border border-border overflow-hidden ${className}`}
       data-testid="chat-list"
     >
       {/* Chat List */}
@@ -103,15 +103,15 @@ export function ChatList({
       {/* Loading Indicator */}
       {isLoading && (
         <div className="flex items-center justify-center py-4">
-          <Loader2 className="w-5 h-5 text-[var(--agyn-blue)] animate-spin" />
-          <span className="ml-2 text-sm text-[var(--agyn-gray)]">Loading more chats...</span>
+          <Loader2 className="w-5 h-5 text-primary animate-spin" />
+          <span className="ml-2 text-sm text-muted-foreground">Loading more chats...</span>
         </div>
       )}
 
       {/* End of List */}
       {!hasMore && hasLoadedMore && chats.length > 0 && (
         <div className="flex items-center justify-center py-4">
-          <span className="text-sm text-[var(--agyn-gray)]">No more chats to load</span>
+          <span className="text-sm text-muted-foreground">No more chats to load</span>
         </div>
       )}
     </div>

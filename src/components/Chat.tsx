@@ -71,12 +71,12 @@ function ChatImpl({
 
   return (
     <div
-      className={`flex flex-col h-full bg-white rounded-[10px] border border-[var(--agyn-border-subtle)] overflow-hidden ${className}`}
+      className={`flex flex-col h-full bg-card rounded-[10px] border border-border overflow-hidden ${className}`}
       data-testid="chat"
     >
       {/* Header */}
       {header && (
-        <div className="px-6 py-4 border-b border-[var(--agyn-border-subtle)] bg-[var(--agyn-bg-light)]">
+        <div className="px-6 py-4 border-b border-border bg-muted">
           {header}
         </div>
       )}
@@ -93,7 +93,7 @@ function ChatImpl({
           {/* Runs */}
           {runs.map((run, index) => (
             <div key={run.id} className="min-w-0">
-              {index > 0 && <div className="border-t border-[var(--agyn-border-subtle)]" />}
+              {index > 0 && <div className="border-t border-border" />}
               <div className="min-w-0 px-6 pt-6 pb-2">
                 {run.messages.map((message) => (
                     <Message
@@ -117,9 +117,9 @@ function ChatImpl({
             <div className="min-w-0 px-6 pb-6">
               <div className="pt-6 min-w-0">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-8 border-t border-[var(--agyn-border-subtle)]" />
-                  <span className="text-xs text-[var(--agyn-gray)] tracking-wider">PENDING</span>
-                  <div className="flex-1 border-t border-[var(--agyn-border-subtle)]" />
+                  <div className="w-8 border-t border-border" />
+                  <span className="text-xs text-muted-foreground tracking-wider">PENDING</span>
+                  <div className="flex-1 border-t border-border" />
                 </div>
 
                 <div className="space-y-3">
@@ -153,7 +153,7 @@ function ChatImpl({
 
       {/* Footer */}
       {footer && (
-        <div className="px-6 py-4 border-t border-[var(--agyn-border-subtle)] bg-[var(--agyn-bg-light)]">
+        <div className="px-6 py-4 border-t border-border bg-muted">
           {footer}
         </div>
       )}

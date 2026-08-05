@@ -305,13 +305,13 @@ function MarkdownDiagramComponent({ language, source, className = '' }: Markdown
 
       <div ref={containerRef} className="w-full" data-state={state}>
         {state === 'loading' || state === 'idle' ? (
-          <div className="text-xs text-[var(--agyn-gray)]">Loading {diagramLabel} diagram...</div>
+          <div className="text-xs text-muted-foreground">Loading {diagramLabel} diagram...</div>
         ) : null}
         {state === 'error' ? (
-          <div className="text-xs text-[var(--agyn-gray)]">Unable to render {diagramLabel} diagram.</div>
+          <div className="text-xs text-muted-foreground">Unable to render {diagramLabel} diagram.</div>
         ) : null}
         {state === 'blocked' ? (
-          <div className="text-xs text-[var(--agyn-gray)]">Rendering skipped.</div>
+          <div className="text-xs text-muted-foreground">Rendering skipped.</div>
         ) : null}
         {state === 'ready' && svgMarkup ? (
           <div
@@ -333,7 +333,7 @@ function MarkdownDiagramComponent({ language, source, className = '' }: Markdown
       {shouldShowSource ? (
         <pre className="w-full min-w-0 max-w-full overflow-x-auto">
           <code
-            className={`language-${language} block whitespace-pre-wrap font-mono text-sm leading-relaxed text-[var(--agyn-dark)]`}
+            className={`language-${language} block whitespace-pre-wrap font-mono text-sm leading-relaxed text-foreground`}
           >
             {trimmedSource}
           </code>

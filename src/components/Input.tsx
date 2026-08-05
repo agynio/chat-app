@@ -32,14 +32,14 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   return (
     <div className="w-full">
       {label && (
-        <label className="block mb-2 text-[var(--agyn-dark)]">
+        <label className="block mb-2 text-foreground">
           {label}
         </label>
       )}
       
       <div className="relative">
         {leftIcon && (
-          <div className={`absolute ${iconLeftPosition} top-1/2 -translate-y-1/2 text-[var(--agyn-gray)]`}>
+          <div className={`absolute ${iconLeftPosition} top-1/2 -translate-y-1/2 text-muted-foreground`}>
             {leftIcon}
           </div>
         )}
@@ -48,13 +48,13 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           ref={ref}
           className={`
             w-full ${paddingClasses} ${heightClasses}
-            bg-white 
-            border border-[var(--agyn-border-subtle)] 
+            bg-background 
+            border border-border 
             rounded-[10px] 
-            text-[var(--agyn-dark)]
-            placeholder:text-[var(--agyn-gray)]
-            focus:outline-none focus:ring-2 focus:ring-[var(--agyn-blue)] focus:border-transparent
-            disabled:bg-[var(--agyn-bg-light)] disabled:cursor-not-allowed
+            text-foreground
+            placeholder:text-muted-foreground
+            focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent
+            disabled:bg-muted disabled:cursor-not-allowed
             ${error ? 'border-red-500 focus:ring-red-500' : ''}
             ${leftIcon ? iconLeftPadding : ''}
             ${rightIcon ? iconRightPadding : ''}
@@ -64,7 +64,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         />
         
         {rightIcon && (
-          <div className={`absolute ${iconRightPosition} top-1/2 -translate-y-1/2 text-[var(--agyn-gray)]`}>
+          <div className={`absolute ${iconRightPosition} top-1/2 -translate-y-1/2 text-muted-foreground`}>
             {rightIcon}
           </div>
         )}
@@ -75,7 +75,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       )}
       
       {helperText && !error && (
-        <p className="mt-2 text-sm text-[var(--agyn-gray)]">{helperText}</p>
+        <p className="mt-2 text-sm text-muted-foreground">{helperText}</p>
       )}
     </div>
   );

@@ -35,7 +35,7 @@ function MediaVideoComponent({ src, label = 'Video', className = '' }: MediaVide
   return (
     <div className={cn('flex flex-col gap-2', className)} data-testid="media-video">
       <video
-        className="w-full rounded-[12px] border border-[var(--agyn-border-subtle)] bg-black"
+        className="w-full rounded-[12px] border border-border bg-black"
         controls
         preload="metadata"
         src={proxyUrl}

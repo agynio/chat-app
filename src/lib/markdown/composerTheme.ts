@@ -1,32 +1,32 @@
 import type { EditorThemeClasses } from 'lexical';
 
 export const MARKDOWN_COMPOSER_THEME: EditorThemeClasses = {
-  paragraph: 'text-sm leading-relaxed text-[var(--agyn-dark)]',
-  quote: 'border-l-4 border-[var(--agyn-blue)] bg-[var(--agyn-bg-light)] pl-3 pr-2 py-2 text-sm leading-relaxed text-[var(--agyn-dark)] italic rounded-[6px]',
+  paragraph: 'text-sm leading-relaxed text-foreground',
+  quote: 'border-l-4 border-primary bg-muted pl-3 pr-2 py-2 text-sm leading-relaxed text-foreground italic rounded-[6px]',
   list: {
     nested: {
-      listitem: 'text-sm leading-relaxed text-[var(--agyn-dark)]',
+      listitem: 'text-sm leading-relaxed text-foreground',
     },
-    ol: 'ml-4 list-decimal space-y-1 text-sm leading-relaxed text-[var(--agyn-dark)]',
-    ul: 'ml-4 list-disc space-y-1 text-sm leading-relaxed text-[var(--agyn-dark)]',
+    ol: 'ml-4 list-decimal space-y-1 text-sm leading-relaxed text-foreground',
+    ul: 'ml-4 list-disc space-y-1 text-sm leading-relaxed text-foreground',
   },
-  listitem: 'text-sm leading-relaxed text-[var(--agyn-dark)]',
+  listitem: 'text-sm leading-relaxed text-foreground',
   heading: {
-    h1: 'text-2xl font-semibold text-[var(--agyn-dark)]',
-    h2: 'text-xl font-semibold text-[var(--agyn-dark)]',
-    h3: 'text-lg font-semibold text-[var(--agyn-dark)]',
-    h4: 'text-base font-semibold text-[var(--agyn-dark)]',
-    h5: 'text-sm font-semibold text-[var(--agyn-dark)]',
-    h6: 'text-sm font-semibold text-[var(--agyn-dark)] uppercase tracking-wide',
+    h1: 'text-2xl font-semibold text-foreground',
+    h2: 'text-xl font-semibold text-foreground',
+    h3: 'text-lg font-semibold text-foreground',
+    h4: 'text-base font-semibold text-foreground',
+    h5: 'text-sm font-semibold text-foreground',
+    h6: 'text-sm font-semibold text-foreground uppercase tracking-wide',
   },
   text: {
     bold: 'font-semibold',
     italic: 'italic',
     underline: 'underline decoration-[var(--agyn-purple)] decoration-2 underline-offset-2',
-    code: 'rounded bg-[var(--agyn-bg-light)] px-1.5 py-0.5 font-mono text-[var(--agyn-purple)] text-sm',
+    code: 'rounded bg-muted px-1.5 py-0.5 font-mono text-[var(--agyn-purple)] text-sm',
   },
-  link: 'text-[var(--agyn-blue)] underline underline-offset-2 transition-colors hover:text-[var(--agyn-purple)]',
-  code: 'block rounded-[10px] bg-[var(--agyn-bg-light)] p-3 font-mono text-sm leading-relaxed text-[var(--agyn-dark)] overflow-x-auto',
+  link: 'text-primary underline underline-offset-2 transition-colors hover:text-[var(--agyn-purple)]',
+  code: 'block rounded-[10px] bg-muted p-3 font-mono text-sm leading-relaxed text-foreground overflow-x-auto',
   codeHighlight: {
     atrule: 'text-[#c678dd]',
     attrName: 'text-[#d19a66]',

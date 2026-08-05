@@ -8,10 +8,10 @@ interface PanelProps {
 
 export function Panel({ variant = 'standard', children, className = '' }: PanelProps) {
   const variants = {
-    standard: 'bg-white border border-[var(--agyn-border-subtle)]',
-    elevated: 'bg-white shadow-md',
-    subtle: 'bg-[var(--agyn-bg-light)] border border-[var(--agyn-border-subtle)]',
-    highlighted: 'bg-[var(--agyn-bg-accent)] border-2 border-[var(--agyn-blue)]',
+    standard: 'bg-card border border-border',
+    elevated: 'bg-card shadow-md',
+    subtle: 'bg-muted border border-border',
+    highlighted: 'bg-[var(--agyn-bg-accent)] border-2 border-primary',
   };
   
   return (
@@ -28,7 +28,7 @@ interface PanelHeaderProps {
 
 export function PanelHeader({ children, className = '' }: PanelHeaderProps) {
   return (
-    <div className={`p-6 border-b border-[var(--agyn-border-subtle)] ${className}`}>
+    <div className={`p-6 border-b border-border ${className}`}>
       {children}
     </div>
   );
@@ -54,7 +54,7 @@ interface PanelFooterProps {
 
 export function PanelFooter({ children, className = '' }: PanelFooterProps) {
   return (
-    <div className={`p-6 border-t border-[var(--agyn-border-subtle)] ${className}`}>
+    <div className={`p-6 border-t border-border ${className}`}>
       {children}
     </div>
   );

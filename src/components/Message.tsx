@@ -93,7 +93,7 @@ function MessageComponent({
               {senderLabel ?? config.label}
             </span>
             {timestamp && (
-              <span className="text-xs text-[var(--agyn-gray)]">{timestamp}</span>
+              <span className="text-xs text-muted-foreground">{timestamp}</span>
             )}
             {isUnread ? (
               <span className="text-[10px] font-medium uppercase tracking-wide text-[var(--agyn-status-pending)]">
@@ -115,7 +115,7 @@ function MessageComponent({
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
-                  className="rounded-[10px] border border-[var(--agyn-border-subtle)] bg-white p-1 shadow-lg"
+                  className="rounded-[10px] border border-border bg-popover p-1 shadow-lg"
                   align="start"
                 >
                   {hasTraceAction ? (
@@ -146,7 +146,7 @@ function MessageComponent({
               </DropdownMenu>
             ) : null}
           </div>
-          <div className="text-[var(--agyn-dark)] min-w-0">
+          <div className="text-foreground min-w-0">
             {typeof content === 'string' ? (
               <MarkdownContent content={content} />
             ) : (

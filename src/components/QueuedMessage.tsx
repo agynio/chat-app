@@ -23,13 +23,13 @@ export function QueuedMessage({
           className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
           style={{ backgroundColor: 'var(--agyn-bg-light)' }}
         >
-          <Clock className="w-4 h-4 text-[var(--agyn-gray)]" />
+          <Clock className="w-4 h-4 text-muted-foreground" />
         </div>
 
         {/* Message Content */}
         <div className="flex flex-col gap-1 min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className="text-xs text-[var(--agyn-gray)]">User</span>
+            <span className="text-xs text-muted-foreground">User</span>
             {onCancel ? (
               <IconButton
                 icon={
@@ -44,7 +44,7 @@ export function QueuedMessage({
               />
             ) : null}
           </div>
-          <div className="text-[var(--agyn-gray)] break-words">
+          <div className="text-muted-foreground break-words">
             {content}
           </div>
         </div>

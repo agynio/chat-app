@@ -54,7 +54,7 @@ function MediaImageComponent({ src, alt = '', title, className = '' }: MediaImag
     return (
       <div className={cn('flex flex-col gap-2', className)} data-testid="media-image" data-alt={alt}>
         <div
-          className="rounded-[12px] border border-[var(--agyn-border-subtle)] bg-[var(--agyn-bg-light)] p-3 text-xs text-[var(--agyn-gray)]"
+          className="rounded-[12px] border border-border bg-muted p-3 text-xs text-muted-foreground"
           data-testid="media-image-unavailable"
         >
           {alt ? `Image unavailable: ${alt}` : 'Image unavailable.'}
@@ -74,21 +74,21 @@ function MediaImageComponent({ src, alt = '', title, className = '' }: MediaImag
       <div className="relative max-w-full">
         {loadState === 'loading' ? (
           <div
-            className="h-48 w-full animate-pulse rounded-[12px] bg-[var(--agyn-bg-light)]"
+            className="h-48 w-full animate-pulse rounded-[12px] bg-muted"
             data-testid="media-image-loading"
           />
         ) : loadState === 'error' ? (
           <div
-            className="flex flex-col gap-2 rounded-[12px] border border-[var(--agyn-border-subtle)] bg-[var(--agyn-bg-light)] p-3"
+            className="flex flex-col gap-2 rounded-[12px] border border-border bg-muted p-3"
             data-testid="media-image-error"
           >
-            <span className="text-xs text-[var(--agyn-gray)]">
+            <span className="text-xs text-muted-foreground">
               {alt ? `Image failed to load: ${alt}` : 'Image failed to load.'}
             </span>
             <button
               type="button"
               onClick={handleRetry}
-              className="text-xs text-[var(--agyn-blue)] hover:text-[var(--agyn-purple)] underline"
+              className="text-xs text-primary hover:text-[var(--agyn-purple)] underline"
             >
               Retry
             </button>
@@ -100,7 +100,7 @@ function MediaImageComponent({ src, alt = '', title, className = '' }: MediaImag
             alt={alt}
             title={title}
             loading="lazy"
-            className="max-h-[360px] w-full rounded-[12px] border border-[var(--agyn-border-subtle)] object-contain"
+            className="max-h-[360px] w-full rounded-[12px] border border-border object-contain"
             data-testid="media-image-element"
           />
         )}

@@ -29,7 +29,7 @@ export function SegmentedControl({
   };
 
   return (
-    <div className={`flex items-center gap-1 bg-[var(--agyn-bg-light)] rounded-[6px] p-1 ${className}`}>
+    <div className={`flex items-center gap-1 bg-muted rounded-[6px] p-1 ${className}`}>
       {items.map((item) => {
         const isActive = value === item.value;
         
@@ -46,8 +46,8 @@ export function SegmentedControl({
               disabled:opacity-50 disabled:cursor-not-allowed
               ${
                 isActive
-                  ? 'bg-white text-[var(--agyn-dark)] shadow-sm'
-                  : 'text-[var(--agyn-gray)] hover:text-[var(--agyn-dark)]'
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
               }
             `}
             title={item.title}

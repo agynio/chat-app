@@ -15,7 +15,7 @@ const baseClasses =
   'w-8 h-8 flex items-center justify-center rounded-md text-[var(--agyn-text-subtle)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
 
 const variantClasses: Record<NonNullable<ActionIconButtonProps['variant']>, string> = {
-  default: 'hover:bg-[var(--agyn-bg-light)] hover:text-[var(--agyn-blue)]',
+  default: 'hover:bg-muted hover:text-primary',
   danger: 'hover:bg-[var(--agyn-status-failed)]/10 hover:text-[var(--agyn-status-failed)]',
 };
 
@@ -50,7 +50,7 @@ export function ActionIconButton({
             sideOffset={5}
           >
             {tooltipLabel}
-            <Tooltip.Arrow className="fill-[var(--agyn-dark)]" />
+            <Tooltip.Arrow className="fill-foreground" />
           </Tooltip.Content>
         </Tooltip.Portal>
       </Tooltip.Root>

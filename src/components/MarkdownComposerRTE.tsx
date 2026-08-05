@@ -602,7 +602,7 @@ interface ToolbarAction {
 
 function MarkdownPlaceholder({ placeholder }: { placeholder: string }) {
   return (
-    <div className="pointer-events-none absolute left-3 top-2 text-sm text-[var(--agyn-gray)]">
+    <div className="pointer-events-none absolute left-3 top-2 text-sm text-muted-foreground">
       {placeholder}
     </div>
   );
@@ -653,7 +653,7 @@ function MarkdownComposerEditable({
             placeholder={<></>}
             role="textbox"
             spellCheck
-            className={`min-h-full w-full resize-none whitespace-pre-wrap break-words rounded-[10px] border border-transparent bg-transparent px-3 py-2 ${rightPaddingClass} text-sm leading-relaxed text-[var(--agyn-dark)] focus:outline-none focus-visible:outline-none`}
+            className={`min-h-full w-full resize-none whitespace-pre-wrap break-words rounded-[10px] border border-transparent bg-transparent px-3 py-2 ${rightPaddingClass} text-sm leading-relaxed text-foreground focus:outline-none focus-visible:outline-none`}
             data-testid="markdown-composer-editor"
             style={style}
           />
@@ -1440,13 +1440,13 @@ function MarkdownComposerToolbar({
   );
 
   return (
-    <div className="flex items-center justify-between border-b border-[var(--agyn-border-subtle)] px-2 py-2">
+    <div className="flex items-center justify-between border-b border-border px-2 py-2">
       <div className="flex flex-wrap items-center gap-1">
         {toolbarActions.map((action) => (
           <button
             key={action.id}
             type="button"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--agyn-gray)] transition-colors hover:bg-[var(--agyn-bg-light)] hover:text-[var(--agyn-blue)] disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
             title={action.label}
             aria-label={action.label}
             onMouseDown={(event) => event.preventDefault()}
@@ -1477,10 +1477,10 @@ function MarkdownComposerToolbar({
         ) : null}
       </div>
       <div className="flex items-center gap-2">
-        <div className="flex items-center rounded-md border border-[var(--agyn-border-subtle)] bg-white">
+        <div className="flex items-center rounded-md border border-border bg-background">
           <button
             type="button"
-            className={`inline-flex h-8 items-center px-3 text-xs font-medium transition-colors rounded-l-md ${mode === 'rendered' ? 'bg-[var(--agyn-bg-light)] text-[var(--agyn-blue)]' : 'text-[var(--agyn-gray)] hover:text-[var(--agyn-blue)]'}`}
+            className={`inline-flex h-8 items-center px-3 text-xs font-medium transition-colors rounded-l-md ${mode === 'rendered' ? 'bg-muted text-primary' : 'text-muted-foreground hover:text-primary'}`}
             aria-pressed={mode === 'rendered'}
             onClick={() => onModeChange('rendered')}
             onMouseDown={(event) => event.preventDefault()}
@@ -1490,7 +1490,7 @@ function MarkdownComposerToolbar({
           </button>
           <button
             type="button"
-            className={`inline-flex h-8 items-center px-3 text-xs font-medium transition-colors rounded-r-md ${mode === 'source' ? 'bg-[var(--agyn-bg-light)] text-[var(--agyn-blue)]' : 'text-[var(--agyn-gray)] hover:text-[var(--agyn-blue)]'}`}
+            className={`inline-flex h-8 items-center px-3 text-xs font-medium transition-colors rounded-r-md ${mode === 'source' ? 'bg-muted text-primary' : 'text-muted-foreground hover:text-primary'}`}
             aria-pressed={mode === 'source'}
             onClick={() => onModeChange('source')}
             onMouseDown={(event) => event.preventDefault()}
@@ -1501,7 +1501,7 @@ function MarkdownComposerToolbar({
         </div>
         <button
           type="button"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--agyn-gray)] transition-colors hover:bg-[var(--agyn-bg-light)] hover:text-[var(--agyn-blue)] disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
           title="Open fullscreen markdown editor"
           aria-label="Open fullscreen markdown editor"
           onMouseDown={(event) => event.preventDefault()}
@@ -1555,8 +1555,8 @@ export function MarkdownComposerRTE({
   const ariaLabel = textareaAriaLabel ?? ariaLabelProp ?? placeholder;
   const actionPaddingClass = onAttachFiles ? 'pr-20' : 'pr-12';
   const sourceTextareaClassName = [
-    `!border-none !outline-none !ring-0 bg-transparent px-3 py-2 ${actionPaddingClass} text-sm leading-relaxed text-[var(--agyn-dark)]`,
-    'placeholder:text-[var(--agyn-gray)] focus:!ring-0 focus:!outline-none focus:!border-transparent focus-visible:!ring-0 focus-visible:!outline-none',
+    `!border-none !outline-none !ring-0 bg-transparent px-3 py-2 ${actionPaddingClass} text-sm leading-relaxed text-foreground`,
+    'placeholder:text-muted-foreground focus:!ring-0 focus:!outline-none focus:!border-transparent focus-visible:!ring-0 focus-visible:!outline-none',
     textareaClassName,
   ]
     .filter(Boolean)
@@ -1795,8 +1795,8 @@ export function MarkdownComposerRTE({
   const wrapperClassName = [
     'rounded-[10px] border',
     isDragging
-      ? 'border-[var(--agyn-blue)] bg-[var(--agyn-bg-blue)]'
-      : 'border-[var(--agyn-border-subtle)] bg-white',
+      ? 'border-primary bg-[var(--agyn-bg-blue)]'
+      : 'border-border bg-card',
     className,
   ]
     .filter(Boolean)

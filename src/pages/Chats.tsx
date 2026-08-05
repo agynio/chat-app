@@ -5,7 +5,8 @@ import type { ChatListItem } from '@/components/ChatListItem';
 import type { ChatMessage, ChatQueuedMessageData, ChatReminderData, ChatRun } from '@/components/Chat';
 import { MarkdownContent } from '@/components/MarkdownContent';
 import { MessageAttachments } from '@/components/MessageAttachments';
-import ChatsScreen, { UserMenu } from '@/components/screens/ChatsScreen';
+import ChatsScreen from '@/components/screens/ChatsScreen';
+import { SidebarUserMenu } from '@/components/SidebarUserMenu';
 import { notifyError } from '@/lib/notify';
 import { isThreadDegradedError } from '@/api/errors';
 import { useUser } from '@/user/user.runtime';
@@ -75,17 +76,17 @@ const resolveChatSummary = (summary: string | null | undefined): string | undefi
 
 function NoOrganizationsScreen() {
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col bg-[var(--agyn-bg-light)]">
+    <div className="flex h-full min-h-0 flex-1 flex-col bg-muted/40">
       <div className="flex items-center justify-end px-4 py-3">
-        <UserMenu />
+        <SidebarUserMenu side="bottom" className="w-auto max-w-64" />
       </div>
       <div
         className="flex flex-1 items-center justify-center p-6 text-center"
         data-testid="no-organizations-screen"
       >
         <div className="max-w-md space-y-3">
-          <h2 className="text-lg font-semibold text-[var(--agyn-dark)]">Join or create an organization</h2>
-          <p className="text-sm text-[var(--agyn-gray)]">
+          <h2 className="text-lg font-semibold text-foreground">Join or create an organization</h2>
+          <p className="text-sm text-muted-foreground">
             You do not have access to any organizations yet. Ask for an invite from a teammate or create a new
             organization to start chatting.
           </p>
@@ -892,7 +893,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
 
   if (isOrganizationsLoading) {
     return (
-      <div className="flex h-full items-center justify-center text-sm text-[var(--agyn-gray)]">
+      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
         Loading organizations…
       </div>
     );
@@ -970,7 +971,7 @@ export function Chats() {
 
   if (identityStatus === 'loading' || identityStatus === 'idle') {
     return (
-      <div className="flex h-full items-center justify-center text-sm text-[var(--agyn-gray)]">
+      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
         Loading user identity…
       </div>
     );

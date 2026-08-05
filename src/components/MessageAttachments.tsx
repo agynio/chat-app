@@ -72,7 +72,7 @@ export function MessageAttachments({ fileIds, className = '' }: MessageAttachmen
           return (
             <div
               key={fileId}
-              className="h-24 w-full animate-pulse rounded-[12px] border border-[var(--agyn-border-subtle)] bg-[var(--agyn-bg-light)]"
+              className="h-24 w-full animate-pulse rounded-[12px] border border-border bg-muted"
             />
           );
         }

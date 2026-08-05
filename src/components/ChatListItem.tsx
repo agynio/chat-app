@@ -59,16 +59,16 @@ export function ChatListItem({
       {/* Chat Item */}
       <div
         className={`group cursor-pointer transition-colors relative ${
-          isSelected ? 'bg-[var(--agyn-blue)]/5' : ''
+          isSelected ? 'bg-primary/5' : ''
         }`}
       >
         {/* Selected indicator - absolute positioned to avoid layout shift */}
         {isSelected && (
-          <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-[var(--agyn-blue)] z-10" />
+          <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-primary z-10" />
         )}
         
         <div
-          className="flex items-start gap-3 px-4 py-3 hover:bg-[var(--agyn-bg-light)] relative"
+          className="flex items-start gap-3 px-4 py-3 hover:bg-muted relative"
           onClick={handleSelect}
         >
           {/* Avatar */}
@@ -82,20 +82,20 @@ export function ChatListItem({
           {/* Content */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-[var(--agyn-dark)]">{chat.title}</span>
-              <span className="text-xs text-[var(--agyn-gray)]">•</span>
-              <span className="text-xs text-[var(--agyn-gray)]" title={updatedAtTitle}>
+              <span className="text-sm text-foreground">{chat.title}</span>
+              <span className="text-xs text-muted-foreground">•</span>
+              <span className="text-xs text-muted-foreground" title={updatedAtTitle}>
                 {updatedAtRelative}
               </span>
               {hasUnread ? (
-                <span className="ml-1 inline-flex items-center justify-center rounded-full bg-[var(--agyn-blue)] text-white text-[10px] px-1.5 py-0.5">
+                <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary text-white text-[10px] px-1.5 py-0.5">
                   {chat.unreadCount}
                 </span>
               ) : null}
             </div>
             {chat.subtitle ? (
               <p
-                className="mt-1 text-sm text-[var(--agyn-dark)] overflow-hidden"
+                className="mt-1 text-sm text-foreground overflow-hidden"
                 style={{
                   display: '-webkit-box',
                   WebkitLineClamp: 2,
@@ -115,7 +115,7 @@ export function ChatListItem({
         
         {/* Border after item */}
         <div 
-          className="border-b border-[var(--agyn-border-subtle)]"
+          className="border-b border-border"
         />
       </div>
     </div>

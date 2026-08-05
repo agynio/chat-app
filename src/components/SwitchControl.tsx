@@ -14,7 +14,7 @@ export const SwitchControl = forwardRef<SwitchElement, SwitchControlProps>(funct
     <SwitchPrimitive.Root
       ref={ref}
       className={cn(
-        'inline-flex h-5 w-10 shrink-0 items-center rounded-full border border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--agyn-blue)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-[var(--agyn-blue)] data-[state=unchecked]:bg-[var(--agyn-border-default)]',
+        'inline-flex h-5 w-10 shrink-0 items-center rounded-full border border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=unchecked]:bg-[var(--agyn-border-default)]',
         className,
       )}
       {...props}

@@ -233,7 +233,7 @@ export const AutocompleteInput = forwardRef<AutocompleteInputHandle, Autocomplet
   return (
     <div className="w-full relative">
       {label && (
-        <label className="block mb-2 text-[var(--agyn-dark)]">
+        <label className="block mb-2 text-foreground">
           {label}
         </label>
       )}
@@ -241,7 +241,7 @@ export const AutocompleteInput = forwardRef<AutocompleteInputHandle, Autocomplet
       <div className="relative">
         {/* Left Icon */}
         {leftIcon && (
-          <div className={`absolute ${iconLeftPosition} top-1/2 -translate-y-1/2 text-[var(--agyn-gray)]`}>
+          <div className={`absolute ${iconLeftPosition} top-1/2 -translate-y-1/2 text-muted-foreground`}>
             {leftIcon}
           </div>
         )}
@@ -251,13 +251,13 @@ export const AutocompleteInput = forwardRef<AutocompleteInputHandle, Autocomplet
           type="text"
           className={`
             w-full ${paddingClasses} ${heightClasses}
-            bg-white 
-            border border-[var(--agyn-border-subtle)] 
+            bg-background 
+            border border-border 
             rounded-[10px] 
-            text-[var(--agyn-dark)]
-            placeholder:text-[var(--agyn-gray)]
-            focus:outline-none focus:ring-2 focus:ring-[var(--agyn-blue)] focus:border-transparent
-            disabled:bg-[var(--agyn-bg-light)] disabled:cursor-not-allowed
+            text-foreground
+            placeholder:text-muted-foreground
+            focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent
+            disabled:bg-muted disabled:cursor-not-allowed
             ${error ? 'border-red-500 focus:ring-red-500' : ''}
             ${leftIcon ? iconLeftPadding : ''}
             ${isLoading || (clearable && value) ? 'pr-10' : ''}
@@ -276,13 +276,13 @@ export const AutocompleteInput = forwardRef<AutocompleteInputHandle, Autocomplet
         {!disabled && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
             {isLoading && (
-              <Loader2 className="w-4 h-4 text-[var(--agyn-gray)] animate-spin" />
+              <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />
             )}
             {!isLoading && clearable && value && (
               <button
                 type="button"
                 onClick={handleClear}
-                className="text-[var(--agyn-gray)] hover:text-[var(--agyn-dark)] transition-colors"
+                className="text-muted-foreground hover:text-foreground transition-colors"
                 tabIndex={-1}
               >
                 <X className="w-4 h-4" />
@@ -296,7 +296,7 @@ export const AutocompleteInput = forwardRef<AutocompleteInputHandle, Autocomplet
           <div
             ref={dropdownRef}
             role="listbox"
-            className="absolute z-50 w-full mt-2 bg-white border border-[var(--agyn-border-default)] rounded-[10px] shadow-lg max-h-[300px] overflow-hidden"
+            className="absolute z-50 w-full mt-2 bg-popover border border-[var(--agyn-border-default)] rounded-[10px] shadow-lg max-h-[300px] overflow-hidden"
           >
             <div className="p-1 max-h-[300px] overflow-auto">
               {options.map((option, index) => (
@@ -311,8 +311,8 @@ export const AutocompleteInput = forwardRef<AutocompleteInputHandle, Autocomplet
                   className={`
                     w-full text-left px-3 py-2 transition-colors cursor-pointer rounded-[6px]
                     ${index === highlightedIndex 
-                      ? 'bg-[var(--agyn-bg-light)] text-[var(--agyn-dark)]' 
-                      : 'text-[var(--agyn-dark)] hover:bg-[var(--agyn-bg-light)]'
+                      ? 'bg-muted text-foreground' 
+                      : 'text-foreground hover:bg-muted'
                     }
                   `}
                 >
@@ -329,7 +329,7 @@ export const AutocompleteInput = forwardRef<AutocompleteInputHandle, Autocomplet
       )}
 
       {helperText && !error && (
-        <p className="mt-2 text-sm text-[var(--agyn-gray)]">{helperText}</p>
+        <p className="mt-2 text-sm text-muted-foreground">{helperText}</p>
       )}
     </div>
   );

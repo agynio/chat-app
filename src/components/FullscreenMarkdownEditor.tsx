@@ -292,10 +292,10 @@ export function FullscreenMarkdownEditor({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-white">
-      <div className="flex items-center justify-between border-b border-[var(--agyn-border-subtle)] px-6 py-4">
+    <div className="fixed inset-0 z-50 flex flex-col bg-background">
+      <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="space-y-1">
-          <h2 className="text-lg font-semibold text-[var(--agyn-dark)]">{label}</h2>
+          <h2 className="text-lg font-semibold text-foreground">{label}</h2>
           <p className="text-sm text-[var(--agyn-text-subtle)]">
             {viewMode === 'split'
               ? 'Editing with a live preview.'
@@ -319,14 +319,14 @@ export function FullscreenMarkdownEditor({
       <div className="flex flex-1 flex-col overflow-hidden">
         <div className="grid flex-1 grid-cols-1 gap-0 overflow-hidden md:grid-cols-2">
           {showEditor && (
-            <div className="flex flex-1 flex-col border-r border-[var(--agyn-border-subtle)]">
-              <div className="flex items-center justify-between border-b border-[var(--agyn-border-subtle)] px-4 py-2 text-sm font-medium text-[var(--agyn-dark)]">
+            <div className="flex flex-1 flex-col border-r border-border">
+              <div className="flex items-center justify-between border-b border-border px-4 py-2 text-sm font-medium text-foreground">
                 <span>Markdown</span>
                 <span className="text-xs text-[var(--agyn-text-subtle)]">Live editing</span>
               </div>
               <textarea
                 ref={editorRef}
-                className="flex-1 resize-none bg-white p-4 text-sm leading-relaxed text-[var(--agyn-dark)] focus-visible:outline-hidden"
+                className="flex-1 resize-none bg-background p-4 text-sm leading-relaxed text-foreground focus-visible:outline-hidden"
                 value={value}
                 onChange={(event) => onChange(event.target.value)}
                 placeholder="Write markdown here..."
@@ -336,11 +336,11 @@ export function FullscreenMarkdownEditor({
 
           {showPreview && (
             <div className="flex flex-1 flex-col">
-              <div className="flex items-center justify-between border-b border-[var(--agyn-border-subtle)] px-4 py-2 text-sm font-medium text-[var(--agyn-dark)]">
+              <div className="flex items-center justify-between border-b border-border px-4 py-2 text-sm font-medium text-foreground">
                 <span>Preview</span>
                 <span className="text-xs text-[var(--agyn-text-subtle)]">Rendered output</span>
               </div>
-              <div ref={previewScrollRef} className="flex-1 overflow-y-auto bg-white px-6 py-4">
+              <div ref={previewScrollRef} className="flex-1 overflow-y-auto bg-background px-6 py-4">
                 <div ref={previewContentRef}>
                   <MarkdownContent content={transformed} />
                 </div>

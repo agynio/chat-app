@@ -110,7 +110,7 @@ function MarkdownContentComponent({ content, className = '' }: MarkdownContentPr
       return (
         <code
           className={[
-            'block whitespace-pre-wrap font-mono text-sm leading-relaxed text-[var(--agyn-dark)]',
+            'block whitespace-pre-wrap font-mono text-sm leading-relaxed text-foreground',
             match ? `language-${match[1]}` : null,
             codeClassName,
           ]
@@ -125,7 +125,7 @@ function MarkdownContentComponent({ content, className = '' }: MarkdownContentPr
 
     return (
       <code
-        className="inline rounded bg-[var(--agyn-bg-light)] px-1.5 py-0.5 font-mono text-[0.875em] leading-normal text-[var(--agyn-purple)] break-words"
+        className="inline rounded bg-muted px-1.5 py-0.5 font-mono text-[0.875em] leading-normal text-[var(--agyn-purple)] break-words"
         style={{ overflowWrap: 'anywhere', ...style }}
         {...props}
       >
@@ -178,32 +178,32 @@ function MarkdownContentComponent({ content, className = '' }: MarkdownContentPr
   const markdownComponents: Components = {
     // Headings
     h1: ({ children }) => (
-      <h1 className="mb-4 mt-6 text-3xl font-bold leading-tight tracking-tight text-[var(--agyn-dark)] first:mt-0">
+      <h1 className="mb-4 mt-6 text-3xl font-bold leading-tight tracking-tight text-foreground first:mt-0">
         {children}
       </h1>
     ),
     h2: ({ children }) => (
-      <h2 className="mb-3 mt-5 text-2xl font-semibold leading-tight text-[var(--agyn-dark)] first:mt-0">
+      <h2 className="mb-3 mt-5 text-2xl font-semibold leading-tight text-foreground first:mt-0">
         {children}
       </h2>
     ),
     h3: ({ children }) => (
-      <h3 className="mb-2 mt-4 text-xl font-semibold leading-snug text-[var(--agyn-dark)] first:mt-0">
+      <h3 className="mb-2 mt-4 text-xl font-semibold leading-snug text-foreground first:mt-0">
         {children}
       </h3>
     ),
     h4: ({ children }) => (
-      <h4 className="mb-2 mt-3 text-base font-semibold leading-snug text-[var(--agyn-dark)] first:mt-0">
+      <h4 className="mb-2 mt-3 text-base font-semibold leading-snug text-foreground first:mt-0">
         {children}
       </h4>
     ),
     h5: ({ children }) => (
-      <h5 className="mb-2 mt-3 text-sm font-semibold leading-snug text-[var(--agyn-dark)] first:mt-0">
+      <h5 className="mb-2 mt-3 text-sm font-semibold leading-snug text-foreground first:mt-0">
         {children}
       </h5>
     ),
     h6: ({ children }) => (
-      <h6 className="mb-2 mt-3 text-xs font-semibold uppercase leading-snug tracking-wide text-[var(--agyn-gray)] first:mt-0">
+      <h6 className="mb-2 mt-3 text-xs font-semibold uppercase leading-snug tracking-wide text-muted-foreground first:mt-0">
         {children}
       </h6>
     ),
@@ -212,7 +212,7 @@ function MarkdownContentComponent({ content, className = '' }: MarkdownContentPr
     p: ({ children, className: paragraphClassName }) => {
       const Wrapper = containsInlineMedia(children) ? 'div' : 'p';
       return (
-        <Wrapper className={cn('text-[var(--agyn-dark)] mb-4 last:mb-0 leading-relaxed', paragraphClassName)}>
+        <Wrapper className={cn('text-foreground mb-4 last:mb-0 leading-relaxed', paragraphClassName)}>
           {children}
         </Wrapper>
       );
@@ -221,7 +221,7 @@ function MarkdownContentComponent({ content, className = '' }: MarkdownContentPr
     // Lists
     ul: ({ children, className, node: _node, depth: _depth, ordered: _ordered, ...domProps }: MarkdownUnorderedListProps) => (
       <ul
-        className={cn('list-disc list-outside ml-5 mb-4 space-y-1 text-[var(--agyn-dark)]', className)}
+        className={cn('list-disc list-outside ml-5 mb-4 space-y-1 text-foreground', className)}
         {...domProps}
       >
         {children}
@@ -229,14 +229,14 @@ function MarkdownContentComponent({ content, className = '' }: MarkdownContentPr
     ),
     ol: ({ children, className, node: _node, depth: _depth, ordered: _ordered, index: _index, ...domProps }: MarkdownOrderedListProps) => (
       <ol
-        className={cn('list-decimal list-outside ml-5 mb-4 space-y-1 text-[var(--agyn-dark)]', className)}
+        className={cn('list-decimal list-outside ml-5 mb-4 space-y-1 text-foreground', className)}
         {...domProps}
       >
         {children}
       </ol>
     ),
     li: ({ children, className, node: _node, ordered: _ordered, index: _index, checked: _checked, depth: _depth, ...domProps }: MarkdownListItemProps) => (
-      <li className={cn('text-[var(--agyn-dark)] leading-relaxed', className)} {...domProps}>
+      <li className={cn('text-foreground leading-relaxed', className)} {...domProps}>
         {children}
       </li>
     ),
@@ -283,7 +283,7 @@ function MarkdownContentComponent({ content, className = '' }: MarkdownContentPr
       }
 
       const mergedClassName = [
-        'my-4 w-full overflow-x-auto rounded-[10px] bg-[var(--agyn-bg-light)] p-3 font-mono text-sm leading-relaxed text-[var(--agyn-dark)]',
+        'my-4 w-full overflow-x-auto rounded-[10px] bg-muted p-3 font-mono text-sm leading-relaxed text-foreground',
         preClassName,
       ]
         .filter(Boolean)
@@ -306,7 +306,7 @@ function MarkdownContentComponent({ content, className = '' }: MarkdownContentPr
 
             const languageClassName = /(?:^|\s)(language-[\w-]+)(?:\s|$)/.exec(node.props.className ?? '')?.[1];
             const mergedChildClassName = [
-              'block whitespace-pre-wrap font-mono text-sm leading-relaxed text-[var(--agyn-dark)]',
+              'block whitespace-pre-wrap font-mono text-sm leading-relaxed text-foreground',
               languageClassName,
             ]
               .filter(Boolean)
@@ -320,7 +320,7 @@ function MarkdownContentComponent({ content, className = '' }: MarkdownContentPr
 
     // Blockquotes
     blockquote: ({ children }) => (
-      <blockquote className="border-l-4 border-[var(--agyn-blue)] bg-[var(--agyn-bg-light)] pl-4 pr-4 py-3 my-4 italic text-[var(--agyn-dark)]">
+      <blockquote className="border-l-4 border-primary bg-muted pl-4 pr-4 py-3 my-4 italic text-foreground">
         {children}
       </blockquote>
     ),
@@ -331,7 +331,7 @@ function MarkdownContentComponent({ content, className = '' }: MarkdownContentPr
         href={typeof href === 'string' ? href : undefined}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-[var(--agyn-blue)] hover:text-[var(--agyn-purple)] underline transition-colors"
+        className="text-primary hover:text-[var(--agyn-purple)] underline transition-colors"
       >
         {children}
       </a>
@@ -339,19 +339,19 @@ function MarkdownContentComponent({ content, className = '' }: MarkdownContentPr
 
     // Horizontal rule
     hr: () => (
-      <hr className="border-0 border-t border-[var(--agyn-border-subtle)] my-6" />
+      <hr className="border-0 border-t border-border my-6" />
     ),
 
     // Tables
     table: ({ children }) => (
       <div className="overflow-x-auto my-4">
-        <table className="min-w-full border border-[var(--agyn-border-subtle)] rounded-[6px]">
+        <table className="min-w-full border border-border rounded-[6px]">
           {children}
         </table>
       </div>
     ),
     thead: ({ children }) => (
-      <thead className="bg-[var(--agyn-bg-light)]">
+      <thead className="bg-muted">
         {children}
       </thead>
     ),
@@ -361,38 +361,38 @@ function MarkdownContentComponent({ content, className = '' }: MarkdownContentPr
       </tbody>
     ),
     tr: ({ children }) => (
-      <tr className="border-b border-[var(--agyn-border-subtle)] last:border-b-0">
+      <tr className="border-b border-border last:border-b-0">
         {children}
       </tr>
     ),
     th: ({ children }) => (
-      <th className="px-4 py-2 text-left text-[var(--agyn-dark)] border-r border-[var(--agyn-border-subtle)] last:border-r-0">
+      <th className="px-4 py-2 text-left text-foreground border-r border-border last:border-r-0">
         {children}
       </th>
     ),
     td: ({ children }) => (
-      <td className="px-4 py-2 text-[var(--agyn-dark)] border-r border-[var(--agyn-border-subtle)] last:border-r-0">
+      <td className="px-4 py-2 text-foreground border-r border-border last:border-r-0">
         {children}
       </td>
     ),
 
     // Strong (bold)
     strong: ({ children }) => (
-      <strong className="text-[var(--agyn-dark)]">
+      <strong className="text-foreground">
         {children}
       </strong>
     ),
 
     // Emphasis (italic)
     em: ({ children }) => (
-      <em className="text-[var(--agyn-dark)]">
+      <em className="text-foreground">
         {children}
       </em>
     ),
 
     // Strikethrough
     del: ({ children }) => (
-      <del className="text-[var(--agyn-gray)] opacity-70">
+      <del className="text-muted-foreground opacity-70">
         {children}
       </del>
     ),

@@ -28,19 +28,19 @@ export function MediaFallback({
   return (
     <div
       className={cn(
-        'flex items-center gap-3 rounded-[12px] border border-[var(--agyn-border-subtle)] bg-white p-3',
+        'flex items-center gap-3 rounded-[12px] border border-border bg-card p-3',
         className,
       )}
       data-testid="media-fallback"
     >
-      <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-[var(--agyn-bg-light)]">
-        <File className="h-5 w-5 text-[var(--agyn-gray)]" aria-hidden="true" />
+      <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-muted">
+        <File className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-medium text-[var(--agyn-dark)]" title={filename}>
+        <div className="truncate text-sm font-medium text-foreground" title={filename}>
           {filename}
         </div>
-        <div className="text-xs text-[var(--agyn-gray)]">
+        <div className="text-xs text-muted-foreground">
           {metadata}
         </div>
       </div>

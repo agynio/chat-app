@@ -36,9 +36,9 @@ export function Toggle({
         disabled={disabled}
         className={cn(
           'inline-flex shrink-0 items-center rounded-full border border-transparent transition-all outline-none',
-          'focus-visible:ring-[3px] focus-visible:ring-[var(--agyn-blue)]/30',
+          'focus-visible:ring-[3px] focus-visible:ring-primary/30',
           'disabled:cursor-not-allowed disabled:opacity-50',
-          'data-[state=checked]:bg-[var(--agyn-blue)]',
+          'data-[state=checked]:bg-primary',
           'data-[state=unchecked]:bg-[var(--agyn-border-default)]',
           'mt-0.5',
           size === 'sm' ? 'w-8 h-4' : 'w-10 h-5',
@@ -61,7 +61,7 @@ export function Toggle({
             <label
               htmlFor={toggleId}
               className={cn(
-                'block text-[var(--agyn-dark)] cursor-pointer',
+                'block text-foreground cursor-pointer',
                 disabled && 'opacity-50 cursor-not-allowed',
               )}
             >
@@ -71,7 +71,7 @@ export function Toggle({
           {description && (
             <p
               className={cn(
-                'text-sm text-[var(--agyn-gray)] mt-1',
+                'text-sm text-muted-foreground mt-1',
                 disabled && 'opacity-50',
               )}
             >

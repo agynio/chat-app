@@ -39,15 +39,15 @@ export function AttachmentPreviewStrip({
               'relative flex min-w-[180px] items-center gap-2 rounded-[10px] border px-2 py-1.5 text-xs',
               isError
                 ? 'border-[var(--agyn-status-failed)] bg-[var(--agyn-status-failed-bg)]'
-                : 'border-[var(--agyn-border-subtle)] bg-white',
+                : 'border-border bg-card',
             ].join(' ')}
           >
-            <File className="h-4 w-4 text-[var(--agyn-gray)]" aria-hidden="true" />
+            <File className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             <div className="flex min-w-0 flex-1 flex-col">
-              <span className="max-w-[160px] truncate text-[11px] text-[var(--agyn-dark)]">
+              <span className="max-w-[160px] truncate text-[11px] text-foreground">
                 {filename}
               </span>
-              <span className="text-[10px] text-[var(--agyn-gray)]">
+              <span className="text-[10px] text-muted-foreground">
                 {formatFileSize(attachment.file.size)}
               </span>
             </div>
@@ -77,8 +77,8 @@ export function AttachmentPreviewStrip({
               />
             ) : null}
             {isUploading ? (
-              <div className="absolute inset-x-0 bottom-0 h-[2px] bg-[var(--agyn-border-subtle)]">
-                <div className="h-full bg-[var(--agyn-blue)]" style={{ width: `${progress}%` }} />
+              <div className="absolute inset-x-0 bottom-0 h-[2px] bg-border">
+                <div className="h-full bg-primary" style={{ width: `${progress}%` }} />
               </div>
             ) : null}
           </div>
