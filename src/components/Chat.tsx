@@ -1,4 +1,4 @@
-import { memo, type ReactNode, type Ref, type UIEvent } from 'react';
+import { memo, useCallback, useEffect, useRef, type MutableRefObject, type ReactNode, type Ref, type UIEvent } from 'react';
 import { Message, type MessageRole } from './Message';
 import { QueuedMessage } from './QueuedMessage';
 import { Reminder } from './Reminder';
@@ -40,6 +40,8 @@ interface ChatProps {
   footer?: ReactNode;
   className?: string;
   scrollRef?: Ref<HTMLDivElement>;
+  /** Space kept clear at the end for a composer floating over the transcript. */
+  bottomInset?: number;
   onScroll?: (event: UIEvent<HTMLDivElement>) => void;
   onCancelQueuedMessage?: (queuedMessageId: string) => void;
   onCancelReminder?: (reminderId: string) => void;
@@ -61,6 +63,7 @@ function ChatImpl({
   footer = EMPTY_FOOTER,
   className = '',
   scrollRef,
+  bottomInset = 0,
   onScroll,
   onCancelQueuedMessage,
   onCancelReminder,
@@ -68,6 +71,39 @@ function ChatImpl({
   cancellingReminderIds = EMPTY_REMINDER_IDS,
 }: ChatProps) {
   const hasQueueOrReminders = queuedMessages.length > 0 || reminders.length > 0;
+
+  const scrollNodeRef = useRef<HTMLDivElement | null>(null);
+  const isAtBottomRef = useRef(true);
+
+  const attachScrollNode = useCallback(
+    (node: HTMLDivElement | null) => {
+      scrollNodeRef.current = node;
+      if (typeof scrollRef === 'function') {
+        scrollRef(node);
+      } else if (scrollRef) {
+        (scrollRef as MutableRefObject<HTMLDivElement | null>).current = node;
+      }
+    },
+    [scrollRef],
+  );
+
+  const handleScroll = useCallback(
+    (event: UIEvent<HTMLDivElement>) => {
+      const node = event.currentTarget;
+      isAtBottomRef.current = node.scrollHeight - node.scrollTop - node.clientHeight < 80;
+      onScroll?.(event);
+    },
+    [onScroll],
+  );
+
+  // A growing composer eats into the transcript from below, so re-pin whoever
+  // was already reading the end of it.
+  useEffect(() => {
+    const node = scrollNodeRef.current;
+    if (node && isAtBottomRef.current) {
+      node.scrollTop = node.scrollHeight;
+    }
+  }, [bottomInset]);
 
   return (
     <div
@@ -84,8 +120,9 @@ function ChatImpl({
       {/* Main Content Area - Single Scroll Container */}
       <div
         className="flex-1 min-w-0 overflow-y-auto flex flex-col"
-        ref={scrollRef ?? undefined}
-        onScroll={onScroll}
+        style={{ paddingBottom: bottomInset }}
+        ref={attachScrollNode}
+        onScroll={handleScroll}
         data-testid="chat-scroll"
       >
         {/* Runs Container */}
@@ -170,6 +207,7 @@ function areEqual(prev: ChatProps, next: ChatProps): boolean {
     prev.footer === next.footer &&
     prev.className === next.className &&
     prev.scrollRef === next.scrollRef &&
+    prev.bottomInset === next.bottomInset &&
     prev.onScroll === next.onScroll &&
     prev.onCancelQueuedMessage === next.onCancelQueuedMessage &&
     prev.onCancelReminder === next.onCancelReminder &&

@@ -18,7 +18,6 @@ import {
   List,
   ListOrdered,
   Loader2,
-  Maximize2,
   Paperclip,
   Quote,
   Send,
@@ -85,7 +84,6 @@ import { LinkNode } from '@lexical/link';
 import type { HTMLAttributes } from 'react';
 import { IconButton } from './IconButton';
 import { Dropdown } from './Dropdown';
-import { FullscreenMarkdownEditor } from './FullscreenMarkdownEditor';
 import { MARKDOWN_COMPOSER_THEME } from '@/lib/markdown/composerTheme';
 import { AttachmentPreviewStrip } from './AttachmentPreviewStrip';
 import type { Attachment } from '@/hooks/useFileAttachments';
@@ -1228,14 +1226,10 @@ function getSelectedElementState(editor: LexicalEditor): ToolbarState {
 function MarkdownComposerToolbar({
   disabled,
   mode,
-  onModeChange,
-  onOpenFullscreen,
   onSourceAction,
 }: {
   disabled: boolean;
   mode: ComposerMode;
-  onModeChange: (mode: ComposerMode) => void;
-  onOpenFullscreen: () => void;
   onSourceAction: (action: SourceAction) => void;
 }) {
   const [editor] = useLexicalComposerContext();
@@ -1440,7 +1434,7 @@ function MarkdownComposerToolbar({
   );
 
   return (
-    <div className="flex items-center justify-between border-b border-border px-2 py-2">
+    <div className="flex min-w-0 flex-1 items-center">
       <div className="flex flex-wrap items-center gap-1">
         {toolbarActions.map((action) => (
           <button
@@ -1476,42 +1470,6 @@ function MarkdownComposerToolbar({
           </div>
         ) : null}
       </div>
-      <div className="flex items-center gap-2">
-        <div className="flex items-center rounded-md border border-border bg-background">
-          <button
-            type="button"
-            className={`inline-flex h-8 items-center px-3 text-xs font-medium transition-colors rounded-l-md ${mode === 'rendered' ? 'bg-muted text-primary' : 'text-muted-foreground hover:text-primary'}`}
-            aria-pressed={mode === 'rendered'}
-            onClick={() => onModeChange('rendered')}
-            onMouseDown={(event) => event.preventDefault()}
-            data-testid="markdown-composer-view-rendered"
-          >
-            Rendered
-          </button>
-          <button
-            type="button"
-            className={`inline-flex h-8 items-center px-3 text-xs font-medium transition-colors rounded-r-md ${mode === 'source' ? 'bg-muted text-primary' : 'text-muted-foreground hover:text-primary'}`}
-            aria-pressed={mode === 'source'}
-            onClick={() => onModeChange('source')}
-            onMouseDown={(event) => event.preventDefault()}
-            data-testid="markdown-composer-view-source"
-          >
-            Source
-          </button>
-        </div>
-        <button
-          type="button"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
-          title="Open fullscreen markdown editor"
-          aria-label="Open fullscreen markdown editor"
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={onOpenFullscreen}
-          disabled={disabled}
-          data-testid="markdown-composer-toolbar-fullscreen"
-        >
-          <Maximize2 className="h-4 w-4" />
-        </button>
-      </div>
     </div>
   );
 }
@@ -1546,8 +1504,9 @@ export function MarkdownComposerRTE({
     ...restTextareaProps
   } = textareaProps ?? {};
 
-  const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
-  const [mode, setMode] = useState<ComposerMode>('rendered');
+  // Source mode lost its toggle, so nothing switches away from rendered. The
+  // source paths stay wired for when a toggle comes back.
+  const [mode] = useState<ComposerMode>('rendered');
   const [isDragging, setIsDragging] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -1585,13 +1544,6 @@ export function MarkdownComposerRTE({
 
   const minHeight = minLines * 20;
   const maxHeight = typeof maxLines === 'number' ? maxLines * 20 : undefined;
-
-  const handleModeChange = useCallback((nextMode: ComposerMode) => {
-    if (mode === nextMode) {
-      return;
-    }
-    setMode(nextMode);
-  }, [mode]);
 
   const handleSend = useCallback(() => {
     if (!onSend || sendButtonDisabled) {
@@ -1810,13 +1762,6 @@ export function MarkdownComposerRTE({
       onDrop={onAttachFiles ? handleDrop : undefined}
     >
       <LexicalComposer initialConfig={initialConfig}>
-        <MarkdownComposerToolbar
-          disabled={disabled}
-          mode={mode}
-          onModeChange={handleModeChange}
-          onOpenFullscreen={() => setIsFullscreenOpen(true)}
-          onSourceAction={handleSourceAction}
-        />
         <div className="relative p-2">
           {mode === 'rendered' ? (
             <MarkdownComposerEditable
@@ -1864,8 +1809,22 @@ export function MarkdownComposerRTE({
               data-testid="file-attachment-input"
             />
           ) : null}
+        </div>
+        {attachments.length > 0 ? (
+          <div className="px-2 pb-2">
+            <AttachmentPreviewStrip
+              attachments={attachments}
+              onRemoveAttachment={onRemoveAttachment}
+              onRetryAttachment={onRetryAttachment}
+            />
+          </div>
+        ) : null}
+        {/* Formatting on the left, attach and send on the right, all on one
+            row under the input. */}
+        <div className="flex items-center gap-2 px-2 pb-2">
+          <MarkdownComposerToolbar disabled={disabled} mode={mode} onSourceAction={handleSourceAction} />
           {onSend || onAttachFiles ? (
-            <div className="absolute bottom-2 right-2 flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               {onAttachFiles ? (
                 <IconButton
                   icon={<Paperclip className="h-4 w-4" />}
@@ -1893,15 +1852,6 @@ export function MarkdownComposerRTE({
             </div>
           ) : null}
         </div>
-        {attachments.length > 0 ? (
-          <div className="px-2 pb-2">
-            <AttachmentPreviewStrip
-              attachments={attachments}
-              onRemoveAttachment={onRemoveAttachment}
-              onRetryAttachment={onRetryAttachment}
-            />
-          </div>
-        ) : null}
         <MarkdownComposerEditableStatePlugin editable={!disabled && mode === 'rendered'} />
         <MarkdownComposerCodeHighlightPlugin />
         <MarkdownComposerMarkdownPlugin
@@ -1921,14 +1871,6 @@ export function MarkdownComposerRTE({
         <MarkdownShortcutPlugin transformers={MARKDOWN_COMPOSER_TRANSFORMERS} />
       </LexicalComposer>
 
-      {isFullscreenOpen && !disabled ? (
-        <FullscreenMarkdownEditor
-          value={value}
-          onChange={(nextValue) => onChange(nextValue)}
-          onClose={() => setIsFullscreenOpen(false)}
-          label="Message"
-        />
-      ) : null}
     </div>
   );
 }

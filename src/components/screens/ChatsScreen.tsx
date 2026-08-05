@@ -513,6 +513,7 @@ interface ChatComposerPanelProps {
   onRemoveAttachment?: (clientId: string) => void;
   onRetryAttachment?: (clientId: string) => void;
   isUploading: boolean;
+  onHeightChange?: (height: number) => void;
 }
 
 function ChatComposerPanel({
@@ -528,6 +529,7 @@ function ChatComposerPanel({
   onRemoveAttachment,
   onRetryAttachment,
   isUploading,
+  onHeightChange,
 }: ChatComposerPanelProps) {
   const trimmedLength = inputValue.trim().length;
   const lengthExceeded = trimmedLength > CHAT_MESSAGE_MAX_LENGTH;
@@ -546,9 +548,24 @@ function ChatComposerPanel({
     onSendMessage(inputValue, { chatId: selectedChatId });
   }, [inputValue, onSendMessage, selectedChatId]);
 
+  const panelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const node = panelRef.current;
+    if (!node || !onHeightChange) return;
+    const observer = new ResizeObserver(() => onHeightChange(node.offsetHeight));
+    observer.observe(node);
+    onHeightChange(node.offsetHeight);
+    return () => observer.disconnect();
+  }, [onHeightChange]);
+
   return (
-    <div className="border-t border-border bg-muted p-4">
+    // Floats over the transcript rather than taking a row of its own; its
+    // measured height becomes the transcript's bottom inset so the tail of the
+    // conversation stays reachable as the composer grows.
+    <div ref={panelRef} className="pointer-events-none absolute inset-x-0 bottom-0 z-20 p-4">
       <MarkdownComposer
+        className="pointer-events-auto shadow-lg"
         value={inputValue}
         onChange={handleChange}
         placeholder="Type a message..."
@@ -564,12 +581,12 @@ function ChatComposerPanel({
         onRetryAttachment={onRetryAttachment}
       />
       {nearLimit ? (
-        <div className="mt-2 text-xs text-[var(--agyn-yellow)]">
+        <div className="pointer-events-auto mt-2 text-xs text-[var(--agyn-yellow)]">
           Approaching the {MESSAGE_LENGTH_LIMIT_LABEL} character limit ({counterLabel}).
         </div>
       ) : null}
       {lengthExceeded ? (
-        <div className="mt-2 text-xs text-[var(--agyn-status-failed)]">
+        <div className="pointer-events-auto mt-2 text-xs text-[var(--agyn-status-failed)]">
           Message exceeds the {MESSAGE_LENGTH_LIMIT_LABEL} character limit ({counterLabel}).
         </div>
       ) : null}
@@ -582,6 +599,7 @@ interface ChatTranscriptPanelProps {
   chatQueuedMessages: ChatQueuedMessageData[];
   chatReminders: ChatReminderData[];
   chatScrollRef?: Ref<HTMLDivElement>;
+  bottomInset?: number;
   onChatScroll?: (event: UIEvent<HTMLDivElement>) => void;
   onCancelQueuedMessage?: (queuedMessageId: string) => void;
   onCancelReminder?: (reminderId: string) => void;
@@ -594,6 +612,7 @@ function ChatTranscriptPanelComponent({
   chatQueuedMessages,
   chatReminders,
   chatScrollRef,
+  bottomInset,
   onChatScroll,
   onCancelQueuedMessage,
   onCancelReminder,
@@ -608,6 +627,7 @@ function ChatTranscriptPanelComponent({
         reminders={chatReminders}
         className="h-full rounded-none border-none"
         scrollRef={chatScrollRef}
+        bottomInset={bottomInset}
         onScroll={onChatScroll}
         onCancelQueuedMessage={onCancelQueuedMessage}
         onCancelReminder={onCancelReminder}
@@ -670,6 +690,9 @@ export default function ChatsScreen({
   chatScrollRef,
   onChatScroll,
 }: ChatsScreenProps) {
+  // Measured height of the floating composer; the transcript pads by it.
+  const [composerInset, setComposerInset] = useState(0);
+
   const filteredChats = chats.filter((chat) => {
     if (filterMode === 'all') return true;
     if (filterMode === 'open') return chat.isOpen;
@@ -721,6 +744,7 @@ export default function ChatsScreen({
     composerDisabled?: boolean;
   }) => (
     <ChatComposerPanel
+      onHeightChange={setComposerInset}
       inputValue={inputValue}
       selectedChatId={selectedChatId ?? null}
       baseDisabled={baseDisabled}
@@ -796,6 +820,7 @@ export default function ChatsScreen({
         {isThreadDegraded ? <ChatDegradedBanner /> : null}
 
         <ChatTranscriptPanel
+          bottomInset={composerInset}
           runs={runs}
           chatQueuedMessages={chatQueuedMessages}
           chatReminders={chatReminders}
@@ -857,7 +882,7 @@ export default function ChatsScreen({
         </div>
       </div>
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-muted/40">{renderDetailContent()}</div>
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-muted/40">{renderDetailContent()}</div>
     </div>
   );
 }
