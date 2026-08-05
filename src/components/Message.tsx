@@ -2,6 +2,7 @@ import { memo, type ReactNode } from 'react';
 import { User, Bot, Terminal, Settings, Trash2, MoreHorizontal } from 'lucide-react';
 import { MarkdownContent } from './MarkdownContent';
 import { IconButton } from './IconButton';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +18,7 @@ interface MessageProps {
   content: ReactNode;
   timestamp?: string;
   senderLabel?: string;
+  senderHandle?: string;
   isUnread?: boolean;
   showDelete?: boolean;
   onDelete?: () => void;
@@ -56,6 +58,7 @@ function MessageComponent({
   content,
   timestamp,
   senderLabel,
+  senderHandle,
   isUnread = false,
   showDelete = false,
   onDelete,
@@ -89,9 +92,24 @@ function MessageComponent({
         {/* Message Content */}
         <div className="flex flex-col gap-1 flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-xs" style={{ color: config.color }}>
-              {senderLabel ?? config.label}
-            </span>
+            {senderHandle ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="text-xs cursor-default" style={{ color: config.color }}>
+                    {senderLabel ?? config.label}
+                  </span>
+                </TooltipTrigger>
+                {/* Selectable: the handle is there to be copied, which a title
+                    attribute cannot offer. */}
+                <TooltipContent className="select-text cursor-text font-mono">
+                  {senderHandle}
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <span className="text-xs" style={{ color: config.color }}>
+                {senderLabel ?? config.label}
+              </span>
+            )}
             {timestamp && (
               <span className="text-xs text-[var(--agyn-gray)]">{timestamp}</span>
             )}

@@ -44,65 +44,14 @@ jobs:
           VITE_API_BASE_URL: /api
 
       - name: Provision cluster
-        id: provision_cluster
-        uses: agynio/bootstrap/.github/actions/provision@main
+        uses: agynio/e2e/.github/actions/provision-vm@main
+        with:
+          # Temporary: proving the notification-subscription fixes before the
+          # VM release moves latest.
+          version: sha-876f602
 
       - name: Setup DevSpace
         uses: agynio/e2e/.github/actions/setup-devspace@main
-
-      - name: Disable ArgoCD auto-sync
-        shell: bash
-        run: |
-          set -euo pipefail
-          if kubectl get application chat-app -n argocd >/dev/null 2>&1; then
-            kubectl patch application chat-app -n argocd \
-              --type merge \
-              -p '{"spec":{"syncPolicy":{"automated":null}}}'
-          else
-            echo "WARNING: ArgoCD Application 'chat-app' not found."
-          fi
-
-      - name: Allow devspace sync into nginx html
-        shell: bash
-        run: |
-          set -euo pipefail
-          kubectl get deployment chat-app -n platform
-          kubectl patch deployment chat-app -n platform --type strategic \
-            -p "$(cat <<'EOF_PATCH'
-          {
-            "spec": {
-              "template": {
-                "spec": {
-                  "volumes": [
-                    {
-                      "name": "chat-app-html",
-                      "emptyDir": {}
-                    }
-                  ],
-                  "containers": [
-                    {
-                      "name": "chat-app",
-                      "readinessProbe": {
-                        "httpGet": {
-                          "path": "/healthz",
-                          "port": "http"
-                        }
-                      },
-                      "volumeMounts": [
-                        {
-                          "name": "chat-app-html",
-                          "mountPath": "/usr/share/nginx/html"
-                        }
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
-          }
-          EOF_PATCH
-          )"
-          kubectl rollout status deployment/chat-app -n platform --timeout=5m
 
       - name: Deploy from source
         run: devspace dev --pipeline dev
@@ -112,16 +61,3 @@ jobs:
         with:
           service: chat_app
           include_smoke: 'false'
-
-      - name: Restore ArgoCD auto-sync
-        if: always()
-        shell: bash
-        run: |
-          set -euo pipefail
-          if kubectl get application chat-app -n argocd >/dev/null 2>&1; then
-            kubectl patch application chat-app -n argocd \
-              --type merge \
-              -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
-          else
-            echo "WARNING: ArgoCD Application 'chat-app' not found."
-          fi

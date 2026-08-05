@@ -12,7 +12,7 @@ import { useUser } from '@/user/user.runtime';
 import { useOrganization } from '@/organization/organization.runtime';
 import { useFileAttachments } from '@/hooks/useFileAttachments';
 import { config } from '@/config';
-import { useAgentsList } from '@/api/hooks/agents';
+import { useAgentInstancesList, useAgentsList } from '@/api/hooks/agents';
 import { useBatchGetUsers } from '@/api/hooks/users';
 import { useAppProfiles } from '@/api/hooks/apps';
 import {
@@ -149,6 +149,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
 
   const chatsQuery = useChats(organizationId);
   const agentsQuery = useAgentsList(organizationId);
+  const agentInstancesQuery = useAgentInstancesList(organizationId);
   const refetchChats = chatsQuery.refetch;
 
   useEffect(() => {
@@ -235,7 +236,20 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
   );
 
   const agents = useMemo(() => agentsQuery.data?.agents ?? [], [agentsQuery.data]);
-  const agentIdSet = useMemo(() => new Set(agents.map((agent) => agent.meta.id)), [agents]);
+  const agentInstances = useMemo(
+    () => agentInstancesQuery.data?.instances ?? [],
+    [agentInstancesQuery.data],
+  );
+  // Participants are instances, not classes. Both belong here: the set decides
+  // which ids are looked up as users, and an instance id never resolves to one.
+  const agentIdSet = useMemo(
+    () =>
+      new Set([
+        ...agents.map((agent) => agent.meta.id),
+        ...agentInstances.map((instance) => instance.meta.id),
+      ]),
+    [agents, agentInstances],
+  );
 
   const chatSummaries = useMemo(() => {
     const items = chatsQuery.data?.pages.flatMap((page) => page.chats) ?? [];
@@ -283,6 +297,14 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     for (const agent of agents) {
       map.set(agent.meta.id, { id: agent.meta.id, name: agent.name, type: 'agent' });
     }
+    for (const instance of agentInstances) {
+      const agent = agents.find((candidate) => candidate.meta.id === instance.agentId);
+      map.set(instance.meta.id, {
+        id: instance.meta.id,
+        name: agent?.name || instance.handle,
+        type: 'agent',
+      });
+    }
     for (const fetchedUser of batchUsersQuery.data?.users ?? []) {
       map.set(fetchedUser.meta.id, {
         id: fetchedUser.meta.id,
@@ -292,7 +314,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     }
     map.set(user.identityId, { id: user.identityId, name: user.name || userEmail, type: 'user' });
     return map;
-  }, [agents, batchUsersQuery.data, user.identityId, user.name, userEmail]);
+  }, [agents, agentInstances, batchUsersQuery.data, user.identityId, user.name, userEmail]);
 
   const draftParticipants = useMemo(() => activeDraft?.participants ?? EMPTY_PARTICIPANTS, [activeDraft]);
   const selectedParticipantIds = useMemo(
@@ -511,6 +533,19 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     return map;
   }, [appProfiles, participantLookup]);
 
+  // Which instance a message came from, for the conversation view. The chat
+  // list shows the class name alone -- several instances of one agent would
+  // otherwise read as several agents in the sidebar.
+  const senderHandles = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const instance of agentInstances) {
+      if (instance.handle) {
+        map.set(instance.meta.id, instance.handle);
+      }
+    }
+    return map;
+  }, [agentInstances]);
+
   const unreadCount = chatMessagesQuery.data?.pages?.[0]?.unreadCount ?? 0;
   const unreadMessageIds = useMemo(() => {
     if (!unreadCount) return [] as string[];
@@ -611,6 +646,9 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
         const senderLabel = message.senderId === currentUserId
           ? 'You'
           : resolveParticipantLabel(message.senderId, senderLookup);
+        // Which instance answered, on hover: several instances of one agent
+        // are otherwise indistinguishable in a conversation.
+        const senderHandle = senderHandles.get(message.senderId);
         const isAgentMessage = agentIdSet.has(message.senderId);
         const role = message.senderId === currentUserId
           ? 'user'
@@ -637,13 +675,14 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
           content,
           timestamp: formatDate(message.createdAt),
           senderLabel,
+          senderHandle,
           isUnread: unreadMessageIdSet.has(message.id),
           showDelete: role === 'user',
           onDelete: role === 'user' ? () => handleDeleteMessage(message.id) : undefined,
           traceUrl,
         } satisfies ChatMessage;
       }),
-    [filteredChatMessages, currentUserId, senderLookup, agentIdSet, unreadMessageIdSet, handleDeleteMessage, organizationId],
+    [filteredChatMessages, currentUserId, senderLookup, senderHandles, agentIdSet, unreadMessageIdSet, handleDeleteMessage, organizationId],
   );
 
   const chatRuns = useMemo<ChatRun[]>(() => {
