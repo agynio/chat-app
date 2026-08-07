@@ -8,7 +8,9 @@ export const userManager = oidcConfig.enabled
       redirect_uri: `${window.location.origin}/callback`,
       post_logout_redirect_uri: window.location.origin,
       scope: oidcConfig.scope,
+      // `resource` skips the code->token exchange; extraTokenParams forces it in.
       resource: oidcConfig.resource ?? undefined,
+      extraTokenParams: oidcConfig.resource ? { resource: oidcConfig.resource } : {},
       response_type: 'code',
       userStore: new WebStorageStateStore({ store: window.sessionStorage }),
       automaticSilentRenew: true,
