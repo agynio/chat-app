@@ -36,7 +36,34 @@ export function useChatSoundNotifications({
     audioRefs.current = { newMessage, finished };
     setAudioReady(true);
 
+    // Browsers reject play() until the page has been interacted with, and a
+    // message arriving is not an interaction. Prime both elements on the first
+    // gesture so later playback is allowed.
+    const unlock = () => {
+      for (const audio of [newMessage, finished]) {
+        if (typeof audio.play !== 'function') continue;
+        const wasMuted = audio.muted;
+        audio.muted = true;
+        const result = audio.play();
+        const restore = () => {
+          if (typeof audio.pause === 'function') audio.pause();
+          audio.currentTime = 0;
+          audio.muted = wasMuted;
+        };
+        if (result && typeof result.then === 'function') result.then(restore, restore);
+        else restore();
+      }
+    };
+
+    const events: ('pointerdown' | 'keydown' | 'touchstart')[] = ['pointerdown', 'keydown', 'touchstart'];
+    for (const event of events) {
+      window.addEventListener(event, unlock, { once: true, passive: true });
+    }
+
     return () => {
+      for (const event of events) {
+        window.removeEventListener(event, unlock);
+      }
       if (typeof newMessage.pause === 'function') {
         newMessage.pause();
       }
