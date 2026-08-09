@@ -325,6 +325,25 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     return map;
   }, [agents, agentInstances, agentNameByClassId, batchUsersQuery.data, user.identityId, user.name, userEmail]);
 
+  const refetchAgentInstances = instancesQuery.refetch;
+  const probedParticipantIdsRef = useRef<Set<string>>(new Set());
+
+  // A thread can name an instance minted after the last list fetch, so refetch
+  // once per unresolved participant instead of waiting for a reload.
+  useEffect(() => {
+    if (!batchUsersQuery.isFetched) return;
+    let hasUnresolved = false;
+    for (const chat of chatSummaries) {
+      for (const participant of chat.participants) {
+        if (participantLookup.has(participant.id)) continue;
+        if (probedParticipantIdsRef.current.has(participant.id)) continue;
+        probedParticipantIdsRef.current.add(participant.id);
+        hasUnresolved = true;
+      }
+    }
+    if (hasUnresolved) void refetchAgentInstances();
+  }, [batchUsersQuery.isFetched, chatSummaries, participantLookup, refetchAgentInstances]);
+
   const draftParticipants = useMemo(() => activeDraft?.participants ?? EMPTY_PARTICIPANTS, [activeDraft]);
   const selectedParticipantIds = useMemo(
     () => new Set(draftParticipants.map((participant) => participant.id)),

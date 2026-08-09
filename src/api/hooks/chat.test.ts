@@ -1,13 +1,16 @@
-import { QueryClient, type InfiniteData } from '@tanstack/react-query';
+import { createElement, type ReactNode } from 'react';
+import { QueryClient, QueryClientProvider, type InfiniteData } from '@tanstack/react-query';
+import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { chatApi } from '@/api/modules/chat';
-import type { GetMessagesResponse } from '@/api/types/chat';
-import { fetchChatMessagesPage, MESSAGE_ORDER_NEWEST_FIRST, MESSAGE_PAGE_SIZE } from './chat';
+import type { Chat, GetMessagesResponse } from '@/api/types/chat';
+import { fetchChatMessagesPage, MESSAGE_ORDER_NEWEST_FIRST, MESSAGE_PAGE_SIZE, useCreateChat } from './chat';
 
 vi.mock('@/api/modules/chat', () => ({
   chatApi: {
     getThreadMessages: vi.fn(),
     getMessages: vi.fn(),
+    createChat: vi.fn(),
   },
 }));
 
@@ -74,6 +77,37 @@ describe('fetchChatMessagesPage', () => {
   });
 });
 
+
+describe('useCreateChat', () => {
+  it('invalidates agent instances so the instance minted for the new thread resolves', async () => {
+    const chat: Chat = {
+      id: 'thread-1',
+      organizationId: 'org-1',
+      participants: [{ id: 'instance-1', joinedAt: '2026-05-22T12:30:00Z' }],
+      createdAt: '2026-05-22T12:30:00Z',
+      updatedAt: '2026-05-22T12:30:00Z',
+      status: 'open',
+      summary: null,
+      activityStatus: null,
+      unreadCount: 0,
+      activeWorkloadIds: [],
+    };
+    mockedChatApi.createChat.mockResolvedValueOnce({ chat });
+
+    const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+    const invalidateQueries = vi.spyOn(client, 'invalidateQueries');
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(QueryClientProvider, { client }, children);
+
+    const { result } = renderHook(() => useCreateChat('org-1'), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({ participantIds: ['agent-1'] });
+    });
+
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['chats', 'list', 'org-1'] });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['agent-instances'] });
+  });
+});
 
 describe('chat message pagination cache', () => {
   it('uses separate cache keys for each chat thread', async () => {
