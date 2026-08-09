@@ -175,6 +175,8 @@ export function useCreateChat(organizationId: string | undefined) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chats', 'list', organizationId] });
+      // Threads mints a fresh instance per agent added, so the cached list cannot name it yet.
+      queryClient.invalidateQueries({ queryKey: ['agent-instances'] });
     },
   });
 }
