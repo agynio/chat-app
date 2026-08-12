@@ -1,6 +1,7 @@
 import type { ButtonHTMLAttributes } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { oidcConfig } from '@/config';
+import { signOut } from './sign-out';
 
 type LogoutButtonProps = ButtonHTMLAttributes<HTMLButtonElement>;
 
@@ -10,7 +11,7 @@ function OidcLogoutButton({ children = 'Sign out', onClick, type = 'button', ...
   const handleClick: LogoutButtonProps['onClick'] = (event) => {
     onClick?.(event);
     if (event?.defaultPrevented) return;
-    void auth.signoutRedirect();
+    void signOut(auth);
   };
 
   return (
