@@ -9,6 +9,10 @@ escape_js() {
 
 api_base_url=$(escape_js "${API_BASE_URL:-}")
 media_proxy_url=$(escape_js "${MEDIA_PROXY_URL:-}")
+chat_url=$(escape_js "${CHAT_URL:-}")
+tracing_url=$(escape_js "${TRACING_URL:-}")
+console_url=$(escape_js "${CONSOLE_URL:-}")
+sandboxes_url=$(escape_js "${SANDBOXES_URL:-}")
 oidc_authority=$(escape_js "${OIDC_AUTHORITY:-}")
 oidc_client_id=$(escape_js "${OIDC_CLIENT_ID:-}")
 oidc_scope=$(escape_js "${OIDC_SCOPE:-}")
@@ -17,6 +21,10 @@ cat > "$CONFIG_PATH" <<EOF
 window.__APP_CONFIG = {
   API_BASE_URL: "${api_base_url}",
   MEDIA_PROXY_URL: "${media_proxy_url}",
+  CHAT_URL: "${chat_url}",
+  TRACING_URL: "${tracing_url}",
+  CONSOLE_URL: "${console_url}",
+  SANDBOXES_URL: "${sandboxes_url}",
   OIDC_AUTHORITY: "${oidc_authority}",
   OIDC_CLIENT_ID: "${oidc_client_id}",
   OIDC_SCOPE: "${oidc_scope}",

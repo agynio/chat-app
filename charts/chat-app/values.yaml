@@ -87,8 +87,9 @@ env:
     value: "{{ .Values.oidcResource }}"
   - name: API_BASE_URL
     value: "{{ .Values.apiBaseUrl }}"
-  - name: MEDIA_PROXY_URL
-    value: "{{ .Values.mediaProxyUrl }}"
+# MEDIA_PROXY_URL, CHAT_URL, TRACING_URL, CONSOLE_URL and SANDBOXES_URL are
+# deliberately absent: an explicit empty env var shadows extraEnvVarsCM, which
+# is how the umbrella feeds them. Set them here via extraEnvVars standalone.
 envFrom: []
 extraEnvVars: []
 extraEnvVarsCM: ""
@@ -207,7 +208,6 @@ oidcScope: "openid profile email offline_access"
 oidcResource: ""
 apiBaseUrl: /api
 origin: ""
-mediaProxyUrl: ""
 
 nginx:
   port: 3000
