@@ -424,7 +424,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
   const resolveAgentSettingsUrl = useCallback(
     (participants: Chat['participants']) => {
       if (!organizationId) return undefined;
-      const consoleUrl = deriveSiblingUrl('console');
+      const consoleUrl = config.productUrls.console ?? deriveSiblingUrl('console');
       if (!consoleUrl) return undefined;
       const agentId = participants
         .map((participant) => instanceById.get(participant.id)?.agentId)

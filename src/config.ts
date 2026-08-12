@@ -4,6 +4,10 @@
 type RuntimeConfig = {
   API_BASE_URL?: string;
   MEDIA_PROXY_URL?: string;
+  CHAT_URL?: string;
+  TRACING_URL?: string;
+  CONSOLE_URL?: string;
+  SANDBOXES_URL?: string;
   SOCKETS_ENABLED?: string;
   OIDC_AUTHORITY?: string;
   OIDC_CLIENT_ID?: string;
@@ -14,6 +18,10 @@ type RuntimeConfig = {
 type ViteEnv = {
   VITE_API_BASE_URL?: string;
   VITE_MEDIA_PROXY_URL?: string;
+  VITE_CHAT_URL?: string;
+  VITE_TRACING_URL?: string;
+  VITE_CONSOLE_URL?: string;
+  VITE_SANDBOXES_URL?: string;
   VITE_SOCKETS_ENABLED?: string;
   VITE_OIDC_AUTHORITY?: string;
   VITE_OIDC_CLIENT_ID?: string;
@@ -127,7 +135,21 @@ const mediaProxyUrl =
       ? deriveBase(rawMediaProxyUrl, { stripApi: false })
       : null;
 
-const tracingAppUrl = deriveTracingAppUrl();
+// Sibling product origins, keyed by product id. Set by the operator when the
+// apps are not served at <product>.<domain>; null falls back to derivation.
+const productUrls: Record<string, string | null> = {
+  chat: readProductUrl('CHAT_URL', 'VITE_CHAT_URL'),
+  tracing: readProductUrl('TRACING_URL', 'VITE_TRACING_URL'),
+  console: readProductUrl('CONSOLE_URL', 'VITE_CONSOLE_URL'),
+  sandboxes: readProductUrl('SANDBOXES_URL', 'VITE_SANDBOXES_URL'),
+};
+
+function readProductUrl(runtimeKey: keyof RuntimeConfig, envKey: keyof ViteEnv): string | null {
+  const value = readConfigValue(runtimeKey, envKey);
+  return value ? deriveBase(value, { stripApi: false }) : null;
+}
+
+const tracingAppUrl = productUrls.tracing ?? deriveTracingAppUrl();
 
 const rawSocketsEnabled = readConfigValue('SOCKETS_ENABLED', 'VITE_SOCKETS_ENABLED');
 const socketsEnabled = rawSocketsEnabled
@@ -150,6 +172,7 @@ export const oidcConfig: OidcConfig = oidcEnabled
 export const config = {
   apiBaseUrl,
   mediaProxyUrl,
+  productUrls,
   socketBaseUrl,
   socketsEnabled,
   tracingAppUrl,

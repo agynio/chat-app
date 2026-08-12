@@ -51,6 +51,7 @@ vi.mock('../ui/popover', () => ({
 
 vi.mock('@/config', () => ({
   oidcConfig: { enabled: false },
+  config: { productUrls: {} },
   deriveSiblingUrl: () => null,
 }));
 
