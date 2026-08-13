@@ -55,5 +55,8 @@ export type SendMessageResponse = { message: ChatMessage };
 export type UpdateChatRequest = { chatId: string; status?: ChatStatus; summary?: string };
 export type UpdateChatResponse = { chat: Chat };
 
+export type DeleteChatRequest = { chatId: string };
+export type DeleteChatResponse = Record<string, never>;
+
 export type MarkAsReadRequest = { chatId: string };
 export type MarkAsReadResponse = { readCount: number };

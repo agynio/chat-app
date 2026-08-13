@@ -31,7 +31,20 @@ vi.mock('../MarkdownComposer', () => ({
 vi.mock('../ui/dropdown-menu', () => ({
   DropdownMenu: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
   DropdownMenuContent: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuItem: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  DropdownMenuItem: ({
+    children,
+    onSelect,
+    disabled,
+    ...props
+  }: {
+    children?: React.ReactNode;
+    onSelect?: () => void;
+    disabled?: boolean;
+  }) => (
+    <button type="button" disabled={disabled} onClick={() => onSelect?.()} {...props}>
+      {children}
+    </button>
+  ),
   DropdownMenuLabel: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
   DropdownMenuRadioGroup: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
   DropdownMenuRadioItem: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
@@ -109,7 +122,7 @@ const runs: ChatRun[] = [
   },
 ];
 
-function TestHarness() {
+function TestHarness({ onDeleteChat }: { onDeleteChat?: (chatId: string) => void } = {}) {
   const [inputValue, setInputValue] = React.useState('');
   return (
     <ChatsScreen
@@ -123,6 +136,7 @@ function TestHarness() {
       currentUserId="user-1"
       onInputValueChange={setInputValue}
       onSendMessage={() => {}}
+      onDeleteChat={onDeleteChat}
     />
   );
 }
@@ -156,5 +170,33 @@ describe('ChatsScreen', () => {
     expect(chatRenderSpy).toHaveBeenCalledTimes(1);
     expect(markdownContentRenderSpy).toHaveBeenCalledTimes(1);
     expect(mediaRenderSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('deletes the conversation only after the confirmation is accepted', () => {
+    const onDeleteChat = vi.fn();
+    render(
+      <ThemeProvider>
+        <TestHarness onDeleteChat={onDeleteChat} />
+      </ThemeProvider>,
+    );
+
+    fireEvent.click(screen.getByTestId('chat-action-delete'));
+    expect(onDeleteChat).not.toHaveBeenCalled();
+
+    const dialog = screen.getByTestId('chat-delete-dialog');
+    expect(dialog).toHaveTextContent('Summary');
+
+    fireEvent.click(screen.getByTestId('chat-delete-confirm'));
+    expect(onDeleteChat).toHaveBeenCalledWith('chat-1');
+  });
+
+  it('leaves the delete action out of reach when the screen offers no delete handler', () => {
+    render(
+      <ThemeProvider>
+        <TestHarness />
+      </ThemeProvider>,
+    );
+
+    expect(screen.getByTestId('chat-action-delete')).toBeDisabled();
   });
 });

@@ -8,7 +8,7 @@ import { MessageAttachments } from '@/components/MessageAttachments';
 import ChatsScreen from '@/components/screens/ChatsScreen';
 import { SidebarUserMenu } from '@/components/SidebarUserMenu';
 import { notifyError } from '@/lib/notify';
-import { isThreadDegradedError } from '@/api/errors';
+import { isChatNotFoundError, isThreadDegradedError } from '@/api/errors';
 import { useUser } from '@/user/user.runtime';
 import { useOrganization } from '@/organization/organization.runtime';
 import { useFileAttachments } from '@/hooks/useFileAttachments';
@@ -20,6 +20,7 @@ import {
   useChats,
   useChatMessages,
   useCreateChat,
+  useDeleteChat,
   useSendMessage,
   useMarkAsRead,
   useUpdateChat,
@@ -515,6 +516,18 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     fetchNextPage: fetchNextMessagesPage,
   } = chatMessagesQuery;
 
+  // A link to a deleted conversation has nothing to open; fall back to the list.
+  const chatMessagesError = chatMessagesQuery.error;
+  useEffect(() => {
+    if (!selectedChatId || effectiveDraftMode) return;
+    if (!isChatNotFoundError(chatMessagesError)) return;
+    setSelectedChatIdState(null);
+    void queryClient.invalidateQueries({ queryKey: ['chats', 'list'] });
+    if (params.chatId) {
+      navigate('/chats');
+    }
+  }, [chatMessagesError, selectedChatId, effectiveDraftMode, params.chatId, navigate, queryClient]);
+
   const remindersQuery = useChatReminders(
     effectiveDraftMode ? undefined : selectedChatId ?? undefined,
     !effectiveDraftMode,
@@ -556,6 +569,7 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
   const sendMessage = useSendMessage();
   const createChat = useCreateChat(organizationId);
   const updateChat = useUpdateChat();
+  const deleteChat = useDeleteChat();
 
   const chatMessages = useMemo(() => {
     const pages = chatMessagesQuery.data?.pages ?? [];
@@ -857,6 +871,31 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
     [updateChat],
   );
 
+  const handleDeleteChat = useCallback(
+    (chatId: string) => {
+      if (deleteChat.isPending) return;
+      deleteChat.mutate(
+        { chatId },
+        {
+          onSuccess: () => {
+            clearDraft(chatId, userEmail);
+            if (lastNonDraftIdRef.current === chatId) {
+              lastNonDraftIdRef.current = null;
+            }
+            setSelectedChatIdState(null);
+            if (params.chatId === chatId) {
+              navigate('/chats');
+            }
+          },
+          onError: (error) => {
+            notifyError(error instanceof Error ? error.message : 'Failed to delete conversation.');
+          },
+        },
+      );
+    },
+    [deleteChat, userEmail, lastNonDraftIdRef, params.chatId, navigate],
+  );
+
   const handleChatsLoadMore = useCallback(() => {
     if (chatsQuery.hasNextPage && !chatsQuery.isFetchingNextPage) {
       void chatsQuery.fetchNextPage();
@@ -1038,6 +1077,8 @@ function ChatsContent({ user }: { user: IdentifiedUser }) {
           isToggleChatStatusPending={canUpdateChat ? updateChat.isPending : false}
           onUpdateSummary={canUpdateChat ? handleUpdateSummary : undefined}
           isUpdateSummaryPending={canUpdateChat ? updateChat.isPending : false}
+          onDeleteChat={canUpdateChat ? handleDeleteChat : undefined}
+          isDeleteChatPending={canUpdateChat ? deleteChat.isPending : false}
           currentUserId={currentUserId}
           isSendMessagePending={sendMessage.isPending || createChat.isPending}
           isThreadDegraded={isThreadDegraded}

@@ -30,6 +30,17 @@ import {
   type ChatQueuedMessageData,
 } from '../Chat';
 import { Popover, PopoverTrigger, PopoverContent } from '../ui/popover';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../ui/alert-dialog';
+import { buttonVariants } from '../ui/button-variants';
 import { MarkdownComposer } from '../MarkdownComposer';
 import {
   DropdownMenu,
@@ -177,8 +188,10 @@ type ChatDetailHeaderProps = {
   reminders: { id: string; title: string; time: string }[];
   isToggleChatStatusPending: boolean;
   isUpdateSummaryPending: boolean;
+  isDeleteChatPending: boolean;
   onToggleChatStatus?: (chatId: string, nextStatus: 'open' | 'closed') => void;
   onUpdateSummary?: (chatId: string, summary: string) => void;
+  onDeleteChat?: (chatId: string) => void;
   onCancelReminder?: (reminderId: string) => void;
   cancellingReminderIds?: ReadonlySet<string>;
 };
@@ -202,14 +215,17 @@ function ChatDetailHeader({
   reminders,
   isToggleChatStatusPending,
   isUpdateSummaryPending,
+  isDeleteChatPending,
   onToggleChatStatus,
   onUpdateSummary,
+  onDeleteChat,
   onCancelReminder,
   cancellingReminderIds,
 }: ChatDetailHeaderProps) {
   const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
   const [isRemindersPopoverOpen, setIsRemindersPopoverOpen] = useState(false);
   const [isEditingSummary, setIsEditingSummary] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [summaryDraft, setSummaryDraft] = useState('');
   const summaryInputRef = useRef<HTMLInputElement | null>(null);
   const summaryCancelRef = useRef(false);
@@ -219,6 +235,7 @@ function ChatDetailHeader({
   useEffect(() => {
     setIsStatusMenuOpen(false);
     setIsRemindersPopoverOpen(false);
+    setIsDeleteDialogOpen(false);
     summaryCancelRef.current = false;
     setIsEditingSummary(false);
   }, [chat.id]);
@@ -265,6 +282,9 @@ function ChatDetailHeader({
   const canEditSummary = Boolean(onUpdateSummary) && !isUpdateSummaryPending;
   const chatTitle = chat.title?.trim() || UNKNOWN_PARTICIPANT_LABEL;
   const activityLabel = chat.status ? ACTIVITY_PILL_LABELS[chat.status] : undefined;
+  const canDeleteChat = Boolean(onDeleteChat) && !isDeleteChatPending;
+  // The list labels a conversation by its summary; fall back to participants when it has none.
+  const deleteChatLabel = hasSummary ? summaryValue : chatTitle;
 
   const handleSummaryCommit = () => {
     if (summaryCancelRef.current) {
@@ -477,8 +497,47 @@ function ChatDetailHeader({
                   </DropdownMenuItem>
                 </>
               ) : null}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                disabled={!canDeleteChat}
+                onSelect={() => setIsDeleteDialogOpen(true)}
+                data-testid="chat-action-delete"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>Delete conversation</span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <AlertDialogContent data-testid="chat-delete-dialog">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete conversation?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  <span className="font-medium text-foreground">{deleteChatLabel}</span> disappears for everyone in
+                  it and cannot be reopened from Chat.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isDeleteChatPending}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className={buttonVariants({ variant: 'destructive' })}
+                  disabled={!canDeleteChat}
+                  aria-busy={isDeleteChatPending || undefined}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    if (!canDeleteChat) return;
+                    onDeleteChat?.(chat.id);
+                  }}
+                  data-testid="chat-delete-confirm"
+                >
+                  {isDeleteChatPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
 
@@ -555,6 +614,8 @@ interface ChatsScreenProps {
   isToggleChatStatusPending?: boolean;
   onUpdateSummary?: (chatId: string, summary: string) => void;
   isUpdateSummaryPending?: boolean;
+  onDeleteChat?: (chatId: string) => void;
+  isDeleteChatPending?: boolean;
   isSendMessagePending?: boolean;
   isThreadDegraded?: boolean;
   currentUserId: string;
@@ -744,6 +805,8 @@ export default function ChatsScreen({
   isToggleChatStatusPending = false,
   onUpdateSummary,
   isUpdateSummaryPending = false,
+  onDeleteChat,
+  isDeleteChatPending = false,
   isSendMessagePending = false,
   isThreadDegraded = false,
   currentUserId,
@@ -888,8 +951,10 @@ export default function ChatsScreen({
           reminders={reminders}
           isToggleChatStatusPending={isToggleChatStatusPending}
           isUpdateSummaryPending={isUpdateSummaryPending}
+          isDeleteChatPending={isDeleteChatPending}
           onToggleChatStatus={onToggleChatStatus}
           onUpdateSummary={onUpdateSummary}
+          onDeleteChat={onDeleteChat}
           onCancelReminder={onCancelReminder}
           cancellingReminderIds={cancellingReminderIds}
         />

@@ -6,6 +6,8 @@ import type {
   ChatStatus,
   CreateChatRequest,
   CreateChatResponse,
+  DeleteChatRequest,
+  DeleteChatResponse,
   GetChatsRequest,
   GetChatsResponse,
   GetMessagesRequest,
@@ -149,6 +151,8 @@ export const chatApi = {
     const resp = await connectPost<UpdateChatRequestWire, UpdateChatResponse>(CHAT_SERVICE, 'UpdateChat', payload);
     return { ...resp, chat: normalizeChat(resp.chat) };
   },
+  deleteChat: (req: DeleteChatRequest): Promise<DeleteChatResponse> =>
+    connectPost<DeleteChatRequest, DeleteChatResponse>(CHAT_SERVICE, 'DeleteChat', req),
   markAsRead: (req: MarkAsReadRequest): Promise<MarkAsReadResponse> =>
     connectPost<MarkAsReadRequest, MarkAsReadResponse>(CHAT_SERVICE, 'MarkAsRead', req),
 };

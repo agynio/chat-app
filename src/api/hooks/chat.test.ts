@@ -4,13 +4,20 @@ import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { chatApi } from '@/api/modules/chat';
 import type { Chat, GetMessagesResponse } from '@/api/types/chat';
-import { fetchChatMessagesPage, MESSAGE_ORDER_NEWEST_FIRST, MESSAGE_PAGE_SIZE, useCreateChat } from './chat';
+import {
+  fetchChatMessagesPage,
+  MESSAGE_ORDER_NEWEST_FIRST,
+  MESSAGE_PAGE_SIZE,
+  useCreateChat,
+  useDeleteChat,
+} from './chat';
 
 vi.mock('@/api/modules/chat', () => ({
   chatApi: {
     getThreadMessages: vi.fn(),
     getMessages: vi.fn(),
     createChat: vi.fn(),
+    deleteChat: vi.fn(),
   },
 }));
 
@@ -106,6 +113,67 @@ describe('useCreateChat', () => {
 
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['chats', 'list', 'org-1'] });
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['agent-instances'] });
+  });
+});
+
+describe('useDeleteChat', () => {
+  const chat = (id: string): Chat => ({
+    id,
+    organizationId: 'org-1',
+    participants: [],
+    createdAt: '2026-08-13T12:00:00Z',
+    updatedAt: '2026-08-13T12:00:00Z',
+    status: 'open',
+    summary: null,
+    activityStatus: null,
+    unreadCount: 0,
+    activeWorkloadIds: [],
+  });
+
+  const listKey = ['chats', 'list', 'org-1', 25];
+
+  const seedList = (client: QueryClient) => {
+    client.setQueryData<InfiniteData<GetChatsResponse>>(listKey, {
+      pageParams: [undefined],
+      pages: [{ chats: [chat('thread-1'), chat('thread-2')] }],
+    });
+    return ({ children }: { children: ReactNode }) => createElement(QueryClientProvider, { client }, children);
+  };
+
+  const listedIds = (client: QueryClient) =>
+    client
+      .getQueryData<InfiniteData<GetChatsResponse>>(listKey)
+      ?.pages.flatMap((page) => page.chats.map((entry) => entry.id));
+
+  beforeEach(() => {
+    mockedChatApi.deleteChat.mockReset();
+  });
+
+  it('drops the deleted chat from every cached list page', async () => {
+    mockedChatApi.deleteChat.mockResolvedValueOnce({});
+    const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+    const wrapper = seedList(client);
+
+    const { result } = renderHook(() => useDeleteChat(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({ chatId: 'thread-1' });
+    });
+
+    expect(mockedChatApi.deleteChat).toHaveBeenCalledWith({ chatId: 'thread-1' });
+    expect(listedIds(client)).toEqual(['thread-2']);
+  });
+
+  it('puts the chat back when the delete fails', async () => {
+    mockedChatApi.deleteChat.mockRejectedValueOnce(new Error('nope'));
+    const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+    const wrapper = seedList(client);
+
+    const { result } = renderHook(() => useDeleteChat(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({ chatId: 'thread-1' }).catch(() => {});
+    });
+
+    expect(listedIds(client)).toEqual(['thread-1', 'thread-2']);
   });
 });
 

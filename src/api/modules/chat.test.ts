@@ -63,6 +63,16 @@ describe('chatApi', () => {
     );
   });
 
+  it('deletes chats through ChatGateway', async () => {
+    mockedConnectPost.mockResolvedValueOnce({});
+
+    await chatApi.deleteChat({ chatId: 'chat-1' });
+
+    expect(mockedConnectPost).toHaveBeenCalledWith('/api/agynio.api.gateway.v1.ChatGateway', 'DeleteChat', {
+      chatId: 'chat-1',
+    });
+  });
+
   it('loads thread messages through ThreadsGateway with newest-first ordering', async () => {
     mockedConnectPost.mockResolvedValueOnce({
       messages: [
