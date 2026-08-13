@@ -6,6 +6,7 @@ import type {
   ChatMessage,
   CreateChatRequest,
   CreateChatResponse,
+  DeleteChatResponse,
   GetChatsResponse,
   GetMessagesResponse,
   MarkAsReadResponse,
@@ -236,6 +237,45 @@ export function useUpdateChat() {
         updateChatPages(current, variables.chatId, data.chat),
       );
       queryClient.invalidateQueries({ queryKey });
+    },
+  });
+}
+
+type DeleteChatInput = { chatId: string };
+
+type DeleteChatContext = {
+  previousChats: Array<[unknown, InfiniteData<GetChatsResponse> | undefined]>;
+};
+
+export function useDeleteChat() {
+  const queryClient = useQueryClient();
+
+  return useMutation<DeleteChatResponse, Error, DeleteChatInput, DeleteChatContext>({
+    mutationFn: ({ chatId }) => chatApi.deleteChat({ chatId }),
+    onMutate: async ({ chatId }) => {
+      const queryKey = ['chats', 'list'];
+      await queryClient.cancelQueries({ queryKey });
+      const previousChats = queryClient.getQueriesData<InfiniteData<GetChatsResponse>>({ queryKey });
+      queryClient.setQueriesData<InfiniteData<GetChatsResponse>>({ queryKey }, (current) => {
+        if (!current) return current;
+        return {
+          ...current,
+          pages: current.pages.map((page) => ({
+            ...page,
+            chats: page.chats.filter((chat) => chat.id !== chatId),
+          })),
+        };
+      });
+      return { previousChats };
+    },
+    onError: (_error, _variables, context) => {
+      context?.previousChats.forEach(([key, data]) => {
+        queryClient.setQueryData(key, data);
+      });
+    },
+    onSuccess: (_data, { chatId }) => {
+      queryClient.removeQueries({ queryKey: ['chats', chatId] });
+      queryClient.invalidateQueries({ queryKey: ['chats', 'list'] });
     },
   });
 }

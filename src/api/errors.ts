@@ -79,6 +79,12 @@ export function resolveConnectErrorDetails(error: unknown): ConnectErrorDetails 
   return { code, message };
 }
 
+export function isChatNotFoundError(error: unknown): boolean {
+  const details = resolveConnectErrorDetails(error);
+  if (!details?.code) return false;
+  return normalizeConnectCode(details.code) === 'not_found';
+}
+
 export function isThreadDegradedError(error: unknown): boolean {
   const details = resolveConnectErrorDetails(error);
   if (!details?.code || details.message !== 'thread is degraded') return false;
