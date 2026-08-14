@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useRef } from 'react';
 import { AuthProvider, useAuth, withAuthenticationRequired } from 'react-oidc-context';
 import { Button } from '@/components/Button';
 import { oidcConfig } from '@/config';
+import { SilentRenewCallback } from './SilentRenewCallback';
 import { userManager } from './user-manager';
 
 type AuthGateProps = {
@@ -56,9 +57,18 @@ function AuthErrorBoundary({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+export const silentRenewPath = '/silent-renew';
+
 export function AuthGate({ children }: AuthGateProps) {
   if (!oidcConfig.enabled) return <>{children}</>;
   if (!userManager) throw new Error('auth: user manager not initialized');
+
+  // Checked on the raw location rather than through the router: this has to win
+  // before AuthProvider mounts, or the renewal frame runs the sign-in flow in
+  // its own context instead of answering the parent.
+  if (window.location.pathname === silentRenewPath) {
+    return <SilentRenewCallback />;
+  }
 
   return (
     <AuthProvider userManager={userManager} onSigninCallback={handleSigninCallback}>
