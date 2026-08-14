@@ -45,7 +45,7 @@ jobs:
 
       - name: Provision cluster
         id: provision_cluster
-        uses: agynio/bootstrap/.github/actions/provision@main
+        uses: agynio/e2e/.github/actions/provision-vm@main
 
       - name: Setup DevSpace
         uses: agynio/e2e/.github/actions/setup-devspace@main
@@ -66,8 +66,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          kubectl get deployment chat-app -n platform
-          kubectl patch deployment chat-app -n platform --type strategic \
+          kubectl get deployment chat-app -n agyn-platform
+          kubectl patch deployment chat-app -n agyn-platform --type strategic \
             -p "$(cat <<'EOF_PATCH'
           {
             "spec": {
@@ -102,7 +102,7 @@ jobs:
           }
           EOF_PATCH
           )"
-          kubectl rollout status deployment/chat-app -n platform --timeout=5m
+          kubectl rollout status deployment/chat-app -n agyn-platform --timeout=5m
 
       - name: Deploy from source
         run: devspace dev --pipeline dev
