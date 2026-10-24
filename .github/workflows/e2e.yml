@@ -45,22 +45,10 @@ jobs:
 
       - name: Provision cluster
         id: provision_cluster
-        uses: agynio/bootstrap/.github/actions/provision@main
+        uses: agynio/e2e/.github/actions/provision-vm@main
 
       - name: Setup DevSpace
         uses: agynio/e2e/.github/actions/setup-devspace@main
-
-      - name: Disable ArgoCD auto-sync
-        shell: bash
-        run: |
-          set -euo pipefail
-          if kubectl get application chat-app -n argocd >/dev/null 2>&1; then
-            kubectl patch application chat-app -n argocd \
-              --type merge \
-              -p '{"spec":{"syncPolicy":{"automated":null}}}'
-          else
-            echo "WARNING: ArgoCD Application 'chat-app' not found."
-          fi
 
       - name: Allow devspace sync into nginx html
         shell: bash
@@ -112,16 +100,3 @@ jobs:
         with:
           service: chat_app
           include_smoke: 'false'
-
-      - name: Restore ArgoCD auto-sync
-        if: always()
-        shell: bash
-        run: |
-          set -euo pipefail
-          if kubectl get application chat-app -n argocd >/dev/null 2>&1; then
-            kubectl patch application chat-app -n argocd \
-              --type merge \
-              -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
-          else
-            echo "WARNING: ArgoCD Application 'chat-app' not found."
-          fi
