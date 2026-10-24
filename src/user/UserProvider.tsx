@@ -15,11 +15,21 @@ function OidcUserProvider({ children }: { children: React.ReactNode }) {
   const auth = useAuth();
   const profileUser = buildUserFromProfile(auth.user?.profile);
   const accessToken = auth.user?.access_token;
+  const subject = auth.user?.profile?.sub;
 
   const identityQuery = useQuery<MeResponse, Error>({
-    queryKey: ['user', 'me', accessToken],
+    // Keyed on who is signed in, not on the token. The HTTP client attaches the
+    // current token to every request and renews it on a 401, so a renewal that
+    // rotates the token must not start a fresh query: when the gateway rejects
+    // tokens for any reason other than expiry, that turned each rejection into a
+    // renewal, each renewal into a new query and a new rejection -- an unbounded
+    // loop of ~10 token exchanges a second against the provider.
+    queryKey: ['user', 'me', subject],
     queryFn: () => http.get<MeResponse>('/api/me'),
-    enabled: Boolean(accessToken),
+    enabled: Boolean(accessToken && subject),
+    // The client has already renewed once before a 401 reaches here; repeating
+    // the request cannot fix a token the gateway does not accept.
+    retry: false,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });

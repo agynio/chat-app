@@ -16,6 +16,8 @@ sandboxes_url=$(escape_js "${SANDBOXES_URL:-}")
 oidc_authority=$(escape_js "${OIDC_AUTHORITY:-}")
 oidc_client_id=$(escape_js "${OIDC_CLIENT_ID:-}")
 oidc_scope=$(escape_js "${OIDC_SCOPE:-}")
+oidc_resource=$(escape_js "${OIDC_RESOURCE:-}")
+sockets_enabled=$(escape_js "${SOCKETS_ENABLED:-}")
 
 cat > "$CONFIG_PATH" <<EOF
 window.__APP_CONFIG = {
@@ -28,5 +30,7 @@ window.__APP_CONFIG = {
   OIDC_AUTHORITY: "${oidc_authority}",
   OIDC_CLIENT_ID: "${oidc_client_id}",
   OIDC_SCOPE: "${oidc_scope}",
+  OIDC_RESOURCE: "${oidc_resource}",
+  SOCKETS_ENABLED: "${sockets_enabled}",
 };
 EOF
